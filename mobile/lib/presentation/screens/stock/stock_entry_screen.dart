@@ -147,7 +147,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         'quantity': qty,
         'color_name': _selectedColor,
         'notes': _notesController.text.trim(),
-        'warehouse_id': _selectedWarehouseId ?? 'default',
+        'warehouse_id': (_selectedWarehouseId == null || _selectedWarehouseId == 'default') ? null : _selectedWarehouseId,
         'worker_name': workerName,
       });
 
@@ -296,7 +296,15 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () => setState(() => _type = TransactionType.stockOut),
+                      onTap: () {
+                        setState(() {
+                          _type = TransactionType.stockOut;
+                          if (_selectedProduct != null && _selectedProduct!.quantity <= 0) {
+                            _selectedProduct = null;
+                            _selectedColor = 'Default';
+                          }
+                        });
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
@@ -353,7 +361,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 8),
               InkWell(
-                onTap: () => _openProductPicker(products),
+                onTap: () {
+                  final filteredProducts = _type == TransactionType.stockOut
+                      ? products.where((p) => p.quantity > 0).toList()
+                      : products;
+                  _openProductPicker(filteredProducts);
+                },
                 borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -864,7 +877,7 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
     // Group products by category
     final categories = <String, int>{};
     for (final p in widget.products) {
-      final cat = p.category ?? 'Uncategorized';
+      final cat = p.category;
       categories[cat] = (categories[cat] ?? 0) + 1;
     }
 
@@ -873,7 +886,7 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
     // Filter products
     final filteredProducts = widget.products.where((p) {
       if (_selectedCategory != null) {
-        return (p.category ?? 'Uncategorized') == _selectedCategory;
+        return p.category == _selectedCategory;
       }
       return true;
     }).toList();

@@ -119,6 +119,9 @@ transactionsRouter.post(
     }
 
     let warehouseId = warehouseIdInput;
+    if (warehouseId && (warehouseId.toLowerCase() === 'default' || warehouseId.trim() === '')) {
+      warehouseId = null;
+    }
     let warehouseName = null;
     if (warehouseId) {
       const byId = await supabaseAdmin
