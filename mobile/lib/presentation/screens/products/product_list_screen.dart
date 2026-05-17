@@ -256,7 +256,7 @@ class _ProductListScreenState
         gridDelegate:
             const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.78,
+          childAspectRatio: 0.70,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),

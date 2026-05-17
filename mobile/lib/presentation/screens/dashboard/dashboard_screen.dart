@@ -340,7 +340,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               return const SizedBox.shrink();
             }
             return SizedBox(
-              height: 100,
+              height: 112,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: categories.length,
@@ -358,7 +358,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             );
           },
           loading: () => const SkeletonLoading(
-              width: double.infinity, height: 100),
+              width: double.infinity, height: 112),
           error: (_, __) => const SizedBox.shrink(),
         ),
       ],
