@@ -49,7 +49,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     if (images.isEmpty) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => _FullScreenImageViewer(
+        builder: (_) => FullScreenImageViewer(
           images: images,
           initialIndex: initialIndex,
         ),
@@ -716,20 +716,20 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 }
 
 // ─── Full Screen Image Viewer with Zoom, Download & Share ───
-class _FullScreenImageViewer extends StatefulWidget {
+class FullScreenImageViewer extends StatefulWidget {
   final List<String> images;
   final int initialIndex;
 
-  const _FullScreenImageViewer({
+  const FullScreenImageViewer({
     required this.images,
     required this.initialIndex,
   });
 
   @override
-  State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+  State<FullScreenImageViewer> createState() => _FullScreenImageViewerState();
 }
 
-class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
+class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
   late PageController _pageController;
   late int _currentIndex;
   bool _isDownloading = false;

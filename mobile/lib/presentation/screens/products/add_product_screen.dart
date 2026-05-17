@@ -8,6 +8,23 @@ import '../../../domain/entities/product.dart';
 import '../../providers/api_client_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/products_provider.dart';
+import 'product_detail_screen.dart';
+
+class ColorStockInput {
+  final TextEditingController colorController;
+  final TextEditingController qtyController;
+
+  ColorStockInput({
+    required String color,
+    required int quantity,
+  })  : colorController = TextEditingController(text: color),
+        qtyController = TextEditingController(text: quantity.toString());
+
+  void dispose() {
+    colorController.dispose();
+    qtyController.dispose();
+  }
+}
 
 class AddProductScreen extends ConsumerStatefulWidget {
   final Product? productToEdit;
@@ -36,7 +53,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   bool _isUploadingImage = false;
 
   // Color stocks editing state
-  List<Map<String, dynamic>> _colorStocks = [];
+  List<ColorStockInput> _colorStockInputs = [];
   bool _syncQuantityFromColors = false;
 
   String? _selectedCategory;
@@ -80,10 +97,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
     // Load initial colors
     if (widget.productToEdit != null) {
-      _colorStocks = widget.productToEdit!.colorStocks
-          .map((c) => {'color': c.color, 'quantity': c.quantity})
+      _colorStockInputs = widget.productToEdit!.colorStocks
+          .map((c) => ColorStockInput(color: c.color, quantity: c.quantity))
           .toList();
-      _syncQuantityFromColors = _colorStocks.isNotEmpty;
+      _syncQuantityFromColors = _colorStockInputs.isNotEmpty;
     }
 
     _selectedCategory = widget.productToEdit?.category;
@@ -99,23 +116,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _descriptionController.dispose();
     _unitController.dispose();
     _costPriceController.dispose();
+    for (final input in _colorStockInputs) {
+      input.dispose();
+    }
     super.dispose();
   }
 
-  int get _colorTotalQuantity => _colorStocks.fold<int>(
-      0, (sum, item) => sum + (item['quantity'] as int));
+  int get _colorTotalQuantity => _colorStockInputs.fold<int>(
+      0, (sum, item) => sum + (int.tryParse(item.qtyController.text) ?? 0));
 
   void _addColorStock() {
     setState(() {
-      _colorStocks.add({'color': '', 'quantity': 0});
+      _colorStockInputs.add(ColorStockInput(color: '', quantity: 0));
       _syncQuantityFromColors = true; // Auto-enable sync when colors are added
     });
   }
 
   void _removeColorStock(int index) {
     setState(() {
-      _colorStocks.removeAt(index);
-      if (_colorStocks.isEmpty) {
+      _colorStockInputs[index].dispose();
+      _colorStockInputs.removeAt(index);
+      if (_colorStockInputs.isEmpty) {
         _syncQuantityFromColors = false;
       }
     });
@@ -187,11 +208,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           ? _colorTotalQuantity
           : (int.tryParse(_quantityController.text) ?? 0);
 
-      final finalColorStocks = _colorStocks
-          .where((item) => (item['color'] as String).trim().isNotEmpty)
+      final finalColorStocks = _colorStockInputs
+          .where((item) => item.colorController.text.trim().isNotEmpty)
           .map((item) => {
-                'color': (item['color'] as String).trim(),
-                'quantity': item['quantity'] as int,
+                'color': item.colorController.text.trim(),
+                'quantity': int.tryParse(item.qtyController.text.trim()) ?? 0,
               })
           .toList();
 
@@ -432,7 +453,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ],
                     ),
                     const Divider(height: 16),
-                    if (_colorStocks.isEmpty)
+                    if (_colorStockInputs.isEmpty)
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Text(
@@ -444,39 +465,35 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ListView.separated(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _colorStocks.length,
+                        itemCount: _colorStockInputs.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 8),
                         itemBuilder: (context, index) {
-                          final item = _colorStocks[index];
+                          final item = _colorStockInputs[index];
                           return Row(
+                            key: ValueKey(item),
                             children: [
                               Expanded(
                                 flex: 3,
                                 child: TextFormField(
-                                  initialValue: item['color'],
+                                  controller: item.colorController,
                                   decoration: const InputDecoration(
                                     labelText: 'Color Name',
                                     contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                   ),
-                                  onChanged: (val) {
-                                    item['color'] = val;
-                                  },
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 flex: 2,
                                 child: TextFormField(
-                                  initialValue: item['quantity'].toString(),
+                                  controller: item.qtyController,
                                   decoration: const InputDecoration(
                                     labelText: 'Qty',
                                     contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                                   ),
                                   keyboardType: TextInputType.number,
                                   onChanged: (val) {
-                                    setState(() {
-                                      item['quantity'] = int.tryParse(val) ?? 0;
-                                    });
+                                    setState(() {});
                                   },
                                 ),
                               ),
@@ -749,16 +766,28 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            CachedNetworkImage(
-                              imageUrl: url,
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
-                                color: Colors.grey[100],
-                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                              ),
-                              errorWidget: (_, __, ___) => Container(
-                                color: Colors.grey[100],
-                                child: const Icon(Icons.broken_image, size: 32, color: AppTheme.textMuted),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => FullScreenImageViewer(
+                                      images: _productImages.map((img) => img['url']!).toList(),
+                                      initialIndex: index,
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: CachedNetworkImage(
+                                imageUrl: url,
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(
+                                  color: Colors.grey[100],
+                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                ),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: Colors.grey[100],
+                                  child: const Icon(Icons.broken_image, size: 32, color: AppTheme.textMuted),
+                                ),
                               ),
                             ),
                             if (isMain)
