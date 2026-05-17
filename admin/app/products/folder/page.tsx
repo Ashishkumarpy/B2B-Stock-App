@@ -96,6 +96,41 @@ export default function FolderExplorerPage() {
     router.push(`/products/folder?name=${encodeURIComponent(value)}`);
   };
 
+  const handleDeleteFolder = async () => {
+    const folderPath = currentSegments.join(' / ');
+    const count = productsInFolder.length;
+
+    let message = `Are you sure you want to delete the folder "${folderPath}"?`;
+    if (count > 0) {
+      message = `Are you sure you want to delete the folder "${folderPath}" and all of its ${count} products? This action cannot be undone.`;
+    }
+
+    if (!window.confirm(message)) return;
+
+    setLoading(true);
+    try {
+      const { serverDelete } = await import('../../../lib/server_api');
+      
+      // Delete all products in this folder
+      for (const p of productsInFolder) {
+        await serverDelete(`/products/${p.id}`);
+      }
+
+      // Remove from custom categories
+      const cleanPath = folderPath.toLowerCase();
+      const updatedCustom = customCategories.filter(c => c.toLowerCase() !== cleanPath);
+      saveCustomCategories(updatedCustom);
+
+      alert('Folder and its products deleted successfully.');
+      router.push('/products/folder'); // Redirect to root
+    } catch (e) {
+      console.error(e);
+      alert('Failed to delete folder.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const rawPath = (searchParams.get('name') ?? '').trim();
   const currentSegments = useMemo(() => splitCategoryPath(rawPath), [rawPath]);
   const currentLabel = currentSegments.length > 0 ? currentSegments[currentSegments.length - 1] : 'Root';
@@ -158,6 +193,15 @@ export default function FolderExplorerPage() {
           >
             Back to Products
           </button>
+          {currentSegments.length > 0 && (
+            <button
+              type="button"
+              onClick={handleDeleteFolder}
+              className="rounded-xl border border-red-500/40 bg-red-600/10 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-600/20"
+            >
+              Delete Folder
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
