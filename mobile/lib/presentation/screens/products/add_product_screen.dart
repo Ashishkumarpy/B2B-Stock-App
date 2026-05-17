@@ -58,6 +58,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
   String? _selectedCategory;
   bool _isSubmitting = false;
+  final List<String> _localCategories = [];
 
   @override
   void initState() {
@@ -272,9 +273,52 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     }
   }
 
+  void _showCreateCategoryDialog(BuildContext context) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('New Folder / Category', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Enter new category/folder name...',
+            prefixIcon: Icon(Icons.folder_rounded),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final val = controller.text.trim();
+              if (val.isNotEmpty) {
+                setState(() {
+                  _localCategories.add(val);
+                  _selectedCategory = val;
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final categories = ref.watch(categoriesProvider);
+    final categoriesAsync = ref.watch(categoriesProvider);
+    final fetchedCats = categoriesAsync.value ?? [];
+    final Set<String> mergedCats = {...fetchedCats, ..._localCategories};
+    if (_selectedCategory != null) {
+      mergedCats.add(_selectedCategory!);
+    }
+    final sortedCats = mergedCats.toList()..sort();
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -320,18 +364,37 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
               const SizedBox(height: AppTheme.sp16),
               
-              DropdownButtonFormField<String>(
-                value: _selectedCategory,
-                isExpanded: true,
-                decoration: const InputDecoration(
-                  labelText: 'Category *',
-                  prefixIcon: Icon(Icons.folder_open_rounded),
-                ),
-                items: (categories.value ?? [])
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (val) => setState(() => _selectedCategory = val),
-                validator: (val) => val == null ? 'Select category' : null,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedCategory,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Category *',
+                        prefixIcon: Icon(Icons.folder_open_rounded),
+                      ),
+                      items: sortedCats
+                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .toList(),
+                      onChanged: (val) => setState(() => _selectedCategory = val),
+                      validator: (val) => val == null ? 'Select category' : null,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    style: IconButton.styleFrom(
+                      backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                      padding: const EdgeInsets.all(12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                      ),
+                    ),
+                    icon: const Icon(Icons.create_new_folder_rounded, color: AppTheme.primary),
+                    onPressed: () => _showCreateCategoryDialog(context),
+                  ),
+                ],
               ),
               
               const SizedBox(height: 24),

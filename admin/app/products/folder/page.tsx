@@ -57,6 +57,44 @@ export default function FolderExplorerPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [newCategory, setNewCategory] = useState('');
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('product_categories');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setCustomCategories(parsed.map(String).filter(Boolean));
+      }
+    } catch {}
+  }, []);
+
+  const saveCustomCategories = (cats: string[]) => {
+    setCustomCategories(cats);
+    try { window.localStorage.setItem('product_categories', JSON.stringify(cats)); } catch {}
+  };
+
+  const allCategories = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...products.map((p) => p.category).filter(Boolean),
+        ...customCategories.filter(Boolean),
+      ])
+    ).sort((a, b) => a.localeCompare(b));
+  }, [products, customCategories]);
+
+  const handleCreateCategory = () => {
+    const value = newCategory.trim();
+    if (!value) return;
+    const exists = allCategories.some((c) => c.toLowerCase() === value.toLowerCase());
+    const next = exists ? customCategories : [...customCategories, value];
+    saveCustomCategories(next);
+    setShowCategoryModal(false);
+    router.push(`/products/folder?name=${encodeURIComponent(value)}`);
+  };
 
   const rawPath = (searchParams.get('name') ?? '').trim();
   const currentSegments = useMemo(() => splitCategoryPath(rawPath), [rawPath]);
@@ -119,6 +157,16 @@ export default function FolderExplorerPage() {
             className="rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-white/5"
           >
             Back to Products
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setNewCategory('');
+              setShowCategoryModal(true);
+            }}
+            className="rounded-xl border border-indigo-500/40 bg-indigo-600/10 px-4 py-2 text-sm font-semibold text-indigo-300 transition hover:bg-indigo-600/20"
+          >
+            + Create Folder
           </button>
           <button
             type="button"
@@ -228,6 +276,20 @@ export default function FolderExplorerPage() {
           </div>
         )}
       </div>
+
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f1117] p-8 shadow-2xl">
+            <h3 className="text-xl font-bold mb-2">Create Folder</h3>
+            <p className="text-xs text-gray-400 mb-6 uppercase tracking-widest">New category for your products</p>
+            <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Folder Name" className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none mb-6" />
+            <div className="flex gap-3">
+              <button onClick={handleCreateCategory} className="flex-1 rounded-xl bg-indigo-600 py-3 font-bold text-white hover:bg-indigo-500 transition-all">Create</button>
+              <button onClick={() => setShowCategoryModal(false)} className="rounded-xl border border-white/10 px-6 py-3 text-sm font-semibold text-gray-300 hover:bg-white/5 transition-all">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
