@@ -118,91 +118,66 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // ── TAPPABLE IMAGE HERO SECTION ──
-                      GestureDetector(
-                        onTap: () => _openFullScreenViewer(allImages, _currentImageIndex),
-                        child: Container(
-                          height: 240,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.black,
-                            borderRadius: BorderRadius.circular(AppTheme.radiusXL),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.08),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Stack(
-                            fit: StackFit.expand,
-                            children: [
-                              allImages.isEmpty
-                                  ? Container(
-                                      color: AppTheme.primaryLight,
-                                      child: const Center(
-                                        child: Column(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            Icon(
-                                              Icons.inventory_2_outlined,
-                                              size: 64,
-                                              color: AppTheme.primary,
-                                            ),
-                                            SizedBox(height: 8),
-                                            Text(
-                                              'No images available',
-                                              style: TextStyle(
-                                                color: AppTheme.primary,
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 13,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                  : PageView.builder(
-                                      controller: _pageController,
-                                      itemCount: allImages.length,
-                                      onPageChanged: (i) => setState(() => _currentImageIndex = i),
-                                      itemBuilder: (_, i) => CachedNetworkImage(
-                                        imageUrl: allImages[i],
-                                        fit: BoxFit.cover,
-                                        placeholder: (_, __) => const Center(
-                                          child: CircularProgressIndicator(color: Colors.white),
-                                        ),
-                                        errorWidget: (_, __, ___) => const Icon(
-                                          Icons.broken_image_outlined,
-                                          color: Colors.white,
-                                          size: 48,
-                                        ),
-                                      ),
+                      if (allImages.isNotEmpty) ...[
+                        GestureDetector(
+                          onTap: () => _openFullScreenViewer(allImages, _currentImageIndex),
+                          child: Container(
+                            height: 180, // Compact and highly flexible space-saving height
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              color: Colors.black,
+                              borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.08),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            clipBehavior: Clip.antiAlias,
+                            child: Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                PageView.builder(
+                                  controller: _pageController,
+                                  itemCount: allImages.length,
+                                  onPageChanged: (i) => setState(() => _currentImageIndex = i),
+                                  itemBuilder: (_, i) => CachedNetworkImage(
+                                    imageUrl: allImages[i],
+                                    fit: BoxFit.cover,
+                                    placeholder: (_, __) => const Center(
+                                      child: CircularProgressIndicator(color: Colors.white),
                                     ),
-                              if (allImages.length > 1)
-                                Positioned(
-                                  bottom: 12,
-                                  right: 12,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black54,
-                                      borderRadius: BorderRadius.circular(99),
-                                    ),
-                                    child: Text(
-                                      '${_currentImageIndex + 1}/${allImages.length}',
-                                      style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold),
+                                    errorWidget: (_, __, ___) => const Icon(
+                                      Icons.broken_image_outlined,
+                                      color: Colors.white,
+                                      size: 48,
                                     ),
                                   ),
                                 ),
-                              if (allImages.isNotEmpty)
+                                if (allImages.length > 1)
+                                  Positioned(
+                                    bottom: 10,
+                                    right: 10,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black54,
+                                        borderRadius: BorderRadius.circular(99),
+                                      ),
+                                      child: Text(
+                                        '${_currentImageIndex + 1}/${allImages.length}',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                  ),
                                 Positioned(
-                                  top: 12,
-                                  right: 12,
+                                  top: 10,
+                                  right: 10,
                                   child: Container(
                                     padding: const EdgeInsets.all(6),
                                     decoration: const BoxDecoration(
@@ -212,60 +187,59 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                     child: const Icon(
                                       Icons.fullscreen_rounded,
                                       color: Colors.white,
-                                      size: 20,
+                                      size: 18,
                                     ),
                                   ),
                                 ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                      
-                      // ── Image Thumbnails Row (Tied to Hero) ──
-                      if (allImages.length > 1) ...[
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          height: 52,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: allImages.length,
-                            separatorBuilder: (_, __) => const SizedBox(width: 8),
-                            itemBuilder: (_, i) => GestureDetector(
-                              onTap: () {
-                                _pageController.animateToPage(
-                                  i,
-                                  duration: const Duration(milliseconds: 300),
-                                  curve: Curves.easeInOut,
-                                );
-                              },
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 52,
-                                height: 52,
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(
-                                    color: _currentImageIndex == i
-                                        ? AppTheme.primary
-                                        : Colors.transparent,
-                                    width: 2,
+                        // ── Image Thumbnails Row (Tied to Hero) ──
+                        if (allImages.length > 1) ...[
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 46,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: allImages.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (_, i) => GestureDetector(
+                                onTap: () {
+                                  _pageController.animateToPage(
+                                    i,
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                  );
+                                },
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  width: 46,
+                                  height: 46,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: _currentImageIndex == i
+                                          ? AppTheme.primary
+                                          : Colors.transparent,
+                                      width: 2,
+                                    ),
                                   ),
-                                ),
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
-                                  child: CachedNetworkImage(
-                                    imageUrl: allImages[i],
-                                    fit: BoxFit.cover,
-                                    placeholder: (_, __) => Container(color: Colors.grey[200]),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(6),
+                                    child: CachedNetworkImage(
+                                      imageUrl: allImages[i],
+                                      fit: BoxFit.cover,
+                                      placeholder: (_, __) => Container(color: Colors.grey[200]),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                        ],
+                        const SizedBox(height: 16),
                       ],
-
-                      const SizedBox(height: 16),
 
                       // Category Tag Row
                       Row(
