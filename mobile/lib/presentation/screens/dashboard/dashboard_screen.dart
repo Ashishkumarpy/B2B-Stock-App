@@ -129,15 +129,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       data: (p) => p.fold<int>(0, (s, x) => s + (x.quantity as int)),
       orElse: () => 0,
     );
+    final now = DateTime.now();
     final stockIn = transactionsAsync.maybeWhen(
       data: (txs) => txs
-          .where((t) => t.isStockIn == true)
+          .where((t) => t.isStockIn == true &&
+              t.createdAt.year == now.year &&
+              t.createdAt.month == now.month &&
+              t.createdAt.day == now.day)
           .fold<int>(0, (s, t) => s + (t.quantity as int)),
       orElse: () => 0,
     );
     final stockOut = transactionsAsync.maybeWhen(
       data: (txs) => txs
-          .where((t) => t.isStockOut == true)
+          .where((t) => t.isStockOut == true &&
+              t.createdAt.year == now.year &&
+              t.createdAt.month == now.month &&
+              t.createdAt.day == now.day)
           .fold<int>(0, (s, t) => s + (t.quantity as int)),
       orElse: () => 0,
     );
@@ -193,21 +200,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           children: [
             Expanded(
               child: _StatCard(
-                label: 'Stock In',
+                label: 'Stock In (Today)',
                 value: '+$stockIn',
                 icon: Icons.south_west_rounded,
                 color: AppTheme.success,
-                onTap: () => context.go('/stock-activity'),
+                onTap: () => context.push('/stock-activity?type=stockIn&dateMode=today'),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _StatCard(
-                label: 'Stock Out',
+                label: 'Stock Out (Today)',
                 value: '-$stockOut',
                 icon: Icons.north_east_rounded,
                 color: AppTheme.danger,
-                onTap: () => context.go('/stock-activity'),
+                onTap: () => context.push('/stock-activity?type=stockOut&dateMode=today'),
               ),
             ),
           ],
