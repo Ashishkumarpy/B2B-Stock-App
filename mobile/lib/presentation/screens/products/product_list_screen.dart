@@ -31,7 +31,8 @@ class _ProductListScreenState
   void initState() {
     super.initState();
     if (widget.initialFilter != null &&
-        widget.initialFilter != 'low') {
+        widget.initialFilter != 'low' &&
+        widget.initialFilter != 'in_stock') {
       _openFolder = widget.initialFilter;
     }
   }
@@ -41,7 +42,8 @@ class _ProductListScreenState
     super.didUpdateWidget(oldWidget);
     if (widget.initialFilter != oldWidget.initialFilter &&
         widget.initialFilter != null &&
-        widget.initialFilter != 'low') {
+        widget.initialFilter != 'low' &&
+        widget.initialFilter != 'in_stock') {
       setState(() {
         _openFolder = widget.initialFilter;
       });
