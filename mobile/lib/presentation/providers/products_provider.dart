@@ -112,8 +112,8 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
       colorStocks: colorStocks,
       description: json['description'],
       stockStatus: _mapStatus(json['stock_status']),
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']) : null,
+      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']).toLocal() : null,
+      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']).toLocal() : null,
     );
   }
 

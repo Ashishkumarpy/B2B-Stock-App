@@ -67,7 +67,7 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
       type: TransactionType.fromString(json['type'] ?? 'OUT'),
       quantity: json['quantity'] ?? 0,
       notes: json['notes'],
-      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()),
+      createdAt: DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String()).toLocal(),
     );
   }
 
