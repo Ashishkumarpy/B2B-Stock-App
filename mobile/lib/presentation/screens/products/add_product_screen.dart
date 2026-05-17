@@ -338,6 +338,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ── Image Section ──
+              _sectionHeader('Product Image'),
+              const SizedBox(height: 8),
+              _buildMainImageSection(),
+              const SizedBox(height: 24),
+
               // ── Basic Info Section ──
               _sectionHeader('Basic Information'),
               const SizedBox(height: 8),
@@ -609,13 +615,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 ),
               ),
 
-              const SizedBox(height: 24),
-
-              // ── Image Section ──
-              _sectionHeader('Product Image'),
-              const SizedBox(height: 8),
-              _buildMainImageSection(),
-              
               const SizedBox(height: 24),
 
               // ── Description Section ──
