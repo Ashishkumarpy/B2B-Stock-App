@@ -247,9 +247,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ),
         const SizedBox(width: AppTheme.sp12),
         _StatCard(
-          label: 'Total Units',
+          label: 'Available Stock',
           value: '$totalStock',
           color: AppTheme.success,
+          onTap: () => context.go('/products?filter=in_stock'),
         ),
         const SizedBox(width: AppTheme.sp12),
         _StatCard(
@@ -601,43 +602,60 @@ class _StatCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
-  const _StatCard({required this.label, required this.value, required this.color});
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.color,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final cardContent = Container(
+      padding: const EdgeInsets.all(AppTheme.sp12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        border: Border.all(color: color.withValues(alpha: 0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(AppTheme.sp12),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-          border: Border.all(color: color.withValues(alpha: 0.1)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontSize: 9,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: TextStyle(
-                color: color,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
+      child: Material(
+        color: Colors.transparent,
+        child: onTap != null
+            ? InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                child: cardContent,
+              )
+            : cardContent,
       ),
     );
   }
