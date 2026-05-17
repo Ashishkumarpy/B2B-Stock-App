@@ -267,7 +267,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Category + SKU info row
+                      // Category + Title/Name info row
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -288,24 +288,30 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               ),
                             ),
                           ),
-                          Text(
-                            'Code: ${product.code}',
-                            style: const TextStyle(
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              textAlign: TextAlign.end,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
                                 color: AppTheme.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 6),
 
-                      // Product Title + Description
+                      // BIG Product Code
                       Text(
-                        product.name,
+                        product.code,
                         style: const TextStyle(
-                          fontSize: 22,
+                          fontSize: 30,
                           fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3,
+                          letterSpacing: -0.5,
                           color: AppTheme.textPrimary,
                         ),
                       ),
