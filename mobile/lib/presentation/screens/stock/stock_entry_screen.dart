@@ -28,6 +28,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   final _notesController = TextEditingController();
 
   Product? _selectedProduct;
+  String _selectedColor = 'Default';
   TransactionType _type = TransactionType.stockOut;
   bool _isSubmitting = false;
 
@@ -43,7 +44,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         final match =
             products.where((p) => p.id == widget.productId).firstOrNull;
         if (match != null) {
-          setState(() => _selectedProduct = match);
+          setState(() {
+            _selectedProduct = match;
+            if (match.colorStocks.isNotEmpty) {
+              _selectedColor = match.colorStocks.first.color;
+            }
+          });
         }
       }
     });
@@ -96,6 +102,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         'product_id': _selectedProduct!.id,
         'type': _type == TransactionType.stockIn ? 'IN' : 'OUT',
         'quantity': int.parse(_qtyController.text),
+        'color_name': _selectedProduct!.colorStocks.isNotEmpty ? _selectedColor : 'Default',
         'notes': _notesController.text,
         'warehouse_id': 'default', // Assuming a default warehouse for now
       });
@@ -155,11 +162,43 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           child: Text('${p.code} - ${p.name}'),
                         ))
                     .toList(),
-                onChanged: (val) => setState(() => _selectedProduct = val),
+                onChanged: (val) => setState(() {
+                  _selectedProduct = val;
+                  if (val != null && val.colorStocks.isNotEmpty) {
+                    _selectedColor = val.colorStocks.first.color;
+                  } else {
+                    _selectedColor = 'Default';
+                  }
+                }),
                 validator: (val) =>
                     val == null ? 'Please select a product' : null,
               ),
               const SizedBox(height: AppTheme.sp16),
+
+              // Color Dropdown
+              if (_selectedProduct != null &&
+                  _selectedProduct!.colorStocks.isNotEmpty) ...[
+                DropdownButtonFormField<String>(
+                  value: _selectedProduct!.colorStocks
+                          .any((c) => c.color == _selectedColor)
+                      ? _selectedColor
+                      : _selectedProduct!.colorStocks.first.color,
+                  decoration: const InputDecoration(
+                    labelText: 'Color / Variant',
+                    prefixIcon: Icon(Icons.color_lens_outlined),
+                  ),
+                  items: _selectedProduct!.colorStocks
+                      .map((c) => DropdownMenuItem(
+                            value: c.color,
+                            child: Text('${c.color} (${c.quantity} available)'),
+                          ))
+                      .toList(),
+                  onChanged: (val) => setState(() => _selectedColor = val ?? 'Default'),
+                  validator: (val) =>
+                      val == null ? 'Please select a color' : null,
+                ),
+                const SizedBox(height: AppTheme.sp16),
+              ],
 
               // Quantity
               TextFormField(
