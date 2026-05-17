@@ -332,6 +332,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final double computedMax = maxVal == 0 ? 100.0 : maxVal * 1.15;
 
     final dateLabel = _selectedDate != null ? _formatDate(_selectedDate!) : 'Today';
+    final String dateParams;
+    if (_selectedDate != null) {
+      final dateStr = _selectedDate!.toIso8601String().substring(0, 10);
+      dateParams = '&dateMode=custom&date=$dateStr';
+    } else {
+      dateParams = '&dateMode=today';
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,7 +461,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               value: '$stockInSum',
               icon: Icons.trending_up_rounded,
               color: AppTheme.primary,
-              onTap: () => context.push('/stock-activity'),
+              onTap: () => context.push('/stock-activity?type=stockIn$dateParams'),
             ),
             const SizedBox(width: AppTheme.sp12),
             _TransactionSummaryCard(
@@ -462,7 +469,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               value: '$stockOutSum',
               icon: Icons.trending_down_rounded,
               color: AppTheme.danger,
-              onTap: () => context.push('/stock-activity'),
+              onTap: () => context.push('/stock-activity?type=stockOut$dateParams'),
             ),
           ],
         ),
@@ -471,7 +478,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           label: 'Net Flow ($dateLabel)',
           value: '${stockInSum - stockOutSum >= 0 ? "+" : ""}${stockInSum - stockOutSum}',
           color: (stockInSum - stockOutSum) >= 0 ? AppTheme.success : AppTheme.danger,
-          onTap: () => context.push('/stock-activity'),
+          onTap: () => context.push('/stock-activity?type=both$dateParams'),
         ),
       ],
     );

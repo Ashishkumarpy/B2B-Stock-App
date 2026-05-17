@@ -188,8 +188,19 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/stock-activity',
-            pageBuilder: (context, state) =>
-                _buildPage(state, const StockActivityScreen()),
+            pageBuilder: (context, state) {
+              final type = state.uri.queryParameters['type'];
+              final dateMode = state.uri.queryParameters['dateMode'];
+              final date = state.uri.queryParameters['date'];
+              return _buildPage(
+                state,
+                StockActivityScreen(
+                  initialType: type,
+                  initialDateMode: dateMode,
+                  initialDate: date,
+                ),
+              );
+            },
           ),
           GoRoute(
             path: '/worker-detail/:userId',

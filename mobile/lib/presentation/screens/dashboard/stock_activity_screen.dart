@@ -8,18 +8,77 @@ import '../../../domain/entities/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../widgets/skeleton_loading.dart';
 
-enum ActivityFilter { today, all, stockIn, stockOut, customDate }
+enum DateFilterMode { today, all, custom }
+enum TypeFilterMode { both, stockIn, stockOut }
 
 class StockActivityScreen extends ConsumerStatefulWidget {
-  const StockActivityScreen({super.key});
+  final String? initialType;
+  final String? initialDateMode;
+  final String? initialDate;
+
+  const StockActivityScreen({
+    super.key,
+    this.initialType,
+    this.initialDateMode,
+    this.initialDate,
+  });
 
   @override
   ConsumerState<StockActivityScreen> createState() => _StockActivityScreenState();
 }
 
 class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
-  ActivityFilter _currentFilter = ActivityFilter.today;
+  DateFilterMode _dateFilter = DateFilterMode.today;
+  TypeFilterMode _typeFilter = TypeFilterMode.both;
   DateTime? _customFilterDate;
+
+  @override
+  void initState() {
+    super.initState();
+    _applyInitialParameters();
+  }
+
+  @override
+  void didUpdateWidget(covariant StockActivityScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialType != oldWidget.initialType ||
+        widget.initialDateMode != oldWidget.initialDateMode ||
+        widget.initialDate != oldWidget.initialDate) {
+      _applyInitialParameters();
+    }
+  }
+
+  void _applyInitialParameters() {
+    if (widget.initialType != null) {
+      if (widget.initialType == 'stockIn') {
+        _typeFilter = TypeFilterMode.stockIn;
+      } else if (widget.initialType == 'stockOut') {
+        _typeFilter = TypeFilterMode.stockOut;
+      } else if (widget.initialType == 'both') {
+        _typeFilter = TypeFilterMode.both;
+      }
+    }
+    
+    if (widget.initialDateMode != null) {
+      if (widget.initialDateMode == 'today') {
+        _dateFilter = DateFilterMode.today;
+        _customFilterDate = null;
+      } else if (widget.initialDateMode == 'all') {
+        _dateFilter = DateFilterMode.all;
+        _customFilterDate = null;
+      } else if (widget.initialDateMode == 'custom') {
+        _dateFilter = DateFilterMode.custom;
+      }
+    }
+    
+    if (widget.initialDate != null) {
+      final parsed = DateTime.tryParse(widget.initialDate!);
+      if (parsed != null) {
+        _customFilterDate = parsed;
+        _dateFilter = DateFilterMode.custom;
+      }
+    }
+  }
 
   String _formatDate(DateTime d) {
     final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -30,15 +89,22 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
   Widget build(BuildContext context) {
     final txnsAsync = ref.watch(transactionsProvider);
 
+    final bool isDateFilterActive = _dateFilter != DateFilterMode.all;
+    final bool isTypeFilterActive = _typeFilter != TypeFilterMode.both;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Stock Activity'),
         actions: [
-          PopupMenuButton<ActivityFilter>(
-            icon: const Icon(Icons.filter_list_rounded),
-            tooltip: 'Filter Activities',
-            onSelected: (ActivityFilter filter) async {
-              if (filter == ActivityFilter.customDate) {
+          // Date Filter Popup Menu
+          PopupMenuButton<DateFilterMode>(
+            icon: Icon(
+              Icons.calendar_today_rounded,
+              color: isDateFilterActive ? AppTheme.primary : AppTheme.textSecondary,
+            ),
+            tooltip: 'Filter by Date',
+            onSelected: (DateFilterMode mode) async {
+              if (mode == DateFilterMode.custom) {
                 final picked = await showDatePicker(
                   context: context,
                   initialDate: _customFilterDate ?? DateTime.now(),
@@ -47,84 +113,54 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                 );
                 if (picked != null) {
                   setState(() {
-                    _currentFilter = ActivityFilter.customDate;
+                    _dateFilter = DateFilterMode.custom;
                     _customFilterDate = picked;
                   });
                 }
               } else {
                 setState(() {
-                  _currentFilter = filter;
+                  _dateFilter = mode;
                   _customFilterDate = null;
                 });
               }
             },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<ActivityFilter>>[
-              PopupMenuItem<ActivityFilter>(
-                value: ActivityFilter.today,
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<DateFilterMode>>[
+              PopupMenuItem<DateFilterMode>(
+                value: DateFilterMode.today,
                 child: Row(
                   children: [
                     Icon(
                       Icons.today_rounded,
                       size: 18,
-                      color: _currentFilter == ActivityFilter.today ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _dateFilter == DateFilterMode.today ? AppTheme.primary : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
                     const Text('Today', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
-              PopupMenuItem<ActivityFilter>(
-                value: ActivityFilter.all,
+              PopupMenuItem<DateFilterMode>(
+                value: DateFilterMode.all,
                 child: Row(
                   children: [
                     Icon(
                       Icons.all_inbox_rounded,
                       size: 18,
-                      color: _currentFilter == ActivityFilter.all ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _dateFilter == DateFilterMode.all ? AppTheme.primary : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
-                    const Text('All Activities', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Text('All Time', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
-              const PopupMenuDivider(),
-              PopupMenuItem<ActivityFilter>(
-                value: ActivityFilter.stockIn,
+              PopupMenuItem<DateFilterMode>(
+                value: DateFilterMode.custom,
                 child: Row(
                   children: [
                     Icon(
-                      Icons.south_west_rounded,
+                      Icons.date_range_rounded,
                       size: 18,
-                      color: _currentFilter == ActivityFilter.stockIn ? AppTheme.primary : AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 10),
-                    const Text('Stock In Only', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-              PopupMenuItem<ActivityFilter>(
-                value: ActivityFilter.stockOut,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.north_east_rounded,
-                      size: 18,
-                      color: _currentFilter == ActivityFilter.stockOut ? AppTheme.primary : AppTheme.textSecondary,
-                    ),
-                    const SizedBox(width: 10),
-                    const Text('Stock Out Only', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              PopupMenuItem<ActivityFilter>(
-                value: ActivityFilter.customDate,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.calendar_today_rounded,
-                      size: 18,
-                      color: _currentFilter == ActivityFilter.customDate ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _dateFilter == DateFilterMode.custom ? AppTheme.primary : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
                     Text(
@@ -136,6 +172,65 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
               ),
             ],
           ),
+          
+          // Type Filter Popup Menu
+          PopupMenuButton<TypeFilterMode>(
+            icon: Icon(
+              Icons.filter_list_rounded,
+              color: isTypeFilterActive ? AppTheme.primary : AppTheme.textSecondary,
+            ),
+            tooltip: 'Filter by Type',
+            onSelected: (TypeFilterMode mode) {
+              setState(() {
+                _typeFilter = mode;
+              });
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<TypeFilterMode>>[
+              PopupMenuItem<TypeFilterMode>(
+                value: TypeFilterMode.both,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.swap_vert_rounded,
+                      size: 18,
+                      color: _typeFilter == TypeFilterMode.both ? AppTheme.primary : AppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('All Types', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              PopupMenuItem<TypeFilterMode>(
+                value: TypeFilterMode.stockIn,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.south_west_rounded,
+                      size: 18,
+                      color: _typeFilter == TypeFilterMode.stockIn ? AppTheme.primary : AppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Stock In Only', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+              PopupMenuItem<TypeFilterMode>(
+                value: TypeFilterMode.stockOut,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.north_east_rounded,
+                      size: 18,
+                      color: _typeFilter == TypeFilterMode.stockOut ? AppTheme.primary : AppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 10),
+                    const Text('Stock Out Only', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: () {
@@ -168,39 +263,51 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
           // Apply active filters
           List<Transaction> filteredTxns = txns;
           
-          if (_currentFilter == ActivityFilter.today) {
+          // 1. Date Filter
+          if (_dateFilter == DateFilterMode.today) {
             final now = DateTime.now();
-            filteredTxns = txns.where((t) {
+            filteredTxns = filteredTxns.where((t) {
               return t.createdAt.year == now.year &&
                   t.createdAt.month == now.month &&
                   t.createdAt.day == now.day;
             }).toList();
-          } else if (_currentFilter == ActivityFilter.stockIn) {
-            filteredTxns = txns.where((t) => t.isStockIn).toList();
-          } else if (_currentFilter == ActivityFilter.stockOut) {
-            filteredTxns = txns.where((t) => t.isStockOut).toList();
-          } else if (_currentFilter == ActivityFilter.customDate && _customFilterDate != null) {
-            filteredTxns = txns.where((t) {
+          } else if (_dateFilter == DateFilterMode.custom && _customFilterDate != null) {
+            filteredTxns = filteredTxns.where((t) {
               return t.createdAt.year == _customFilterDate!.year &&
                   t.createdAt.month == _customFilterDate!.month &&
                   t.createdAt.day == _customFilterDate!.day;
             }).toList();
           }
 
-          final String headerText;
-          if (_currentFilter == ActivityFilter.today) {
-            headerText = "Showing: Today's Activities";
-          } else if (_currentFilter == ActivityFilter.all) {
-            headerText = "Showing: All Activities";
-          } else if (_currentFilter == ActivityFilter.stockIn) {
-            headerText = "Showing: Stock In Only";
-          } else if (_currentFilter == ActivityFilter.stockOut) {
-            headerText = "Showing: Stock Out Only";
-          } else if (_currentFilter == ActivityFilter.customDate && _customFilterDate != null) {
-            headerText = "Showing: ${_formatDate(_customFilterDate!)}";
-          } else {
-            headerText = "Stock Activities";
+          // 2. Type Filter
+          if (_typeFilter == TypeFilterMode.stockIn) {
+            filteredTxns = filteredTxns.where((t) => t.isStockIn).toList();
+          } else if (_typeFilter == TypeFilterMode.stockOut) {
+            filteredTxns = filteredTxns.where((t) => t.isStockOut).toList();
           }
+
+          // Prepare Status Labels
+          final String dateText;
+          if (_dateFilter == DateFilterMode.today) {
+            dateText = "Today";
+          } else if (_dateFilter == DateFilterMode.all) {
+            dateText = "All Time";
+          } else if (_dateFilter == DateFilterMode.custom && _customFilterDate != null) {
+            dateText = _formatDate(_customFilterDate!);
+          } else {
+            dateText = "";
+          }
+
+          final String typeText;
+          if (_typeFilter == TypeFilterMode.stockIn) {
+            typeText = "Stock In";
+          } else if (_typeFilter == TypeFilterMode.stockOut) {
+            typeText = "Stock Out";
+          } else {
+            typeText = "All Activities";
+          }
+
+          final headerText = "Showing: $typeText • $dateText";
 
           return Column(
             children: [
@@ -225,16 +332,17 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                         ),
                       ],
                     ),
-                    if (_currentFilter != ActivityFilter.today)
+                    if (_dateFilter != DateFilterMode.today || _typeFilter != TypeFilterMode.both)
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            _currentFilter = ActivityFilter.today;
+                            _dateFilter = DateFilterMode.today;
+                            _typeFilter = TypeFilterMode.both;
                             _customFilterDate = null;
                           });
                         },
                         child: const Text(
-                          'Reset to Today',
+                          'Reset',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
