@@ -1006,7 +1006,7 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
-                        childAspectRatio: 1.15,
+                        childAspectRatio: 1.0, // Perfect square layout to gain more vertical height
                       ),
                       itemCount: categoryList.length,
                       itemBuilder: (context, index) {
@@ -1028,19 +1028,19 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
                                 ),
                               ],
                             ),
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 const Text(
                                   '📁',
-                                  style: TextStyle(fontSize: 36),
+                                  style: TextStyle(fontSize: 32),
                                 ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 6),
                                 Text(
                                   cat,
                                   textAlign: TextAlign.center,
-                                  maxLines: 2,
+                                  maxLines: 1, // Compact 1 line to completely prevent overflows
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w800,
