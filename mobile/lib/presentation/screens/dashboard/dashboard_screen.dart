@@ -84,7 +84,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Stats Row
-                  _buildStatsSection(productsAsync),
+                  _buildStatsSection(productsAsync, transactionsAsync),
                   const SizedBox(height: 20),
 
                   // Quick Actions
@@ -117,102 +117,102 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     return 'Evening';
   }
 
-  Widget _buildStatsSection(AsyncValue<List<dynamic>> productsAsync) {
-    return productsAsync.when(
-      data: (products) {
-        final totalSkus = products.length;
-        final totalUnits =
-            products.fold<int>(0, (s, p) => s + (p.quantity as int));
-        final lowStock =
-            products.where((p) => p.quantity <= p.threshold).length;
-        final inStock = products
-            .where((p) => p.quantity > p.threshold)
-            .length;
+  Widget _buildStatsSection(
+    AsyncValue<List<dynamic>> productsAsync,
+    AsyncValue<List<dynamic>> transactionsAsync,
+  ) {
+    final totalProducts = productsAsync.maybeWhen(
+      data: (p) => p.length,
+      orElse: () => 0,
+    );
+    final availableStock = productsAsync.maybeWhen(
+      data: (p) => p.fold<int>(0, (s, x) => s + (x.quantity as int)),
+      orElse: () => 0,
+    );
+    final stockIn = transactionsAsync.maybeWhen(
+      data: (txs) => txs
+          .where((t) => t.isStockIn == true)
+          .fold<int>(0, (s, t) => s + (t.quantity as int)),
+      orElse: () => 0,
+    );
+    final stockOut = transactionsAsync.maybeWhen(
+      data: (txs) => txs
+          .where((t) => t.isStockOut == true)
+          .fold<int>(0, (s, t) => s + (t.quantity as int)),
+      orElse: () => 0,
+    );
 
-        return Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: 'Total SKUs',
-                    value: '$totalSkus',
-                    icon: Icons.inventory_2_rounded,
-                    color: AppTheme.primary,
-                    onTap: () => context.go('/products'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Total Units',
-                    value: '$totalUnits',
-                    icon: Icons.layers_rounded,
-                    color: AppTheme.success,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: 'Low Stock',
-                    value: '$lowStock',
-                    icon: Icons.warning_amber_rounded,
-                    color: AppTheme.warning,
-                    onTap: () =>
-                        context.go('/products?filter=low'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _StatCard(
-                    label: 'In Stock',
-                    value: '$inStock',
-                    icon: Icons.check_circle_rounded,
-                    color: const Color(0xFF8B5CF6),
-                    onTap: () => context.go('/analytics'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-      },
-      loading: () => Column(
+    final isLoading = productsAsync is AsyncLoading ||
+        transactionsAsync is AsyncLoading;
+
+    if (isLoading) {
+      return Column(
         children: [
           Row(children: [
-            Expanded(
-                child: SkeletonLoading(
-                    width: double.infinity, height: 90)),
+            Expanded(child: SkeletonLoading(width: double.infinity, height: 88)),
             const SizedBox(width: 12),
-            Expanded(
-                child: SkeletonLoading(
-                    width: double.infinity, height: 90)),
+            Expanded(child: SkeletonLoading(width: double.infinity, height: 88)),
           ]),
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(
-                child: SkeletonLoading(
-                    width: double.infinity, height: 90)),
+            Expanded(child: SkeletonLoading(width: double.infinity, height: 88)),
             const SizedBox(width: 12),
-            Expanded(
-                child: SkeletonLoading(
-                    width: double.infinity, height: 90)),
+            Expanded(child: SkeletonLoading(width: double.infinity, height: 88)),
           ]),
         ],
-      ),
-      error: (err, _) => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: AppTheme.dangerLight,
-          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+      );
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                label: 'Total Products',
+                value: '$totalProducts',
+                icon: Icons.inventory_2_rounded,
+                color: AppTheme.primary,
+                onTap: () => context.go('/products'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                label: 'Available Stock',
+                value: '$availableStock',
+                icon: Icons.layers_rounded,
+                color: AppTheme.success,
+                onTap: () => context.go('/analytics'),
+              ),
+            ),
+          ],
         ),
-        child: Text('Error loading stats: $err',
-            style: const TextStyle(color: AppTheme.danger)),
-      ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _StatCard(
+                label: 'Stock In',
+                value: '+$stockIn',
+                icon: Icons.south_west_rounded,
+                color: AppTheme.success,
+                onTap: () => context.go('/stock-activity'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StatCard(
+                label: 'Stock Out',
+                value: '-$stockOut',
+                icon: Icons.north_east_rounded,
+                color: AppTheme.danger,
+                onTap: () => context.go('/stock-activity'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

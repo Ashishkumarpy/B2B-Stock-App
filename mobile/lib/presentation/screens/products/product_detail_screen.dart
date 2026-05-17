@@ -346,11 +346,11 @@ class _ProductDetailScreenState
                               mainAxisAlignment:
                                   MainAxisAlignment.spaceBetween,
                               children: [
-                                _MiniStat('Threshold',
+                                _miniStat('Threshold',
                                     '${product.threshold}'),
-                                _MiniStat('Cost',
+                                _miniStat('Cost',
                                     '₹${product.costPrice?.toStringAsFixed(0) ?? '0'}'),
-                                _MiniStat('Price',
+                                _miniStat('Price',
                                     '₹${product.price.toStringAsFixed(0)}'),
                               ],
                             ),
@@ -459,7 +459,7 @@ class _ProductDetailScreenState
     );
   }
 
-  Widget _MiniStat(String label, String value) {
+  Widget _miniStat(String label, String value) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
