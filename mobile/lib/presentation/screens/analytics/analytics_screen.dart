@@ -8,11 +8,24 @@ import '../../providers/transactions_provider.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
 
-class AnalyticsScreen extends ConsumerWidget {
+class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
+}
+
+class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
+  DateTime? _selectedDate;
+  int? _selectedYear;
+
+  String _formatDate(DateTime d) {
+    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return '${months[d.month - 1]} ${d.day.toString().padLeft(2, '0')}, ${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final productsAsync = ref.watch(productsProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
 
@@ -39,11 +52,13 @@ class AnalyticsScreen extends ConsumerWidget {
               children: [
                 _buildRealtimePulseHeader(),
                 const SizedBox(height: AppTheme.sp16),
+                _buildFilterBar(transactions),
+                const SizedBox(height: AppTheme.sp16),
                 _buildOverviewCards(products),
                 const SizedBox(height: AppTheme.sp24),
-                _buildMonthlyTransactionFlow(context, transactions),
+                _buildMonthlyTransactionFlow(transactions),
                 const SizedBox(height: AppTheme.sp24),
-                _buildCategoryDistribution(context, products),
+                _buildCategoryDistribution(products),
                 const SizedBox(height: AppTheme.sp24),
                 _buildSectionTitle('Inventory Health'),
                 const SizedBox(height: AppTheme.sp12),
@@ -51,12 +66,10 @@ class AnalyticsScreen extends ConsumerWidget {
               ],
             ),
           ),
-          loading: () => const Center(
-              child: CircularProgressIndicator(color: AppTheme.primary)),
+          loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
           error: (err, _) => Center(child: Text('Transactions Error: $err')),
         ),
-        loading: () => const Center(
-            child: CircularProgressIndicator(color: AppTheme.primary)),
+        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
         error: (err, _) => Center(child: Text('Products Error: $err')),
       ),
     );
@@ -99,19 +112,130 @@ class AnalyticsScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildFilterBar(List<Transaction> transactions) {
+    // Scan transactions for all unique years
+    final availableYears = transactions.map((t) => t.createdAt.year).toSet().toList()
+      ..sort((a, b) => b.compareTo(a));
+    if (availableYears.isEmpty) {
+      availableYears.add(DateTime.now().year);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Interactive Filters',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              // Date picker button
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: Icon(
+                    Icons.calendar_today_rounded,
+                    size: 14,
+                    color: _selectedDate != null ? AppTheme.primary : AppTheme.textSecondary,
+                  ),
+                  label: Text(
+                    _selectedDate != null ? _formatDate(_selectedDate!) : 'Select Date',
+                    style: TextStyle(
+                      color: _selectedDate != null ? AppTheme.primary : AppTheme.textSecondary,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    side: BorderSide(
+                      color: _selectedDate != null ? AppTheme.primary : Colors.grey.withValues(alpha: 0.2),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _selectedDate ?? DateTime.now(),
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 365)),
+                    );
+                    if (picked != null) {
+                      setState(() {
+                        _selectedDate = picked;
+                      });
+                    }
+                  },
+                ),
+              ),
+              if (_selectedDate != null) ...[
+                const SizedBox(width: 4),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, color: AppTheme.danger, size: 20),
+                  onPressed: () => setState(() => _selectedDate = null),
+                ),
+              ],
+              const SizedBox(width: 8),
+              // Year selection dropdown
+              Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  border: Border.all(
+                    color: _selectedYear != null ? AppTheme.primary : Colors.grey.withValues(alpha: 0.2),
+                  ),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int?>(
+                    value: _selectedYear,
+                    hint: const Text('Year', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                    icon: const Icon(Icons.arrow_drop_down_rounded, color: AppTheme.textSecondary),
+                    items: [
+                      const DropdownMenuItem<int?>(
+                        value: null,
+                        child: Text('All Years', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                      ),
+                      ...availableYears.map((y) => DropdownMenuItem<int?>(
+                        value: y,
+                        child: Text('$y', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                      )),
+                    ],
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedYear = val;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(
-          fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.2),
+      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.2),
     );
   }
 
   Widget _buildOverviewCards(List<Product> products) {
     final totalItems = products.length;
     final totalStock = products.fold<int>(0, (sum, p) => sum + p.quantity);
-    final lowStock =
-        products.where((p) => p.stockStatus == StockStatus.lowStock).length;
+    final lowStock = products.where((p) => p.stockStatus == StockStatus.lowStock).length;
 
     return Row(
       children: [
@@ -136,35 +260,57 @@ class AnalyticsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildMonthlyTransactionFlow(
-      BuildContext context, List<Transaction> transactions) {
-    final now = DateTime.now();
-    final monthNames = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec'
-    ];
+  Widget _buildMonthlyTransactionFlow(List<Transaction> transactions) {
+    final today = DateTime.now();
+    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // 1. Calculate Today's / Selected Date's Stats
+    final filterDate = _selectedDate ?? today;
+    int stockInSum = 0;
+    int stockOutSum = 0;
+    
+    for (final t in transactions) {
+      final tDate = t.createdAt;
+      if (tDate.year == filterDate.year &&
+          tDate.month == filterDate.month &&
+          tDate.day == filterDate.day) {
+        if (t.isStockIn) {
+          stockInSum += t.quantity;
+        } else {
+          stockOutSum += t.quantity;
+        }
+      }
+    }
 
-    // Last 6 months
-    final monthlyTrend = List.generate(6, (i) {
-      final d = DateTime(now.year, now.month - (5 - i), 1);
-      return _MonthTrendData(
-        label: monthNames[d.month - 1],
-        monthIdx: d.month,
-        year: d.year,
-        stockIn: 0,
-        stockOut: 0,
-      );
-    });
+    // 2. Generate monthly trend data respecting year filter
+    final targetYear = _selectedYear ?? today.year;
+    final List<_MonthTrendData> monthlyTrend;
+
+    if (_selectedYear == null || _selectedYear == today.year) {
+      // Last 6 months ending in the current month
+      monthlyTrend = List.generate(6, (i) {
+        final d = DateTime(today.year, today.month - (5 - i), 1);
+        return _MonthTrendData(
+          label: monthNames[d.month - 1],
+          monthIdx: d.month,
+          year: d.year,
+          stockIn: 0,
+          stockOut: 0,
+        );
+      });
+    } else {
+      // 6 key months of the selected year (July to December)
+      monthlyTrend = List.generate(6, (i) {
+        final d = DateTime(targetYear, 7 + i, 1);
+        return _MonthTrendData(
+          label: monthNames[d.month - 1],
+          monthIdx: d.month,
+          year: d.year,
+          stockIn: 0,
+          stockOut: 0,
+        );
+      });
+    }
 
     for (final t in transactions) {
       final tDate = t.createdAt;
@@ -180,13 +326,11 @@ class AnalyticsScreen extends ConsumerWidget {
     }
 
     final double maxVal = monthlyTrend
-        .map((m) => m.stockIn > m.stockOut
-            ? m.stockIn.toDouble()
-            : m.stockOut.toDouble())
+        .map((m) => m.stockIn > m.stockOut ? m.stockIn.toDouble() : m.stockOut.toDouble())
         .reduce((a, b) => a > b ? a : b);
     final double computedMax = maxVal == 0 ? 100.0 : maxVal * 1.15;
 
-    final currentMonth = monthlyTrend[5];
+    final dateLabel = _selectedDate != null ? _formatDate(_selectedDate!) : 'Today';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,15 +354,11 @@ class AnalyticsScreen extends ConsumerWidget {
                     maxY: computedMax,
                     barTouchData: BarTouchData(
                       touchTooltipData: BarTouchTooltipData(
-                        getTooltipColor: (_) =>
-                            Colors.black.withValues(alpha: 0.8),
+                        getTooltipColor: (_) => Colors.black.withValues(alpha: 0.8),
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           return BarTooltipItem(
                             '${rodIndex == 0 ? "IN: " : "OUT: "}${rod.toY.toInt()}',
-                            const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11),
+                            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
                           );
                         },
                       ),
@@ -228,7 +368,6 @@ class AnalyticsScreen extends ConsumerWidget {
                       bottomTitles: AxisTitles(
                         sideTitles: SideTitles(
                           showTitles: true,
-                          // ✅ Corrected & Compiling
                           getTitlesWidget: (value, meta) {
                             final idx = value.toInt();
                             if (idx >= 0 && idx < monthlyTrend.length) {
@@ -248,12 +387,9 @@ class AnalyticsScreen extends ConsumerWidget {
                           },
                         ),
                       ),
-                      leftTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(
-                          sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                     ),
                     gridData: const FlGridData(show: false),
                     borderData: FlBorderData(show: false),
@@ -293,24 +429,15 @@ class AnalyticsScreen extends ConsumerWidget {
                     children: [
                       Icon(Icons.circle, color: AppTheme.primary, size: 10),
                       SizedBox(width: 6),
-                      Text('Stock In',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textSecondary)),
+                      Text('Stock In', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
                     ],
                   ),
                   SizedBox(width: 24),
                   Row(
                     children: [
-                      Icon(Icons.circle,
-                          color: AppTheme.primaryLight, size: 10),
+                      Icon(Icons.circle, color: AppTheme.primaryLight, size: 10),
                       SizedBox(width: 6),
-                      Text('Stock Out',
-                          style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.textSecondary)),
+                      Text('Stock Out', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
                     ],
                   ),
                 ],
@@ -322,15 +449,15 @@ class AnalyticsScreen extends ConsumerWidget {
         Row(
           children: [
             _TransactionSummaryCard(
-              label: 'Stock In (${currentMonth.label})',
-              value: '${currentMonth.stockIn}',
+              label: 'Stock In ($dateLabel)',
+              value: '$stockInSum',
               icon: Icons.trending_up_rounded,
               color: AppTheme.primary,
             ),
             const SizedBox(width: AppTheme.sp12),
             _TransactionSummaryCard(
-              label: 'Stock Out (${currentMonth.label})',
-              value: '${currentMonth.stockOut}',
+              label: 'Stock Out ($dateLabel)',
+              value: '$stockOutSum',
               icon: Icons.trending_down_rounded,
               color: AppTheme.danger,
             ),
@@ -338,19 +465,15 @@ class AnalyticsScreen extends ConsumerWidget {
         ),
         const SizedBox(height: AppTheme.sp12),
         _NetFlowCard(
-          label: 'Net Monthly Flow (${currentMonth.label})',
-          value:
-              '${currentMonth.stockIn - currentMonth.stockOut >= 0 ? "+" : ""}${currentMonth.stockIn - currentMonth.stockOut}',
-          color: (currentMonth.stockIn - currentMonth.stockOut) >= 0
-              ? AppTheme.success
-              : AppTheme.danger,
+          label: 'Net Flow ($dateLabel)',
+          value: '${stockInSum - stockOutSum >= 0 ? "+" : ""}${stockInSum - stockOutSum}',
+          color: (stockInSum - stockOutSum) >= 0 ? AppTheme.success : AppTheme.danger,
         ),
       ],
     );
   }
 
-  Widget _buildCategoryDistribution(
-      BuildContext context, List<Product> products) {
+  Widget _buildCategoryDistribution(List<Product> products) {
     final categories = <String, int>{};
     for (var p in products) {
       final cat = p.category.isNotEmpty ? p.category : 'Uncategorized';
@@ -414,15 +537,11 @@ class AnalyticsScreen extends ConsumerWidget {
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.circle,
-                          color: colors[e.key % colors.length], size: 8),
+                      Icon(Icons.circle, color: colors[e.key % colors.length], size: 8),
                       const SizedBox(width: 4),
                       Text(
                         e.value.key,
-                        style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.textSecondary),
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                       ),
                     ],
                   );
@@ -436,10 +555,8 @@ class AnalyticsScreen extends ConsumerWidget {
   }
 
   Widget _buildHealthStats(List<Product> products) {
-    final lowStock =
-        products.where((p) => p.stockStatus == StockStatus.lowStock).length;
-    final outOfStock =
-        products.where((p) => p.stockStatus == StockStatus.outOfStock).length;
+    final lowStock = products.where((p) => p.stockStatus == StockStatus.lowStock).length;
+    final outOfStock = products.where((p) => p.stockStatus == StockStatus.outOfStock).length;
     final healthy = products.length - lowStock - outOfStock;
 
     return Column(
@@ -474,8 +591,7 @@ class _StatCard extends StatelessWidget {
   final String value;
   final Color color;
 
-  const _StatCard(
-      {required this.label, required this.value, required this.color});
+  const _StatCard({required this.label, required this.value, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -538,13 +654,10 @@ class _HealthRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             Text(
               '$count',
-              style: TextStyle(
-                  color: color, fontWeight: FontWeight.w900, fontSize: 14),
+              style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 14),
             ),
           ],
         ),
@@ -568,8 +681,7 @@ class _PulseIndicator extends StatefulWidget {
   State<_PulseIndicator> createState() => _PulseIndicatorState();
 }
 
-class _PulseIndicatorState extends State<_PulseIndicator>
-    with SingleTickerProviderStateMixin {
+class _PulseIndicatorState extends State<_PulseIndicator> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -663,10 +775,7 @@ class _TransactionSummaryCard extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.textSecondary),
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
                   ),
                 ),
               ],
@@ -674,8 +783,7 @@ class _TransactionSummaryCard extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               value,
-              style: TextStyle(
-                  fontSize: 20, fontWeight: FontWeight.w900, color: color),
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color),
             ),
           ],
         ),
@@ -713,10 +821,7 @@ class _NetFlowCard extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textSecondary),
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
               ),
               const SizedBox(height: 4),
               const Text(
@@ -727,8 +832,7 @@ class _NetFlowCard extends StatelessWidget {
           ),
           Text(
             value,
-            style: TextStyle(
-                fontSize: 22, fontWeight: FontWeight.w900, color: color),
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color),
           ),
         ],
       ),
