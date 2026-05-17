@@ -31,48 +31,58 @@ class _BottomNavBar extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withOpacity(0.1))),
+        border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
       ),
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16, vertical: 8),
+          padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _NavBarItem(
-                icon: Icons.dashboard_outlined,
-                activeIcon: Icons.dashboard_rounded,
-                label: 'Dashboard',
-                isActive: location == '/',
-                onTap: () => context.go('/'),
+              Expanded(
+                child: _NavBarItem(
+                  icon: Icons.dashboard_outlined,
+                  activeIcon: Icons.dashboard_rounded,
+                  label: 'Dashboard',
+                  isActive: location == '/',
+                  onTap: () => context.go('/'),
+                ),
               ),
-              _NavBarItem(
-                icon: Icons.inventory_2_outlined,
-                activeIcon: Icons.inventory_2_rounded,
-                label: 'Products',
-                isActive: location.startsWith('/products') || location == '/add-product',
-                onTap: () => context.go('/products'),
+              Expanded(
+                child: _NavBarItem(
+                  icon: Icons.inventory_2_outlined,
+                  activeIcon: Icons.inventory_2_rounded,
+                  label: 'Products',
+                  isActive: location.startsWith('/products') || location == '/add-product',
+                  onTap: () => context.go('/products'),
+                ),
               ),
-              _NavBarItem(
-                icon: Icons.swap_vert_circle_outlined,
-                activeIcon: Icons.swap_vert_circle_rounded,
-                label: 'Activity',
-                isActive: location == '/stock-activity' || location == '/worker-activity',
-                onTap: () => context.go('/stock-activity'),
+              Expanded(
+                child: _NavBarItem(
+                  icon: Icons.swap_vert_circle_outlined,
+                  activeIcon: Icons.swap_vert_circle_rounded,
+                  label: 'Activity',
+                  isActive: location == '/stock-activity' || location == '/worker-activity',
+                  onTap: () => context.go('/stock-activity'),
+                ),
               ),
-              _NavBarItem(
-                icon: Icons.analytics_outlined,
-                activeIcon: Icons.analytics_rounded,
-                label: 'Analytics',
-                isActive: location == '/analytics',
-                onTap: () => context.go('/analytics'),
+              Expanded(
+                child: _NavBarItem(
+                  icon: Icons.analytics_outlined,
+                  activeIcon: Icons.analytics_rounded,
+                  label: 'Analytics',
+                  isActive: location == '/analytics',
+                  onTap: () => context.go('/analytics'),
+                ),
               ),
-              _NavBarItem(
-                icon: Icons.settings_outlined,
-                activeIcon: Icons.settings_rounded,
-                label: 'Settings',
-                isActive: location == '/settings',
-                onTap: () => context.go('/settings'),
+              Expanded(
+                child: _NavBarItem(
+                  icon: Icons.settings_outlined,
+                  activeIcon: Icons.settings_rounded,
+                  label: 'Settings',
+                  isActive: location == '/settings',
+                  onTap: () => context.go('/settings'),
+                ),
               ),
             ],
           ),
@@ -105,18 +115,23 @@ class _NavBarItem extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppTheme.radiusMD),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(isActive ? activeIcon : icon, color: color, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+            Icon(isActive ? activeIcon : icon, color: color, size: 22),
+            const SizedBox(height: 3),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 9,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                ),
               ),
             ),
           ],
