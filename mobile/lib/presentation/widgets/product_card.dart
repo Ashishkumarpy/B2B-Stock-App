@@ -93,32 +93,37 @@ class ProductCard extends StatelessWidget {
 
             // Details — fixed, not expanded
             Padding(
-              padding: const EdgeInsets.all(AppTheme.sp8),
+              padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp8, vertical: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
+                  // Code (BIG & Prominent)
                   Text(
                     product.code,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 10,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textPrimary,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  // Product Name (SMALL)
+                  Text(
+                    product.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
                       color: AppTheme.textSecondary,
-                      letterSpacing: 0.3,
+                      height: 1.2,
                     ),
                   ),
                   const SizedBox(height: 6),
+                  // Quantity & Price Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -127,17 +132,22 @@ class ProductCard extends StatelessWidget {
                           '${product.quantity} ${product.unit ?? 'pcs'}',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppTheme.primary,
-                            fontWeight: FontWeight.w800,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: product.quantity <= product.threshold
+                                ? AppTheme.danger
+                                : AppTheme.textSecondary,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ),
-                      Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        size: 10,
-                        color: AppTheme.primary.withValues(alpha: 0.3),
+                      Text(
+                        '₹${product.price % 1 == 0 ? product.price.toInt() : product.price}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppTheme.primary,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ],
                   ),

@@ -248,6 +248,11 @@ class _ProductListScreenState
         ),
       );
     }
+
+    // Sort products by their code/SKU alphabetically
+    final sortedProducts = List<Product>.from(products);
+    sortedProducts.sort((a, b) => a.code.toLowerCase().compareTo(b.code.toLowerCase()));
+
     return RefreshIndicator(
       color: AppTheme.primary,
       onRefresh: () async => ref.invalidate(productsProvider),
@@ -260,9 +265,9 @@ class _ProductListScreenState
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
-        itemCount: products.length,
+        itemCount: sortedProducts.length,
         itemBuilder: (context, index) {
-          final product = products[index];
+          final product = sortedProducts[index];
           return ProductCard(
             product: product,
             onTap: () =>
