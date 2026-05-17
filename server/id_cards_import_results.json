@@ -1,0 +1,42 @@
+[
+  {
+    "code": "IDCARD-00",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495462/products/id-cards/no-logo/IDCARD-00.jpg"
+  },
+  {
+    "code": "IDCARD-01",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495466/products/id-cards/no-logo/IDCARD-01.jpg"
+  },
+  {
+    "code": "IDCARD-02",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495468/products/id-cards/no-logo/IDCARD-02.jpg"
+  },
+  {
+    "code": "IDCARD-03",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495471/products/id-cards/no-logo/IDCARD-03.jpg"
+  },
+  {
+    "code": "IDCARD-04",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495473/products/id-cards/no-logo/IDCARD-04.jpg"
+  },
+  {
+    "code": "IDCARD-05",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495476/products/id-cards/no-logo/IDCARD-05.jpg"
+  },
+  {
+    "code": "IDCARD-06",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495478/products/id-cards/no-logo/IDCARD-06.jpg"
+  },
+  {
+    "code": "IDCARD-07",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495481/products/id-cards/no-logo/IDCARD-07.jpg"
+  }
+]

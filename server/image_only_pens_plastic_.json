@@ -1,0 +1,167 @@
+[
+  {
+    "file": "0.jpeg",
+    "status": "skipped",
+    "reason": "code regex did not match"
+  },
+  {
+    "file": "0.jpg",
+    "status": "skipped",
+    "reason": "code regex did not match"
+  },
+  {
+    "file": "1.jpeg",
+    "status": "skipped",
+    "reason": "code regex did not match"
+  },
+  {
+    "file": "2.jpeg",
+    "status": "skipped",
+    "reason": "code regex did not match"
+  },
+  {
+    "file": "3.jpeg",
+    "status": "skipped",
+    "reason": "code regex did not match"
+  },
+  {
+    "code": "XG-P01",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495377/products/pens/plastic/no-logo/XG-P01.jpg"
+  },
+  {
+    "code": "XG-P02",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495378/products/pens/plastic/no-logo/XG-P02.jpg"
+  },
+  {
+    "code": "XG-P03",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495380/products/pens/plastic/no-logo/XG-P03.jpg"
+  },
+  {
+    "code": "XG-P04",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495383/products/pens/plastic/no-logo/XG-P04.jpg"
+  },
+  {
+    "code": "XG-P05",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495386/products/pens/plastic/no-logo/XG-P05.jpg"
+  },
+  {
+    "code": "XG-P06",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495388/products/pens/plastic/no-logo/XG-P06.jpg"
+  },
+  {
+    "code": "XG-P07",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495389/products/pens/plastic/no-logo/XG-P07.jpg"
+  },
+  {
+    "code": "XG-P08",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495390/products/pens/plastic/no-logo/XG-P08.jpg"
+  },
+  {
+    "code": "XG-P09",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495391/products/pens/plastic/no-logo/XG-P09.jpg"
+  },
+  {
+    "code": "XG-P10",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495392/products/pens/plastic/no-logo/XG-P10.jpg"
+  },
+  {
+    "code": "XG-P11",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495394/products/pens/plastic/no-logo/XG-P11.jpg"
+  },
+  {
+    "code": "XG-P12",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495397/products/pens/plastic/no-logo/XG-P12.jpg"
+  },
+  {
+    "code": "XG-P13",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495398/products/pens/plastic/no-logo/XG-P13.jpg"
+  },
+  {
+    "code": "XG-P14",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495399/products/pens/plastic/no-logo/XG-P14.jpg"
+  },
+  {
+    "code": "XG-P15",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495402/products/pens/plastic/no-logo/XG-P15.jpg"
+  },
+  {
+    "code": "XG-P16",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495405/products/pens/plastic/no-logo/XG-P16.jpg"
+  },
+  {
+    "code": "XG-P17",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495407/products/pens/plastic/no-logo/XG-P17.jpg"
+  },
+  {
+    "code": "XG-P18",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495409/products/pens/plastic/no-logo/XG-P18.jpg"
+  },
+  {
+    "code": "XG-P19",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495410/products/pens/plastic/no-logo/XG-P19.jpg"
+  },
+  {
+    "code": "XG-P20",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495412/products/pens/plastic/no-logo/XG-P20.jpg"
+  },
+  {
+    "code": "XG-P21",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495414/products/pens/plastic/no-logo/XG-P21.jpg"
+  },
+  {
+    "code": "XG-P22",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495415/products/pens/plastic/no-logo/XG-P22.jpg"
+  },
+  {
+    "code": "XG-P23",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495416/products/pens/plastic/no-logo/XG-P23.jpg"
+  },
+  {
+    "code": "XG-P24",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495418/products/pens/plastic/no-logo/XG-P24.jpg"
+  },
+  {
+    "code": "XG-P25",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495419/products/pens/plastic/no-logo/XG-P25.jpg"
+  },
+  {
+    "code": "XG-P26",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495420/products/pens/plastic/no-logo/XG-P26.jpg"
+  },
+  {
+    "code": "XG-P27",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495421/products/pens/plastic/no-logo/XG-P27.jpg"
+  },
+  {
+    "code": "XG-P28",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495423/products/pens/plastic/no-logo/XG-P28.jpg"
+  }
+]

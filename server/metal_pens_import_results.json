@@ -1,0 +1,322 @@
+[
+  {
+    "code": "XG-MP-01",
+    "status": "skipped",
+    "reason": "missing image: XG-MP-01.jpg"
+  },
+  {
+    "code": "XG-MP-02",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495290/products/pens/metal/no-logo/XG-MP-02.jpg"
+  },
+  {
+    "code": "XG-MP-03",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495293/products/pens/metal/no-logo/XG-MP-03.jpg"
+  },
+  {
+    "code": "XG-MP-04",
+    "status": "skipped",
+    "reason": "missing image: XG-MP-04.jpg"
+  },
+  {
+    "code": "XG-MP-05",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495296/products/pens/metal/no-logo/XG-MP-05.jpg"
+  },
+  {
+    "code": "XG-MP-06",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495298/products/pens/metal/no-logo/XG-MP-06.jpg"
+  },
+  {
+    "code": "XG-MP-07",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495299/products/pens/metal/no-logo/XG-MP-07.jpg"
+  },
+  {
+    "code": "XG-MP-08",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495301/products/pens/metal/no-logo/XG-MP-08.jpg"
+  },
+  {
+    "code": "XG-MP-09",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495302/products/pens/metal/no-logo/XG-MP-09.jpg"
+  },
+  {
+    "code": "XG-MP-10",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495680/products/pens/metal/no-logo/XG-MP-10.jpg"
+  },
+  {
+    "code": "XG-MP-11",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495681/products/pens/metal/no-logo/XG-MP-11.jpg"
+  },
+  {
+    "code": "XG-MP-12",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495682/products/pens/metal/no-logo/XG-MP-12.jpg"
+  },
+  {
+    "code": "XG-MP-12",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495682/products/pens/metal/no-logo/XG-MP-12.jpg"
+  },
+  {
+    "code": "XG-MP-12",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495682/products/pens/metal/no-logo/XG-MP-12.jpg"
+  },
+  {
+    "code": "XG-MP-12",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495682/products/pens/metal/no-logo/XG-MP-12.jpg"
+  },
+  {
+    "code": "XG-MP-13",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495686/products/pens/metal/no-logo/XG-MP-13.jpg"
+  },
+  {
+    "code": "XG-MP-14",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495687/products/pens/metal/no-logo/XG-MP-14.jpg"
+  },
+  {
+    "code": "XG-MP-15",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495688/products/pens/metal/no-logo/XG-MP-15.jpg"
+  },
+  {
+    "code": "XG-MP-16",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495689/products/pens/metal/no-logo/XG-MP-16.jpg"
+  },
+  {
+    "code": "XG-MP-17",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495690/products/pens/metal/no-logo/XG-MP-17.jpg"
+  },
+  {
+    "code": "XG-MP-18",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495691/products/pens/metal/no-logo/XG-MP-18.jpg"
+  },
+  {
+    "code": "XG-MP-19",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495693/products/pens/metal/no-logo/XG-MP-19.jpg"
+  },
+  {
+    "code": "XG-MP-20",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495694/products/pens/metal/no-logo/XG-MP-20.jpg"
+  },
+  {
+    "code": "XG-MP-21",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495695/products/pens/metal/no-logo/XG-MP-21.jpg"
+  },
+  {
+    "code": "XG-MP-22",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495696/products/pens/metal/no-logo/XG-MP-22.jpg"
+  },
+  {
+    "code": "XG-MP-23",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495697/products/pens/metal/no-logo/XG-MP-23.jpg"
+  },
+  {
+    "code": "XG-MP-24",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495698/products/pens/metal/no-logo/XG-MP-24.jpg"
+  },
+  {
+    "code": "XG-MP-25",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495699/products/pens/metal/no-logo/XG-MP-25.jpg"
+  },
+  {
+    "code": "XG-MP-26",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495700/products/pens/metal/no-logo/XG-MP-26.jpg"
+  },
+  {
+    "code": "XG-MP-27",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495701/products/pens/metal/no-logo/XG-MP-27.jpg"
+  },
+  {
+    "code": "XG-MP-28",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495702/products/pens/metal/no-logo/XG-MP-28.jpg"
+  },
+  {
+    "code": "XG-MP-29",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495703/products/pens/metal/no-logo/XG-MP-29.jpg"
+  },
+  {
+    "code": "XG-MP-30",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495704/products/pens/metal/no-logo/XG-MP-30.jpg"
+  },
+  {
+    "code": "XG-MP-31",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495706/products/pens/metal/no-logo/XG-MP-31.jpg"
+  },
+  {
+    "code": "XG-MP-32",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495707/products/pens/metal/no-logo/XG-MP-32.jpg"
+  },
+  {
+    "code": "XG-MP-33",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495708/products/pens/metal/no-logo/XG-MP-33.jpg"
+  },
+  {
+    "code": "XG-MP-34",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495709/products/pens/metal/no-logo/XG-MP-34.jpg"
+  },
+  {
+    "code": "XG-MP-35",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495710/products/pens/metal/no-logo/XG-MP-35.jpg"
+  },
+  {
+    "code": "XG-MP-36",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495712/products/pens/metal/no-logo/XG-MP-36.jpg"
+  },
+  {
+    "code": "XG-MP-37",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495713/products/pens/metal/no-logo/XG-MP-37.jpg"
+  },
+  {
+    "code": "XG-MP-38",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495714/products/pens/metal/no-logo/XG-MP-38.jpg"
+  },
+  {
+    "code": "XG-MP-39",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495715/products/pens/metal/no-logo/XG-MP-39.jpg"
+  },
+  {
+    "code": "XG-MP-40",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495716/products/pens/metal/no-logo/XG-MP-40.jpg"
+  },
+  {
+    "code": "XG-MP-41",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495718/products/pens/metal/no-logo/XG-MP-41.jpg"
+  },
+  {
+    "code": "XG-MP-42",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495719/products/pens/metal/no-logo/XG-MP-42.jpg"
+  },
+  {
+    "code": "XG-MP-43",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495720/products/pens/metal/no-logo/XG-MP-43.jpg"
+  },
+  {
+    "code": "XG-MP-44",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495721/products/pens/metal/no-logo/XG-MP-44.jpg"
+  },
+  {
+    "code": "XG-MP-45",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495722/products/pens/metal/no-logo/XG-MP-45.jpg"
+  },
+  {
+    "code": "XG-MP-46",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495724/products/pens/metal/no-logo/XG-MP-46.jpg"
+  },
+  {
+    "code": "XG-MP-47",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495725/products/pens/metal/no-logo/XG-MP-47.jpg"
+  },
+  {
+    "code": "XG-MP-48",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495727/products/pens/metal/no-logo/XG-MP-48.jpg"
+  },
+  {
+    "code": "XG-MP-49",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495728/products/pens/metal/no-logo/XG-MP-49.jpg"
+  },
+  {
+    "code": "XG-MP-50",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495728/products/pens/metal/no-logo/XG-MP-50.jpg"
+  },
+  {
+    "code": "XG-MP-51",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495730/products/pens/metal/no-logo/XG-MP-51.jpg"
+  },
+  {
+    "code": "XG-MP-52",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495732/products/pens/metal/no-logo/XG-MP-52.jpg"
+  },
+  {
+    "code": "XG-MP-53",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495734/products/pens/metal/no-logo/XG-MP-53.jpg"
+  },
+  {
+    "code": "XG-MP-54",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495735/products/pens/metal/no-logo/XG-MP-54.jpg"
+  },
+  {
+    "code": "XG-MP-55",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495736/products/pens/metal/no-logo/XG-MP-55.jpg"
+  },
+  {
+    "code": "XG-MP-56",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495737/products/pens/metal/no-logo/XG-MP-56.jpg"
+  },
+  {
+    "code": "XG-MP-57",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495738/products/pens/metal/no-logo/XG-MP-57.jpg"
+  },
+  {
+    "code": "XG-MP-58",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495741/products/pens/metal/no-logo/XG-MP-58.jpg"
+  },
+  {
+    "code": "XG-MP-59",
+    "status": "skipped",
+    "reason": "missing image: XG-MP-059.jpg"
+  },
+  {
+    "code": "XG-MP-60",
+    "status": "skipped",
+    "reason": "missing image: XG-MP-060.jpg"
+  },
+  {
+    "code": "XG-MP-61",
+    "status": "skipped",
+    "reason": "missing image: XG-MP-061.jpg"
+  }
+]

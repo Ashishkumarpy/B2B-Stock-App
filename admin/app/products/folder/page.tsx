@@ -1,0 +1,233 @@
+'use client';
+
+import NextImage from 'next/image';
+import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { serverGet, ServerApiError } from '../../../lib/server_api';
+import { useRequireAuth } from '../../../lib/use_require_auth';
+import { useEffect } from 'react';
+
+type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
+
+interface Product {
+  id: string;
+  name: string;
+  code: string;
+  category: string;
+  quantity: number;
+  price: number;
+  image_url?: string;
+  stock_status: StockStatus;
+}
+
+const statusMap: Record<StockStatus, { label: string; cls: string }> = {
+  in_stock: { label: 'In Stock', cls: 'badge-green' },
+  low_stock: { label: 'Low Stock', cls: 'badge-yellow' },
+  out_of_stock: { label: 'Out of Stock', cls: 'badge-red' },
+};
+
+function splitCategoryPath(value: string): string[] {
+  return value
+    .split(/\s*(?:\/|>|\\)\s*/g)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+}
+
+function isPrefix(prefix: string[], full: string[]): boolean {
+  if (prefix.length > full.length) return false;
+  for (let index = 0; index < prefix.length; index += 1) {
+    if (prefix[index].toLowerCase() !== full[index].toLowerCase()) return false;
+  }
+  return true;
+}
+
+function sortProductsByCode(left: Product, right: Product): number {
+  const codeCompare = left.code.localeCompare(right.code, undefined, {
+    sensitivity: 'base',
+    numeric: true,
+  });
+  if (codeCompare !== 0) return codeCompare;
+  return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });
+}
+
+export default function FolderExplorerPage() {
+  useRequireAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  const rawPath = (searchParams.get('name') ?? '').trim();
+  const currentSegments = useMemo(() => splitCategoryPath(rawPath), [rawPath]);
+  const currentLabel = currentSegments.length > 0 ? currentSegments[currentSegments.length - 1] : 'Root';
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await serverGet('/products');
+        const data = (res as { data?: Product[] }).data ?? [];
+        setProducts(data);
+      } catch (error) {
+        if (error instanceof ServerApiError && error.status === 401) {
+          router.push('/login');
+          return;
+        }
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProducts();
+  }, [router]);
+
+  const productsInFolder = useMemo(() => {
+    const items: Product[] = [];
+
+    for (const product of products) {
+      const segments = splitCategoryPath(product.category);
+      if (!isPrefix(currentSegments, segments)) continue;
+      items.push(product);
+    }
+
+    return items.sort(sortProductsByCode);
+  }, [currentSegments, products]);
+
+  const query = search.trim().toLowerCase();
+  const visibleProducts = productsInFolder.filter(
+    (product) =>
+      !query ||
+      product.name.toLowerCase().includes(query) ||
+      product.code.toLowerCase().includes(query)
+  );
+
+  const gridClass = 'grid gap-4 sm:grid-cols-2 xl:grid-cols-3';
+  const cardRoundClass = 'rounded-3xl';
+  const overlayPadClass = 'inset-x-3 bottom-3 p-3';
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Folder Explorer</h1>
+          <p className="mt-1 text-sm text-gray-500">Windows-style navigation for product folders</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.push('/products')}
+            className="rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-white/5"
+          >
+            Back to Products
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const currentPath = window.location.pathname + window.location.search;
+              router.push(`/products?openAdd=true&category=${encodeURIComponent(currentSegments.join(' / '))}&returnTo=${encodeURIComponent(currentPath)}`);
+            }}
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
+          >
+            + Add Product
+          </button>
+        </div>
+      </div>
+
+      <div className="card p-4 md:p-5">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => router.push('/products/folder')}
+            className={`rounded-lg px-3 py-1.5 text-xs ${currentSegments.length === 0 ? 'bg-indigo-600 text-white' : 'border border-white/10 text-gray-300'
+              }`}
+          >
+            Root
+          </button>
+          {currentSegments.map((segment, index) => {
+            const path = currentSegments.slice(0, index + 1).join(' / ');
+            const active = index === currentSegments.length - 1;
+            return (
+              <button
+                key={`${path}-${index}`}
+                type="button"
+                onClick={() => router.push(`/products/folder?name=${encodeURIComponent(path)}`)}
+                className={`rounded-lg px-3 py-1.5 text-xs ${active ? 'bg-indigo-600 text-white' : 'border border-white/10 text-gray-300'
+                  }`}
+              >
+                {segment}
+              </button>
+            );
+          })}
+        </div>
+        <input
+          type="text"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder={`Search in ${currentLabel}...`}
+          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+        />
+      </div>
+
+      <div className="card p-4 md:p-6">
+        <h2 className="mb-4 text-sm font-semibold text-white">Products in {currentLabel}</h2>
+        {loading ? (
+          <div className="p-8 text-center text-sm text-gray-500">Loading products...</div>
+        ) : visibleProducts.length === 0 ? (
+          <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-sm text-gray-500">
+            No products in this folder.
+          </div>
+        ) : (
+          <div className={gridClass}>
+            {visibleProducts.map((product, index) => {
+              const status = statusMap[product.stock_status] || statusMap.out_of_stock;
+              return (
+                <div
+                  key={product.id}
+                  onClick={() => router.push(`/products/${encodeURIComponent(product.id)}`)}
+                  className={`group relative aspect-square cursor-pointer overflow-hidden border border-white/10 bg-white/5 ${cardRoundClass}`}
+                >
+                  {product.image_url ? (
+                      <NextImage
+                        src={product.image_url}
+                        alt={product.name}
+                        fill
+                        className="object-cover transition duration-500 group-hover:scale-110"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                        priority={index < 4}
+                      />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center text-4xl font-black tracking-widest text-indigo-300/75">
+                      DIR
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+                  <div className={`absolute rounded-2xl border border-white/20 bg-black/40 backdrop-blur-md ${overlayPadClass}`}>
+                    <p className="truncate text-sm font-semibold text-white">{product.name}</p>
+                    <p className="font-mono text-[11px] text-gray-200">{product.code}</p>
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-gray-200">
+                      <span>Qty: {product.quantity}</span>
+                      <span>Rs {product.price.toLocaleString()}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between">
+                      <span className={`inline-flex badge ${status.cls}`}>{status.label}</span>
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          router.push(`/products/${encodeURIComponent(product.id)}`);
+                        }}
+                        className="rounded-lg border border-indigo-500/40 bg-indigo-600/20 px-2.5 py-1 text-[11px] font-semibold text-indigo-200 hover:bg-indigo-600/30"
+                      >
+                        Details
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

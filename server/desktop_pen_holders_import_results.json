@@ -1,0 +1,137 @@
+[
+  {
+    "code": "XG-D01",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497577/products/desktop-pen-holders/no-logo/XG-D01.jpg"
+  },
+  {
+    "code": "XG-D02",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497192/products/desktop-pen-holders/no-logo/XG-D02.jpg"
+  },
+  {
+    "code": "XG-D03",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497196/products/desktop-pen-holders/no-logo/XG-D03.jpg"
+  },
+  {
+    "code": "XG-D04",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497198/products/desktop-pen-holders/no-logo/XG-D04.jpg"
+  },
+  {
+    "code": "XG-D05",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497201/products/desktop-pen-holders/no-logo/XG-D05.jpg"
+  },
+  {
+    "code": "XG-D06",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497205/products/desktop-pen-holders/no-logo/XG-D06.jpg"
+  },
+  {
+    "code": "XG-D07",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497208/products/desktop-pen-holders/no-logo/XG-D07.jpg"
+  },
+  {
+    "code": "XG-D08",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497211/products/desktop-pen-holders/no-logo/XG-D08.jpg"
+  },
+  {
+    "code": "XG-D09",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497214/products/desktop-pen-holders/no-logo/XG-D09.jpg"
+  },
+  {
+    "code": "XG-D10",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497217/products/desktop-pen-holders/no-logo/XG-D10.jpg"
+  },
+  {
+    "code": "XG-D11",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497219/products/desktop-pen-holders/no-logo/XG-D11.jpg"
+  },
+  {
+    "code": "XG-D12",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497222/products/desktop-pen-holders/no-logo/XG-D12.jpg"
+  },
+  {
+    "code": "XG-D13",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497225/products/desktop-pen-holders/no-logo/XG-D13.jpg"
+  },
+  {
+    "code": "XG-D14",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497227/products/desktop-pen-holders/no-logo/XG-D14.jpg"
+  },
+  {
+    "code": "XG-D15",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497230/products/desktop-pen-holders/no-logo/XG-D15.jpg"
+  },
+  {
+    "code": "XG-D16",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497232/products/desktop-pen-holders/no-logo/XG-D16.jpg"
+  },
+  {
+    "code": "XG-D17",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497234/products/desktop-pen-holders/no-logo/XG-D17.jpg"
+  },
+  {
+    "code": "XG-D18",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778497237/products/desktop-pen-holders/no-logo/XG-D18.jpg"
+  },
+  {
+    "code": "XG-T-011",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  },
+  {
+    "code": "XG-T-019",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  },
+  {
+    "code": "XG-T-045",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  },
+  {
+    "code": "XG-T-059",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  },
+  {
+    "code": "XG-T-060",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  },
+  {
+    "code": "XG-T-063",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  },
+  {
+    "code": "XG-T-064",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  },
+  {
+    "code": "XG-T-065",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  },
+  {
+    "code": "XG-T-068",
+    "status": "skipped",
+    "reason": "not a desktop pen holder code (expected XG-D*)"
+  }
+]

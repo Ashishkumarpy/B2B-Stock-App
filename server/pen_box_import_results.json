@@ -1,0 +1,42 @@
+[
+  {
+    "code": "PENBOX-01",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495430/products/pen-box/no-logo/PENBOX-01.jpg"
+  },
+  {
+    "code": "PENBOX-02",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495434/products/pen-box/no-logo/PENBOX-02.jpg"
+  },
+  {
+    "code": "PENBOX-03",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495437/products/pen-box/no-logo/PENBOX-03.jpg"
+  },
+  {
+    "code": "PENBOX-04",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495440/products/pen-box/no-logo/PENBOX-04.jpg"
+  },
+  {
+    "code": "PENBOX-05",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495442/products/pen-box/no-logo/PENBOX-05.jpg"
+  },
+  {
+    "code": "PENBOX-06",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495445/products/pen-box/no-logo/PENBOX-06.jpg"
+  },
+  {
+    "code": "PENBOX-07",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495446/products/pen-box/no-logo/PENBOX-07.jpg"
+  },
+  {
+    "code": "PENBOX-08",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495448/products/pen-box/no-logo/PENBOX-08.jpg"
+  }
+]

@@ -1,0 +1,44 @@
+{
+  "name": "b2b-stock-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "import:mugs": "node src/scripts/import-mugs.js",
+    "import:umbrella": "node src/scripts/import-umbrella.js",
+    "import:electronics": "node src/scripts/import-electronics.js",
+    "import:bags": "node src/scripts/import-bags.js",
+    "import:card-holders": "node src/scripts/import-card-holders.js",
+    "import:notebooks": "node src/scripts/import-notebooks.js",
+    "import:keychains": "node src/scripts/import-keychains.js",
+    "import:water-bottles": "node src/scripts/import-water-bottles.js",
+    "import:yoyos": "node src/scripts/import-yoyos.js",
+    "import:metal-pens": "node src/scripts/import-metal-pens.js",
+    "import:acrylic-stands": "node src/scripts/import-acrylic-stands.js",
+    "import:image-only": "node src/scripts/import-image-only.js",
+    "import:plastic-pens": "node src/scripts/import-image-only.js --images-dir \"D:\\\\Editing\\\\Done\\\\pens\\\\Plastic Pens\" --category \"Pens (Plastic)\" --public-id-prefix \"pens/plastic/no-logo\" --default-price 0 --code-regex \"^(XG-P[0-9]{2})$\"",
+    "import:pen-box": "node src/scripts/import-pen-box.js",
+    "import:id-cards": "node src/scripts/import-id-cards.js",
+    "import:stands-images": "node src/scripts/import-image-only.js --images-dir \"D:\\\\Editing\\\\Done\\\\Stand\\\\New\\\\0Images\" --category \"Acrylic Display Stand\" --public-id-prefix \"stands/acrylic/no-logo\" --default-price 0",
+    "import:desktop-pen-holders": "node src/scripts/import-desktop-pen-holders.js",
+    "import:all": "npm run import:mugs && npm run import:bags && npm run import:card-holders && npm run import:electronics && npm run import:notebooks && npm run import:keychains && npm run import:water-bottles && npm run import:yoyos && npm run import:metal-pens && npm run import:plastic-pens && npm run import:pen-box && npm run import:id-cards && npm run import:desktop-pen-holders && npm run import:umbrella && npm run import:acrylic-stands && npm run import:stands-images"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "cloudinary": "^2.10.0",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.19.2",
+    "firebase-admin": "^13.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.0",
+    "sharp": "^0.33.5",
+    "xlsx": "^0.18.5"
+  }
+}

@@ -1,0 +1,35 @@
+html,
+body {
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* Hide scrollbar for category navigation */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Slick Carousel Custom Styles */
+.slick-dots {
+  bottom: 30px !important;
+}
+
+.slick-dots li button:before {
+  color: #0f172a !important;
+  opacity: 0.4 !important;
+  font-size: 8px !important;
+}
+
+.slick-dots li.slick-active button:before {
+  opacity: 1 !important;
+}
+
+.slick-dots li {
+  margin: 0 4px !important;
+}

@@ -1,0 +1,17 @@
+[
+  {
+    "code": "XG-U1",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778493739/products/products/umbrella/no-logo/XG-U1.jpg"
+  },
+  {
+    "code": "XG-U2",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778493783/products/products/umbrella/no-logo/XG-U2.jpg"
+  },
+  {
+    "code": "XG-U3",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778493789/products/products/umbrella/no-logo/XG-U3.jpg"
+  }
+]

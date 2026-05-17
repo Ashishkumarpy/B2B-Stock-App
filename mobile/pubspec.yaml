@@ -1,0 +1,73 @@
+name: b2b_stock_app
+description: A modern B2B Inventory Management App for wholesalers, distributors, and manufacturers.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # State Management
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+
+  # Supabase Backend
+  supabase_flutter: ^2.5.4
+  firebase_core: ^4.1.1
+  firebase_messaging: ^16.0.1
+  flutter_local_notifications: ^19.4.2
+
+  # Charts
+  fl_chart: ^1.2.0
+
+  # Local Storage / Offline
+  hive_flutter: ^1.1.0
+
+  # Navigation
+  go_router: ^17.2.1
+
+  # Typography
+  google_fonts: ^8.0.2
+
+  # Date & Number Formatting
+  intl: ^0.20.2
+
+  # Barcode/QR Scanner
+  mobile_scanner: ^7.2.0
+
+  # CSV Export
+  csv: ^8.0.0
+
+  # UI Utilities
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+  flutter_staggered_animations: ^1.1.1
+
+  # Utils
+  uuid: ^4.4.0
+  equatable: ^2.0.5
+  dartz: ^0.10.1
+  path_provider: ^2.1.3
+  file_picker: ^11.0.2
+  image_picker: ^1.2.1
+  image_cropper: ^12.2.1
+  http: ^1.6.0
+  share_plus: ^11.0.0
+  package_info_plus: ^9.0.1
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  hive_generator: ^2.0.1
+  build_runner: ^2.4.9
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/icons/

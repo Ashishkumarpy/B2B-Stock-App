@@ -1,0 +1,52 @@
+[
+  {
+    "code": "XG-Y1",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495229/products/yoyos/no-logo/XG-Y1.jpg"
+  },
+  {
+    "code": "XG-Y2",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495232/products/yoyos/no-logo/XG-Y2.jpg"
+  },
+  {
+    "code": "XG-Y3",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495234/products/yoyos/no-logo/XG-Y3.jpg"
+  },
+  {
+    "code": "XG-Y4",
+    "status": "skipped",
+    "reason": "missing image: XG-Y04(No Logo).jpg"
+  },
+  {
+    "code": "XG-Y5",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495236/products/yoyos/no-logo/XG-Y5.jpg"
+  },
+  {
+    "code": "XG-Y6",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495239/products/yoyos/no-logo/XG-Y6.jpg"
+  },
+  {
+    "code": "XG-Y7",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495241/products/yoyos/no-logo/XG-Y7.jpg"
+  },
+  {
+    "code": "XG-Y8",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495244/products/yoyos/no-logo/XG-Y8.jpg"
+  },
+  {
+    "code": "XG-Y9",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495245/products/yoyos/no-logo/XG-Y9.jpg"
+  },
+  {
+    "code": "XG-Y10",
+    "status": "imported",
+    "image_url": "https://res.cloudinary.com/diroa09dv/image/upload/v1778495248/products/yoyos/no-logo/XG-Y10.jpg"
+  }
+]
