@@ -36,6 +36,18 @@ class _ProductListScreenState
   }
 
   @override
+  void didUpdateWidget(covariant ProductListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialFilter != oldWidget.initialFilter &&
+        widget.initialFilter != null &&
+        widget.initialFilter != 'low') {
+      setState(() {
+        _openFolder = widget.initialFilter;
+      });
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();

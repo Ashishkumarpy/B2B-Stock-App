@@ -257,7 +257,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             backgroundColor: AppTheme.success,
           ),
         );
-        context.pop();
+        if (widget.productToEdit != null) {
+          context.pop();
+        } else {
+          final cat = _selectedCategory ?? 'Uncategorized';
+          context.go('/products?filter=${Uri.encodeComponent(cat)}');
+        }
       }
     } catch (e) {
       if (mounted) {
