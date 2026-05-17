@@ -190,7 +190,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 value: '$availableStock',
                 icon: Icons.layers_rounded,
                 color: AppTheme.success,
-                onTap: () => context.go('/analytics'),
+                onTap: () => context.go('/products?filter=in_stock'),
               ),
             ),
           ],

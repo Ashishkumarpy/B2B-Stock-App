@@ -70,13 +70,13 @@ class _ProductListScreenState
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _openFolder!,
+                    widget.initialFilter == 'in_stock' ? '$_openFolder (In Stock)' : _openFolder!,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ])
-            : const Text('Products'),
+            : Text(widget.initialFilter == 'in_stock' ? 'In Stock Products' : 'Products'),
         leading: _openFolder != null
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -93,6 +93,39 @@ class _ProductListScreenState
       ),
       body: Column(
         children: [
+          if (widget.initialFilter == 'in_stock')
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppTheme.success.withValues(alpha: 0.08),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, size: 14, color: AppTheme.success),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Filtering: In-Stock Products Only',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.success,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go('/products'),
+                    child: const Text(
+                      'Clear',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.danger,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // Search bar
           Container(
             color: AppTheme.surface,
@@ -146,6 +179,10 @@ class _ProductListScreenState
                       .where((p) => p.category == _openFolder)
                       .toList();
 
+                  if (widget.initialFilter == 'in_stock') {
+                    folderProducts = folderProducts.where((p) => p.quantity > 0).toList();
+                  }
+
                   return _buildProductGrid(
                       folderProducts, _openFolder!);
                 }
@@ -182,6 +219,11 @@ class _ProductListScreenState
                       );
                     }).toList();
 
+                    var foldersList = folders;
+                    if (widget.initialFilter == 'in_stock') {
+                      foldersList = folders.where((f) => f.totalQty > 0).toList();
+                    }
+
                     return RefreshIndicator(
                       color: AppTheme.primary,
                       onRefresh: () async =>
@@ -195,12 +237,12 @@ class _ProductListScreenState
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                         ),
-                        itemCount: folders.length,
+                        itemCount: foldersList.length,
                         itemBuilder: (context, index) {
                           return _FolderCard(
-                            folder: folders[index],
+                            folder: foldersList[index],
                             onTap: () => setState(
-                                () => _openFolder = folders[index].name),
+                                () => _openFolder = foldersList[index].name),
                           );
                         },
                       ),
