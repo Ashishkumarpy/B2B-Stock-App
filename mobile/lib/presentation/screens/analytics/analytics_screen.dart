@@ -257,6 +257,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           label: 'Alerts',
           value: '$lowStock',
           color: AppTheme.danger,
+          onTap: () => context.go('/products?filter=low'),
         ),
       ],
     );

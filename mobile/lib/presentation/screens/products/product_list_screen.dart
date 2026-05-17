@@ -72,13 +72,19 @@ class _ProductListScreenState
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    widget.initialFilter == 'in_stock' ? '$_openFolder (In Stock)' : _openFolder!,
+                    widget.initialFilter == 'low'
+                        ? '$_openFolder (Low Stock)'
+                        : (widget.initialFilter == 'in_stock' ? '$_openFolder (In Stock)' : _openFolder!),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ])
-            : Text(widget.initialFilter == 'in_stock' ? 'In Stock Products' : 'Products'),
+            : Text(
+                widget.initialFilter == 'low'
+                    ? 'Low Stock Products'
+                    : (widget.initialFilter == 'in_stock' ? 'In Stock Products' : 'Products'),
+              ),
         leading: _openFolder != null
             ? IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
@@ -95,6 +101,39 @@ class _ProductListScreenState
       ),
       body: Column(
         children: [
+          if (widget.initialFilter == 'low')
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppTheme.danger.withValues(alpha: 0.08),
+              child: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, size: 14, color: AppTheme.danger),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Filtering: Low Stock Alerts Only',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.danger,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go('/products'),
+                    child: const Text(
+                      'Clear',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.danger,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (widget.initialFilter == 'in_stock')
             Container(
               width: double.infinity,
@@ -183,6 +222,8 @@ class _ProductListScreenState
 
                   if (widget.initialFilter == 'in_stock') {
                     folderProducts = folderProducts.where((p) => p.quantity > 0).toList();
+                  } else if (widget.initialFilter == 'low') {
+                    folderProducts = folderProducts.where((p) => p.quantity <= p.threshold).toList();
                   }
 
                   return _buildProductGrid(
@@ -224,6 +265,8 @@ class _ProductListScreenState
                     var foldersList = folders;
                     if (widget.initialFilter == 'in_stock') {
                       foldersList = folders.where((f) => f.totalQty > 0).toList();
+                    } else if (widget.initialFilter == 'low') {
+                      foldersList = folders.where((f) => f.alerts > 0).toList();
                     }
 
                     return RefreshIndicator(

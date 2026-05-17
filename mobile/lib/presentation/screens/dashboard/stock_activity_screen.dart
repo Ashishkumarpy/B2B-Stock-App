@@ -9,6 +9,7 @@ import '../../providers/transactions_provider.dart';
 import '../../widgets/skeleton_loading.dart';
 
 enum DateFilterMode { today, all, custom }
+
 enum TypeFilterMode { both, stockIn, stockOut }
 
 class StockActivityScreen extends ConsumerStatefulWidget {
@@ -24,7 +25,8 @@ class StockActivityScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<StockActivityScreen> createState() => _StockActivityScreenState();
+  ConsumerState<StockActivityScreen> createState() =>
+      _StockActivityScreenState();
 }
 
 class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
@@ -62,7 +64,7 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
     } else {
       _typeFilter = TypeFilterMode.both;
     }
-    
+
     if (widget.initialDateMode != null) {
       if (widget.initialDateMode == 'today') {
         _dateFilter = DateFilterMode.today;
@@ -77,7 +79,7 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
       _dateFilter = DateFilterMode.today;
       _customFilterDate = null;
     }
-    
+
     if (widget.initialDate != null) {
       final parsed = DateTime.tryParse(widget.initialDate!);
       if (parsed != null) {
@@ -88,7 +90,20 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
   }
 
   String _formatDate(DateTime d) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return '${months[d.month - 1]} ${d.day.toString().padLeft(2, '0')}, ${d.year}';
   }
 
@@ -107,7 +122,9 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
           PopupMenuButton<DateFilterMode>(
             icon: Icon(
               Icons.calendar_today_rounded,
-              color: isDateFilterActive ? AppTheme.primary : AppTheme.textSecondary,
+              color: isDateFilterActive
+                  ? AppTheme.primary
+                  : AppTheme.textSecondary,
             ),
             tooltip: 'Filter by Date',
             onSelected: (DateFilterMode mode) async {
@@ -131,7 +148,8 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                 });
               }
             },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<DateFilterMode>>[
+            itemBuilder: (BuildContext context) =>
+                <PopupMenuEntry<DateFilterMode>>[
               PopupMenuItem<DateFilterMode>(
                 value: DateFilterMode.today,
                 child: Row(
@@ -139,10 +157,14 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                     Icon(
                       Icons.today_rounded,
                       size: 18,
-                      color: _dateFilter == DateFilterMode.today ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _dateFilter == DateFilterMode.today
+                          ? AppTheme.primary
+                          : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
-                    const Text('Today', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Text('Today',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -153,10 +175,14 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                     Icon(
                       Icons.all_inbox_rounded,
                       size: 18,
-                      color: _dateFilter == DateFilterMode.all ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _dateFilter == DateFilterMode.all
+                          ? AppTheme.primary
+                          : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
-                    const Text('All Time', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Text('All Time',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -167,24 +193,31 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                     Icon(
                       Icons.date_range_rounded,
                       size: 18,
-                      color: _dateFilter == DateFilterMode.custom ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _dateFilter == DateFilterMode.custom
+                          ? AppTheme.primary
+                          : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      _customFilterDate != null ? _formatDate(_customFilterDate!) : 'Choose Date...',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      _customFilterDate != null
+                          ? _formatDate(_customFilterDate!)
+                          : 'Choose Date...',
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          
+
           // Type Filter Popup Menu
           PopupMenuButton<TypeFilterMode>(
             icon: Icon(
               Icons.filter_list_rounded,
-              color: isTypeFilterActive ? AppTheme.primary : AppTheme.textSecondary,
+              color: isTypeFilterActive
+                  ? AppTheme.primary
+                  : AppTheme.textSecondary,
             ),
             tooltip: 'Filter by Type',
             onSelected: (TypeFilterMode mode) {
@@ -192,7 +225,8 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                 _typeFilter = mode;
               });
             },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<TypeFilterMode>>[
+            itemBuilder: (BuildContext context) =>
+                <PopupMenuEntry<TypeFilterMode>>[
               PopupMenuItem<TypeFilterMode>(
                 value: TypeFilterMode.both,
                 child: Row(
@@ -200,10 +234,14 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                     Icon(
                       Icons.swap_vert_rounded,
                       size: 18,
-                      color: _typeFilter == TypeFilterMode.both ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _typeFilter == TypeFilterMode.both
+                          ? AppTheme.primary
+                          : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
-                    const Text('All Types', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Text('All Types',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -214,10 +252,14 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                     Icon(
                       Icons.south_west_rounded,
                       size: 18,
-                      color: _typeFilter == TypeFilterMode.stockIn ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _typeFilter == TypeFilterMode.stockIn
+                          ? AppTheme.primary
+                          : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
-                    const Text('Stock In Only', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Text('Stock In Only',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -228,10 +270,14 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                     Icon(
                       Icons.north_east_rounded,
                       size: 18,
-                      color: _typeFilter == TypeFilterMode.stockOut ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _typeFilter == TypeFilterMode.stockOut
+                          ? AppTheme.primary
+                          : AppTheme.textSecondary,
                     ),
                     const SizedBox(width: 10),
-                    const Text('Stock Out Only', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                    const Text('Stock Out Only',
+                        style: TextStyle(
+                            fontSize: 13, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -260,7 +306,8 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
               Text('Error: $error'),
               const SizedBox(height: 8),
               ElevatedButton(
-                onPressed: () => ref.read(transactionsProvider.notifier).fetchTransactions(),
+                onPressed: () =>
+                    ref.read(transactionsProvider.notifier).fetchTransactions(),
                 child: const Text('Retry'),
               ),
             ],
@@ -269,7 +316,7 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
         data: (txns) {
           // Apply active filters
           List<Transaction> filteredTxns = txns;
-          
+
           // 1. Date Filter
           if (_dateFilter == DateFilterMode.today) {
             final now = DateTime.now();
@@ -278,7 +325,8 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                   t.createdAt.month == now.month &&
                   t.createdAt.day == now.day;
             }).toList();
-          } else if (_dateFilter == DateFilterMode.custom && _customFilterDate != null) {
+          } else if (_dateFilter == DateFilterMode.custom &&
+              _customFilterDate != null) {
             filteredTxns = filteredTxns.where((t) {
               return t.createdAt.year == _customFilterDate!.year &&
                   t.createdAt.month == _customFilterDate!.month &&
@@ -299,7 +347,8 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
             dateText = "Today";
           } else if (_dateFilter == DateFilterMode.all) {
             dateText = "All Time";
-          } else if (_dateFilter == DateFilterMode.custom && _customFilterDate != null) {
+          } else if (_dateFilter == DateFilterMode.custom &&
+              _customFilterDate != null) {
             dateText = _formatDate(_customFilterDate!);
           } else {
             dateText = "";
@@ -320,14 +369,16 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 color: AppTheme.primary.withValues(alpha: 0.05),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
                       children: [
-                        const Icon(Icons.tune_rounded, size: 15, color: AppTheme.primary),
+                        const Icon(Icons.tune_rounded,
+                            size: 15, color: AppTheme.primary),
                         const SizedBox(width: 8),
                         Text(
                           headerText,
@@ -339,7 +390,8 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                         ),
                       ],
                     ),
-                    if (_dateFilter != DateFilterMode.today || _typeFilter != TypeFilterMode.both)
+                    if (_dateFilter != DateFilterMode.today ||
+                        _typeFilter != TypeFilterMode.both)
                       GestureDetector(
                         onTap: () {
                           setState(() {
@@ -366,17 +418,22 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.history_rounded, size: 48, color: Colors.grey.withValues(alpha: 0.4)),
+                            Icon(Icons.history_rounded,
+                                size: 48,
+                                color: Colors.grey.withValues(alpha: 0.4)),
                             const SizedBox(height: 12),
                             Text(
                               'No transactions matches the filter.',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                              style: TextStyle(
+                                  color: Colors.grey[600], fontSize: 13),
                             ),
                           ],
                         ),
                       )
                     : RefreshIndicator(
-                        onRefresh: () => ref.read(transactionsProvider.notifier).fetchTransactions(),
+                        onRefresh: () => ref
+                            .read(transactionsProvider.notifier)
+                            .fetchTransactions(),
                         child: ListView.builder(
                           physics: const AlwaysScrollableScrollPhysics(),
                           padding: const EdgeInsets.all(AppTheme.sp16),
@@ -406,8 +463,10 @@ class _StockActivityTile extends ConsumerWidget {
     final actionColor = isIn ? AppTheme.success : AppTheme.danger;
     final iconBg = isIn ? AppTheme.successLight : AppTheme.dangerLight;
 
-    final productName = txn.productName.isEmpty ? 'Unknown Product' : txn.productName;
-    final workerName = txn.workerName.isEmpty ? 'Unknown Worker' : txn.workerName;
+    final productName =
+        txn.productName.isEmpty ? 'Unknown Product' : txn.productName;
+    final workerName =
+        txn.workerName.isEmpty ? 'Unknown Worker' : txn.workerName;
     final warehouseName = txn.warehouseName ?? 'Main Warehouse';
 
     return Container(
@@ -482,7 +541,8 @@ class _StockActivityTile extends ConsumerWidget {
                     ),
                   ],
                   const SizedBox(width: 8),
-                  Icon(Icons.storefront_rounded, size: 11, color: Colors.grey[500]),
+                  Icon(Icons.storefront_rounded,
+                      size: 11, color: Colors.grey[500]),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
@@ -501,7 +561,8 @@ class _StockActivityTile extends ConsumerWidget {
               const SizedBox(height: 3),
               Row(
                 children: [
-                  Icon(Icons.access_time_filled_rounded, size: 11, color: Colors.grey[400]),
+                  Icon(Icons.access_time_filled_rounded,
+                      size: 11, color: Colors.grey[400]),
                   const SizedBox(width: 4),
                   Text(
                     DateFormat('dd MMM, hh:mm a').format(txn.createdAt),
