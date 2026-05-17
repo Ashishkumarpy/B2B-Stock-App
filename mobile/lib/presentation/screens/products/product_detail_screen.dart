@@ -1,8 +1,12 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
+import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
@@ -20,8 +24,7 @@ class ProductDetailScreen extends ConsumerStatefulWidget {
       _ProductDetailScreenState();
 }
 
-class _ProductDetailScreenState
-    extends ConsumerState<ProductDetailScreen> {
+class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   final PageController _pageController = PageController();
   int _currentImageIndex = 0;
 
@@ -40,6 +43,17 @@ class _ProductDetailScreenState
       if (img.url.isNotEmpty) urls.add(img.url);
     }
     return urls.toList();
+  }
+
+  void _openFullScreenViewer(List<String> images, int initialIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _FullScreenImageViewer(
+          images: images,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
   }
 
   @override
@@ -70,143 +84,22 @@ class _ProductDetailScreenState
           backgroundColor: AppTheme.background,
           body: CustomScrollView(
             slivers: [
-              // ── Image App Bar ──
+              // ── Simple Elegant App Bar ──
               SliverAppBar(
-                expandedHeight: 280,
                 pinned: true,
-                backgroundColor: Colors.black,
-                foregroundColor: Colors.white,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: allImages.isEmpty
-                      ? Container(
-                          color: AppTheme.primaryLight,
-                          child: const Center(
-                            child: Icon(Icons.inventory_2_outlined,
-                                size: 72, color: AppTheme.primary),
-                          ),
-                        )
-                      : Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            PageView.builder(
-                              controller: _pageController,
-                              itemCount: allImages.length,
-                              onPageChanged: (i) =>
-                                  setState(() => _currentImageIndex = i),
-                              itemBuilder: (_, i) => CachedNetworkImage(
-                                imageUrl: allImages[i],
-                                fit: BoxFit.cover,
-                                placeholder: (_, __) => Container(
-                                    color: AppTheme.primaryLight),
-                                errorWidget: (_, __, ___) => Container(
-                                  color: AppTheme.primaryLight,
-                                  child: const Icon(
-                                      Icons.broken_image_outlined,
-                                      color: AppTheme.primary),
-                                ),
-                              ),
-                            ),
-                            // Page dots
-                            if (allImages.length > 1)
-                              Positioned(
-                                bottom: 12,
-                                left: 0,
-                                right: 0,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: List.generate(
-                                    allImages.length,
-                                    (i) => AnimatedContainer(
-                                      duration:
-                                          const Duration(milliseconds: 200),
-                                      width: _currentImageIndex == i ? 20 : 6,
-                                      height: 6,
-                                      margin:
-                                          const EdgeInsets.symmetric(horizontal: 3),
-                                      decoration: BoxDecoration(
-                                        color: _currentImageIndex == i
-                                            ? Colors.white
-                                            : Colors.white54,
-                                        borderRadius:
-                                            BorderRadius.circular(3),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            // Image counter badge
-                            if (allImages.length > 1)
-                              Positioned(
-                                top: kToolbarHeight + 8,
-                                right: 12,
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    borderRadius:
-                                        BorderRadius.circular(99),
-                                  ),
-                                  child: Text(
-                                    '${_currentImageIndex + 1}/${allImages.length}',
-                                    style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                ),
-              ),
-
-              // ── Image Thumbnails Row ──
-              if (allImages.length > 1)
-                SliverToBoxAdapter(
-                  child: Container(
-                    height: 64,
-                    color: Colors.black,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 8),
-                      itemCount: allImages.length,
-                      separatorBuilder: (_, __) =>
-                          const SizedBox(width: 8),
-                      itemBuilder: (_, i) => GestureDetector(
-                        onTap: () {
-                          _pageController.animateToPage(i,
-                              duration:
-                                  const Duration(milliseconds: 300),
-                              curve: Curves.easeInOut);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 48,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: _currentImageIndex == i
-                                  ? AppTheme.primary
-                                  : Colors.transparent,
-                              width: 2,
-                            ),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: CachedNetworkImage(
-                              imageUrl: allImages[i],
-                              fit: BoxFit.cover,
-                              placeholder: (_, __) => Container(
-                                  color: Colors.grey[900]),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
+                backgroundColor: AppTheme.surface,
+                foregroundColor: AppTheme.textPrimary,
+                scrolledUnderElevation: 0,
+                title: Text(
+                  product.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
                   ),
                 ),
+              ),
 
               // ── Content ──
               SliverToBoxAdapter(
@@ -215,10 +108,9 @@ class _ProductDetailScreenState
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Category + SKU
+                      // Category + SKU info row
                       Row(
-                        mainAxisAlignment:
-                            MainAxisAlignment.spaceBetween,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -248,7 +140,7 @@ class _ProductDetailScreenState
                       ),
                       const SizedBox(height: 10),
 
-                      // Product Name
+                      // Product Title + Description
                       Text(
                         product.name,
                         style: const TextStyle(
@@ -405,7 +297,275 @@ class _ProductDetailScreenState
                         ],
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
+
+                      // ── NEW Images Section (Moved Down After Stock Entry) ──
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Product Gallery',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                          if (allImages.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () => _openFullScreenViewer(
+                                  allImages, _currentImageIndex),
+                              icon: const Icon(Icons.fullscreen_rounded,
+                                  size: 18),
+                              label: const Text(
+                                'Fullscreen',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      allImages.isEmpty
+                          ? Container(
+                              height: 120,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusLG),
+                                border:
+                                    Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: const Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.image_not_supported_outlined,
+                                        color: AppTheme.textMuted, size: 36),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      'No images available',
+                                      style: TextStyle(
+                                          color: AppTheme.textMuted,
+                                          fontSize: 13),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                          : Column(
+                              children: [
+                                Container(
+                                  height: 200,
+                                  decoration: BoxDecoration(
+                                    color: Colors.black,
+                                    borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusLG),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      PageView.builder(
+                                        controller: _pageController,
+                                        itemCount: allImages.length,
+                                        onPageChanged: (i) => setState(
+                                            () => _currentImageIndex = i),
+                                        itemBuilder: (_, i) => GestureDetector(
+                                          onTap: () => _openFullScreenViewer(
+                                              allImages, i),
+                                          child: CachedNetworkImage(
+                                            imageUrl: allImages[i],
+                                            fit: BoxFit.cover,
+                                            placeholder: (_, __) => const Center(
+                                                child:
+                                                    CircularProgressIndicator(
+                                                        color: Colors.white)),
+                                            errorWidget: (_, __, ___) =>
+                                                const Icon(
+                                                    Icons
+                                                        .broken_image_outlined,
+                                                    color: Colors.white),
+                                          ),
+                                        ),
+                                      ),
+                                      // Image Index Overlay badge
+                                      Positioned(
+                                        bottom: 12,
+                                        right: 12,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 8, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black54,
+                                            borderRadius:
+                                                BorderRadius.circular(99),
+                                          ),
+                                          child: Text(
+                                            '${_currentImageIndex + 1}/${allImages.length}',
+                                            style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (allImages.length > 1) ...[
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    height: 52,
+                                    child: ListView.separated(
+                                      scrollDirection: Axis.horizontal,
+                                      itemCount: allImages.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(width: 8),
+                                      itemBuilder: (_, i) => GestureDetector(
+                                        onTap: () {
+                                          _pageController.animateToPage(
+                                            i,
+                                            duration: const Duration(
+                                                milliseconds: 300),
+                                            curve: Curves.easeInOut,
+                                          );
+                                        },
+                                        child: AnimatedContainer(
+                                          duration: const Duration(
+                                              milliseconds: 200),
+                                          width: 52,
+                                          height: 52,
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            border: Border.all(
+                                              color: _currentImageIndex == i
+                                                  ? AppTheme.primary
+                                                  : Colors.transparent,
+                                              width: 2,
+                                            ),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(6),
+                                            child: CachedNetworkImage(
+                                              imageUrl: allImages[i],
+                                              fit: BoxFit.cover,
+                                              placeholder: (_, __) => Container(
+                                                  color: Colors.grey[200]),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+
+                      const SizedBox(height: 24),
+
+                      // ── NEW Colors Section (Color Stock matching Admin) ──
+                      const Text(
+                        'Color Stock',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      product.colorStocks.isEmpty
+                          ? Container(
+                              padding: const EdgeInsets.all(16),
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: AppTheme.surface,
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusLG),
+                                border:
+                                    Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: const Text(
+                                'No color-wise stock added.',
+                                style: TextStyle(
+                                    color: AppTheme.textMuted, fontSize: 13),
+                              ),
+                            )
+                          : GridView.builder(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              gridDelegate:
+                                  const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                childAspectRatio: 2.8,
+                                crossAxisSpacing: 10,
+                                mainAxisSpacing: 10,
+                              ),
+                              itemCount: product.colorStocks.length,
+                              itemBuilder: (context, index) {
+                                final entry = product.colorStocks[index];
+                                return Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.surface,
+                                    borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusMD),
+                                    border: Border.all(
+                                        color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      // Left: color name + small circle
+                                      Expanded(
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 8,
+                                              height: 8,
+                                              decoration: BoxDecoration(
+                                                color: _resolveColor(
+                                                    entry.color),
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                entry.color,
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 13,
+                                                  color: AppTheme.textPrimary,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Right: Quantity
+                                      Text(
+                                        '${entry.quantity}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                          color: AppTheme.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+
+                      const SizedBox(height: 24),
 
                       // ── Recent Activity ──
                       const Text('Recent History',
@@ -457,6 +617,22 @@ class _ProductDetailScreenState
       error: (err, _) =>
           Scaffold(body: Center(child: Text('Error: $err'))),
     );
+  }
+
+  Color _resolveColor(String colorName) {
+    final lower = colorName.trim().toLowerCase();
+    if (lower == 'red') return Colors.red;
+    if (lower == 'blue') return Colors.blue;
+    if (lower == 'green') return Colors.green;
+    if (lower == 'yellow') return Colors.yellow;
+    if (lower == 'orange') return Colors.orange;
+    if (lower == 'black') return Colors.black;
+    if (lower == 'white') return Colors.grey.shade300;
+    if (lower == 'grey' || lower == 'gray') return Colors.grey;
+    if (lower == 'purple') return Colors.purple;
+    if (lower == 'pink') return Colors.pink;
+    if (lower == 'brown') return Colors.brown;
+    return AppTheme.primary; // fallback accent color
   }
 
   Widget _miniStat(String label, String value) {
@@ -544,6 +720,178 @@ class _ProductDetailScreenState
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── NEW Full Screen Image Viewer with Zoom, Download & Share ───
+class _FullScreenImageViewer extends StatefulWidget {
+  final List<String> images;
+  final int initialIndex;
+
+  const _FullScreenImageViewer({
+    required this.images,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_FullScreenImageViewer> createState() => _FullScreenImageViewerState();
+}
+
+class _FullScreenImageViewerState extends State<_FullScreenImageViewer> {
+  late PageController _pageController;
+  late int _currentIndex;
+  bool _isDownloading = false;
+  bool _isSharing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: widget.initialIndex);
+    _currentIndex = widget.initialIndex;
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _downloadImage() async {
+    setState(() => _isDownloading = true);
+    try {
+      final url = widget.images[_currentIndex];
+      final name = 'product_img_${DateTime.now().millisecondsSinceEpoch}';
+      final response = await http.get(Uri.parse(url));
+      final bytes = response.bodyBytes;
+
+      Directory? dir;
+      if (Platform.isAndroid) {
+        dir = Directory('/storage/emulated/0/Download');
+        if (!await dir.exists()) {
+          dir = await getExternalStorageDirectory();
+        }
+      } else {
+        dir = await getApplicationDocumentsDirectory();
+      }
+
+      final file = File('${dir!.path}/$name.jpg');
+      await file.writeAsBytes(bytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Saved to Downloads: ${file.path.split('/').last}'),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Download failed: $e'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDownloading = false);
+    }
+  }
+
+  Future<void> _shareImage() async {
+    setState(() => _isSharing = true);
+    try {
+      final url = widget.images[_currentIndex];
+      final response = await http.get(Uri.parse(url));
+      final bytes = response.bodyBytes;
+
+      final temp = await getTemporaryDirectory();
+      final file = File('${temp.path}/share_image.jpg');
+      await file.writeAsBytes(bytes);
+
+      await Share.shareXFiles([XFile(file.path)], text: 'B2B Product Image');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sharing failed: $e'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isSharing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        foregroundColor: Colors.white,
+        scrolledUnderElevation: 0,
+        title: Text(
+          '${_currentIndex + 1} / ${widget.images.length}',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        actions: [
+          IconButton(
+            icon: _isDownloading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_rounded, color: Colors.white),
+            onPressed: _isDownloading ? null : _downloadImage,
+          ),
+          IconButton(
+            icon: _isSharing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2),
+                  )
+                : const Icon(Icons.share_rounded, color: Colors.white),
+            onPressed: _isSharing ? null : _shareImage,
+          ),
+        ],
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.images.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            clipBehavior: Clip.none,
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: CachedNetworkImage(
+                imageUrl: widget.images[index],
+                fit: BoxFit.contain,
+                placeholder: (context, url) =>
+                    const CircularProgressIndicator(color: Colors.white),
+                errorWidget: (context, url, error) => const Icon(
+                    Icons.broken_image,
+                    color: Colors.white,
+                    size: 64),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
