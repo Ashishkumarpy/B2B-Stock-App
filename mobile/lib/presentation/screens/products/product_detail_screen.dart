@@ -267,9 +267,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Category + Title/Name info row
+                      // Category Tag Row
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -288,31 +287,29 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               ),
                             ),
                           ),
-                          Expanded(
-                            child: Text(
-                              product.name,
-                              textAlign: TextAlign.end,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: AppTheme.textSecondary,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 12),
 
-                      // BIG Product Code
+                      // 1. BIG Product Code (First)
                       Text(
                         product.code,
                         style: const TextStyle(
-                          fontSize: 30,
+                          fontSize: 32,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.5,
                           color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+
+                      // 2. Product Name/Title (Small, under the code)
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                       if (product.description != null &&
