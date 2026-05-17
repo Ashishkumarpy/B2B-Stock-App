@@ -321,13 +321,73 @@ class _StockActivityTile extends ConsumerWidget {
           productName,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontSize: 14.5,
+            fontWeight: FontWeight.w800,
+          ),
         ),
-        subtitle: Text(
-          '$workerName • $warehouseName • ${DateFormat('dd MMM, hh:mm a').format(txn.createdAt)}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 11),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.person_rounded, size: 12, color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Text(
+                    workerName,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  if (txn.colorName != null && txn.colorName!.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      '•  ${txn.colorName}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(width: 8),
+                  Icon(Icons.storefront_rounded, size: 12, color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      warehouseName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  Icon(Icons.access_time_filled_rounded, size: 12, color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Text(
+                    DateFormat('dd MMM, hh:mm a').format(txn.createdAt),
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         trailing: Text(
           '${isIn ? '+' : '-'}${txn.quantity}',
