@@ -66,14 +66,17 @@ class SkeletonList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: List.generate(
-        count,
-        (index) => SkeletonLoading(
-          width: double.infinity,
-          height: height,
-          borderRadius: 16,
-          margin: EdgeInsets.only(bottom: spacing),
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        children: List.generate(
+          count,
+          (index) => SkeletonLoading(
+            width: double.infinity,
+            height: height,
+            borderRadius: 16,
+            margin: EdgeInsets.only(bottom: spacing),
+          ),
         ),
       ),
     );
