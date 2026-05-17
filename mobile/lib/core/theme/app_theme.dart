@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
   // Brand Colors
@@ -50,13 +49,16 @@ class AppTheme {
   }
 
   static Color borderColor(BuildContext context) {
-    return isDarkMode(context) ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.1);
+    return isDarkMode(context)
+        ? Colors.white.withValues(alpha: 0.1)
+        : Colors.grey.withValues(alpha: 0.1);
   }
 
   // Light Theme
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: null, // Use system default font — no Google Fonts
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         primary: primary,
@@ -65,45 +67,28 @@ class AppTheme {
         surface: surface,
       ),
       scaffoldBackgroundColor: background,
-      textTheme: GoogleFonts.outfitTextTheme().copyWith(
-        headlineLarge: GoogleFonts.outfit(
-          color: textPrimary,
-          fontWeight: FontWeight.bold,
-          letterSpacing: -1,
-        ),
-        headlineMedium: GoogleFonts.outfit(
-          color: textPrimary,
-          fontWeight: FontWeight.bold,
-          letterSpacing: -0.5,
-        ),
-        titleLarge: GoogleFonts.outfit(
-          color: textPrimary,
-          fontWeight: FontWeight.w600,
-        ),
-        bodyLarge: GoogleFonts.outfit(
-          color: textPrimary,
-        ),
-        bodyMedium: GoogleFonts.outfit(
-          color: textPrimary,
-        ),
-      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: background,
         foregroundColor: textPrimary,
         elevation: 0,
         centerTitle: true,
+        titleTextStyle: TextStyle(
+          color: textPrimary,
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+        ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: primary,
           foregroundColor: Colors.white,
-          minimumSize: const Size.fromHeight(56),
+          minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radiusMD),
           ),
           elevation: 0,
-          textStyle: GoogleFonts.outfit(
-            fontSize: 16,
+          textStyle: const TextStyle(
+            fontSize: 15,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -129,7 +114,7 @@ class AppTheme {
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: sp16,
-          vertical: sp16,
+          vertical: sp14,
         ),
       ),
     );
@@ -140,14 +125,17 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      fontFamily: null,
       colorScheme: ColorScheme.fromSeed(
         seedColor: primary,
         primary: Colors.white,
-        secondary: const Color(0xFF269000), // Based on oklch(0.269 0 0)
+        secondary: const Color(0xFF269000),
         error: const Color(0xFFD4183D),
         brightness: Brightness.dark,
       ),
-      // Add more dark theme specific overrides if needed
     );
   }
+
+  // Extra constant used in inputDecorationTheme
+  static const double sp14 = 14.0;
 }

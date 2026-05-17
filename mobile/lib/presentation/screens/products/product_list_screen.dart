@@ -92,13 +92,13 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   onRefresh: () async => ref.invalidate(productsProvider),
                   child: AnimationLimiter(
                     child: GridView.builder(
-                      padding: const EdgeInsets.all(AppTheme.sp16),
+                      padding: const EdgeInsets.all(AppTheme.sp12),
                       gridDelegate:
                           const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
-                        mainAxisSpacing: AppTheme.sp16,
-                        crossAxisSpacing: AppTheme.sp16,
-                        childAspectRatio: 0.72,
+                        mainAxisSpacing: AppTheme.sp12,
+                        crossAxisSpacing: AppTheme.sp12,
+                        childAspectRatio: 0.78,
                       ),
                       itemCount: filtered.length,
                       itemBuilder: (context, index) {

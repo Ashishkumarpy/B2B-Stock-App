@@ -53,20 +53,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             _buildAppBar(user?.name ?? 'Main Warehouse'),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.all(AppTheme.sp24),
+                padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16, vertical: AppTheme.sp8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildHeader(user?.name ?? 'Admin'),
-                    const SizedBox(height: AppTheme.sp24),
+                    const SizedBox(height: AppTheme.sp16),
                     _buildStatsGrid(productsAsync),
-                    const SizedBox(height: AppTheme.sp32),
+                    const SizedBox(height: AppTheme.sp20),
                     _buildStockMovementSection(transactionsAsync),
-                    const SizedBox(height: AppTheme.sp32),
+                    const SizedBox(height: AppTheme.sp20),
                     _buildAiInsightsSection(insightsAsync),
-                    const SizedBox(height: AppTheme.sp32),
+                    const SizedBox(height: AppTheme.sp20),
                     _buildCategoriesSection(categoriesAsync),
-                    const SizedBox(height: AppTheme.sp32),
+                    const SizedBox(height: AppTheme.sp20),
                     _buildRecentProductsSection(productsAsync),
                   ],
                 ),
@@ -115,15 +115,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Text(
           'Welcome back,',
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 13,
             color: Colors.grey.shade500,
             fontWeight: FontWeight.w500,
           ),
         ),
         Text(
           name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            fontSize: 28,
+            fontSize: 22,
             fontWeight: FontWeight.w900,
             letterSpacing: -0.5,
           ),
@@ -312,9 +314,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.72,
-              crossAxisSpacing: AppTheme.sp16,
-              mainAxisSpacing: AppTheme.sp16,
+              childAspectRatio: 0.82,
+              crossAxisSpacing: AppTheme.sp12,
+              mainAxisSpacing: AppTheme.sp12,
             ),
             itemCount: products.length > 4 ? 4 : products.length,
             itemBuilder: (context, index) => ProductCard(

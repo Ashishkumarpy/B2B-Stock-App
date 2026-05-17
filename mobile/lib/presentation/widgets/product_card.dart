@@ -21,62 +21,68 @@ class ProductCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-        side: BorderSide(color: Colors.grey.withOpacity(0.1)),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.12)),
       ),
-      color: AppTheme.cardBackground,
+      color: Theme.of(context).cardColor,
       child: InkWell(
         onTap: onTap,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Aspect Ratio 1:1 Image
-            AspectRatio(
-              aspectRatio: 1,
+            // Fixed height image (no AspectRatio — avoids overflow)
+            SizedBox(
+              height: 120,
+              width: double.infinity,
               child: Stack(
+                fit: StackFit.expand,
                 children: [
-                  Positioned.fill(
-                    child: product.imageUrl != null && product.imageUrl!.isNotEmpty
-                        ? CachedNetworkImage(
-                            imageUrl: product.imageUrl!,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
-                              color: Colors.grey[100],
-                              child: const Center(
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              ),
-                            ),
-                            errorWidget: (context, url, error) => Container(
-                              color: Colors.grey[100],
-                              child: const Icon(Icons.image_not_supported_outlined,
-                                  color: Colors.grey),
-                            ),
-                          )
-                        : Container(
+                  product.imageUrl != null && product.imageUrl!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: product.imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
                             color: Colors.grey[100],
-                            child: const Icon(Icons.inventory_2_outlined,
-                                color: Colors.grey, size: 32),
+                            child: const Center(
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2),
+                            ),
                           ),
-                  ),
+                          errorWidget: (context, url, error) => Container(
+                            color: Colors.grey[100],
+                            child: const Icon(
+                                Icons.image_not_supported_outlined,
+                                color: Colors.grey),
+                          ),
+                        )
+                      : Container(
+                          color: Colors.grey[100],
+                          child: const Icon(Icons.inventory_2_outlined,
+                              color: Colors.grey, size: 32),
+                        ),
                   // Stock Status Badge
                   if (product.stockStatus != StockStatus.inStock)
                     Positioned(
-                      top: 8,
-                      right: 8,
+                      top: 6,
+                      right: 6,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
+                            horizontal: 6, vertical: 3),
                         decoration: BoxDecoration(
                           color: product.stockStatus == StockStatus.outOfStock
                               ? AppTheme.danger
                               : AppTheme.warning,
-                          borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusSM),
                         ),
                         child: Text(
-                          product.stockStatus.label.toUpperCase(),
+                          product.stockStatus == StockStatus.outOfStock
+                              ? 'OUT'
+                              : 'LOW',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: 9,
                             fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
                       ),
@@ -84,50 +90,58 @@ class ProductCard extends StatelessWidget {
                 ],
               ),
             ),
-            
-            // Details
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(AppTheme.sp12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      product.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+
+            // Details — fixed, not expanded
+            Padding(
+              padding: const EdgeInsets.all(AppTheme.sp8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    product.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      height: 1.3,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      product.code,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.textSecondary,
-                            letterSpacing: 0.5,
-                          ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    product.code,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: AppTheme.textSecondary,
+                      letterSpacing: 0.3,
                     ),
-                    const Spacer(),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Text(
                           '${product.quantity} ${product.unit ?? 'pcs'}',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                color: AppTheme.primary,
-                                fontWeight: FontWeight.w800,
-                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 12,
-                          color: AppTheme.primary.withOpacity(0.3),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 10,
+                        color: AppTheme.primary.withValues(alpha: 0.3),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
