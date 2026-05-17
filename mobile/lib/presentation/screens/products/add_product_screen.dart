@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/product.dart';
 import '../../providers/api_client_provider.dart';
@@ -31,8 +32,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   
   // Images editing state
   late TextEditingController _mainImageUrlController;
-  late TextEditingController _newExtraImageUrlController;
-  List<String> _extraImages = [];
+  bool _isUploadingImage = false;
 
   // Color stocks editing state
   List<Map<String, dynamic>> _colorStocks = [];
@@ -63,17 +63,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     // Load initial images
     _mainImageUrlController =
         TextEditingController(text: widget.productToEdit?.imageUrl ?? '');
-    _newExtraImageUrlController = TextEditingController();
-    
-    if (widget.productToEdit != null) {
-      final allImgs = widget.productToEdit!.images;
-      // Filter out main image from secondary list to avoid duplicates
-      final mainUrl = widget.productToEdit!.imageUrl ?? '';
-      _extraImages = allImgs
-          .map((img) => img.url)
-          .where((url) => url.isNotEmpty && url != mainUrl)
-          .toList();
-    }
 
     // Load initial colors
     if (widget.productToEdit != null) {
@@ -97,7 +86,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _unitController.dispose();
     _costPriceController.dispose();
     _mainImageUrlController.dispose();
-    _newExtraImageUrlController.dispose();
     super.dispose();
   }
 
@@ -120,19 +108,52 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     });
   }
 
-  void _addExtraImage() {
-    final url = _newExtraImageUrlController.text.trim();
-    if (url.isEmpty) return;
-    setState(() {
-      _extraImages.add(url);
-      _newExtraImageUrlController.clear();
-    });
-  }
+  Future<void> _pickAndUploadImage(ImageSource source) async {
+    final picker = ImagePicker();
+    try {
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 85,
+      );
 
-  void _removeExtraImage(int index) {
-    setState(() {
-      _extraImages.removeAt(index);
-    });
+      if (pickedFile == null) return;
+
+      setState(() => _isUploadingImage = true);
+
+      final client = ref.read(apiClientProvider);
+      final response = await client.uploadFile('/uploads/image', pickedFile.path);
+
+      if (response is Map && response.containsKey('url')) {
+        setState(() {
+          _mainImageUrlController.text = response['url'] ?? '';
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Image uploaded successfully!'),
+              backgroundColor: AppTheme.success,
+            ),
+          );
+        }
+      } else {
+        throw Exception('Invalid server response');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Upload failed: $e'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploadingImage = false);
+      }
+    }
   }
 
   Future<void> _submit() async {
@@ -154,15 +175,23 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               })
           .toList();
 
+      final existingExtraImages = widget.productToEdit != null
+          ? widget.productToEdit!.images
+              .where((img) => img.url != widget.productToEdit!.imageUrl)
+              .map((img) => {
+                    'url': img.url,
+                    'publicId': img.publicId,
+                  })
+              .toList()
+          : const [];
+
       final finalImages = [
         if (_mainImageUrlController.text.trim().isNotEmpty)
           {
             'url': _mainImageUrlController.text.trim(),
             'publicId': '',
           },
-        ..._extraImages
-            .where((url) => url.trim().isNotEmpty)
-            .map((url) => {'url': url.trim(), 'publicId': ''}),
+        ...existingExtraImages,
       ];
 
       final data = {
@@ -483,120 +512,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
               const SizedBox(height: 24),
 
-              // ── Image Gallery Section ──
-              _sectionHeader('Product Gallery Images'),
+              // ── Image Section ──
+              _sectionHeader('Product Image'),
               const SizedBox(height: 8),
+              _buildMainImageSection(),
               
-              TextFormField(
-                controller: _mainImageUrlController,
-                decoration: const InputDecoration(
-                  labelText: 'Main Banner Image URL',
-                  prefixIcon: Icon(Icons.image_outlined),
-                  hintText: 'https://res.cloudinary.com/...',
-                ),
-              ),
-              const SizedBox(height: 16),
-              
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Supplementary Images',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: AppTheme.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _newExtraImageUrlController,
-                            decoration: const InputDecoration(
-                              labelText: 'Paste Supplementary Image URL',
-                              contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: _addExtraImage,
-                          child: Container(
-                            width: 50,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: AppTheme.primary,
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                            ),
-                            child: const Icon(Icons.add, color: Colors.white, size: 22),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const Divider(height: 20),
-                    if (_extraImages.isEmpty)
-                      const Text(
-                        'No extra images added. Add URLs above to build a multi-image swipeable gallery.',
-                        style: TextStyle(color: AppTheme.textMuted, fontSize: 11),
-                      )
-                    else
-                      ListView.separated(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: _extraImages.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 6),
-                        itemBuilder: (context, idx) {
-                          final url = _extraImages[idx];
-                          return Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: AppTheme.background,
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                            ),
-                            child: Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(4),
-                                  child: CachedNetworkImage(
-                                    imageUrl: url,
-                                    width: 32,
-                                    height: 32,
-                                    fit: BoxFit.cover,
-                                    placeholder: (_, __) => Container(color: Colors.grey.shade200),
-                                    errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 16),
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    url,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
-                                  ),
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.close_rounded, color: AppTheme.danger, size: 18),
-                                  onPressed: () => _removeExtraImage(idx),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      ),
-                  ],
-                ),
-              ),
-
               const SizedBox(height: 24),
 
               // ── Description Section ──
@@ -643,6 +563,175 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         fontSize: 14,
         color: AppTheme.primary,
         letterSpacing: 0.3,
+      ),
+    );
+  }
+
+  Widget _buildMainImageSection() {
+    final currentUrl = _mainImageUrlController.text.trim();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Product Photo',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+              color: AppTheme.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_isUploadingImage)
+            Container(
+              height: 180,
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text(
+                      'Uploading to secure server...',
+                      style: TextStyle(
+                          color: AppTheme.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (currentUrl.isNotEmpty)
+            Column(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  child: CachedNetworkImage(
+                    imageUrl: currentUrl,
+                    height: 180,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) => Container(
+                      height: 180,
+                      color: Colors.grey[100],
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
+                    errorWidget: (_, __, ___) => Container(
+                      height: 180,
+                      color: Colors.grey[100],
+                      child: const Icon(Icons.broken_image,
+                          size: 48, color: AppTheme.textMuted),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _pickAndUploadImage(ImageSource.camera),
+                        icon: const Icon(Icons.camera_alt_outlined, size: 16),
+                        label: const Text('Retake', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _pickAndUploadImage(ImageSource.gallery),
+                        icon: const Icon(Icons.photo_library_outlined, size: 16),
+                        label: const Text('Choose', style: TextStyle(fontSize: 12)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
+                      onPressed: () {
+                        setState(() {
+                          _mainImageUrlController.clear();
+                        });
+                      },
+                    ),
+                  ],
+                )
+              ],
+            )
+          else
+            Container(
+              height: 150,
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                border: Border.all(
+                  color: const Color(0xFFE2E8F0),
+                  style: BorderStyle.solid,
+                ),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.add_a_photo_outlined,
+                      size: 36, color: Colors.indigo.shade300),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'No photo captured yet',
+                    style: TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ElevatedButton.icon(
+                        onPressed: () => _pickAndUploadImage(ImageSource.camera),
+                        icon: const Icon(Icons.camera_alt_rounded, size: 14),
+                        label: const Text('Camera', style: TextStyle(fontSize: 11)),
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => _pickAndUploadImage(ImageSource.gallery),
+                        icon: const Icon(Icons.photo_library_outlined, size: 14),
+                        label: const Text('Gallery', style: TextStyle(fontSize: 11)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

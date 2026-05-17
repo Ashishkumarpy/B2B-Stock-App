@@ -44,6 +44,23 @@ class ServerApiClient {
 
   Future<dynamic> postJson(String path, dynamic body) => post(path, body);
 
+  Future<dynamic> uploadFile(String path, String filePath) async {
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse('$baseUrl$path'));
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.files.add(await http.MultipartFile.fromPath('file', filePath));
+      
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } catch (e) {
+      AppLog.d('Multipart POST $path failed: $e');
+      rethrow;
+    }
+  }
+
   Future<dynamic> patch(String path, dynamic body) async {
     try {
       final response = await http.patch(
