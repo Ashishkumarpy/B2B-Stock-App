@@ -2,29 +2,45 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/transactions_provider.dart';
-import '../../widgets/app_network_image.dart';
 import '../../widgets/status_badge.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
 
-  const ProductDetailScreen({
-    super.key,
-    required this.productId,
-  });
+  const ProductDetailScreen({super.key, required this.productId});
 
   @override
-  ConsumerState<ProductDetailScreen> createState() => _ProductDetailScreenState();
+  ConsumerState<ProductDetailScreen> createState() =>
+      _ProductDetailScreenState();
 }
 
-class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
+class _ProductDetailScreenState
+    extends ConsumerState<ProductDetailScreen> {
+  final PageController _pageController = PageController();
   int _currentImageIndex = 0;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  List<String> _getAllImages(Product product) {
+    final urls = <String>{};
+    if (product.imageUrl != null && product.imageUrl!.isNotEmpty) {
+      urls.add(product.imageUrl!);
+    }
+    for (final img in product.images) {
+      if (img.url.isNotEmpty) urls.add(img.url);
+    }
+    return urls.toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +49,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
     return productsAsync.when(
       data: (products) {
-        final product = products.where((p) => p.id == widget.productId).firstOrNull;
+        final product = products
+            .where((p) => p.id == widget.productId)
+            .firstOrNull;
         if (product == null) {
           return Scaffold(
             appBar: AppBar(),
@@ -41,304 +59,560 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           );
         }
 
+        final allImages = _getAllImages(product);
         final productTransactions = transactionsAsync.maybeWhen(
-          data: (txs) => txs.where((t) => t.productId == widget.productId).toList(),
+          data: (txs) =>
+              txs.where((t) => t.productId == widget.productId).toList(),
           orElse: () => <Transaction>[],
         );
 
         return Scaffold(
+          backgroundColor: AppTheme.background,
           body: CustomScrollView(
             slivers: [
-              _buildAppBar(context, product),
+              // ── Image App Bar ──
+              SliverAppBar(
+                expandedHeight: 280,
+                pinned: true,
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: allImages.isEmpty
+                      ? Container(
+                          color: AppTheme.primaryLight,
+                          child: const Center(
+                            child: Icon(Icons.inventory_2_outlined,
+                                size: 72, color: AppTheme.primary),
+                          ),
+                        )
+                      : Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            PageView.builder(
+                              controller: _pageController,
+                              itemCount: allImages.length,
+                              onPageChanged: (i) =>
+                                  setState(() => _currentImageIndex = i),
+                              itemBuilder: (_, i) => CachedNetworkImage(
+                                imageUrl: allImages[i],
+                                fit: BoxFit.cover,
+                                placeholder: (_, __) => Container(
+                                    color: AppTheme.primaryLight),
+                                errorWidget: (_, __, ___) => Container(
+                                  color: AppTheme.primaryLight,
+                                  child: const Icon(
+                                      Icons.broken_image_outlined,
+                                      color: AppTheme.primary),
+                                ),
+                              ),
+                            ),
+                            // Page dots
+                            if (allImages.length > 1)
+                              Positioned(
+                                bottom: 12,
+                                left: 0,
+                                right: 0,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: List.generate(
+                                    allImages.length,
+                                    (i) => AnimatedContainer(
+                                      duration:
+                                          const Duration(milliseconds: 200),
+                                      width: _currentImageIndex == i ? 20 : 6,
+                                      height: 6,
+                                      margin:
+                                          const EdgeInsets.symmetric(horizontal: 3),
+                                      decoration: BoxDecoration(
+                                        color: _currentImageIndex == i
+                                            ? Colors.white
+                                            : Colors.white54,
+                                        borderRadius:
+                                            BorderRadius.circular(3),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            // Image counter badge
+                            if (allImages.length > 1)
+                              Positioned(
+                                top: kToolbarHeight + 8,
+                                right: 12,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    borderRadius:
+                                        BorderRadius.circular(99),
+                                  ),
+                                  child: Text(
+                                    '${_currentImageIndex + 1}/${allImages.length}',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
+              ),
+
+              // ── Image Thumbnails Row ──
+              if (allImages.length > 1)
+                SliverToBoxAdapter(
+                  child: Container(
+                    height: 64,
+                    color: Colors.black,
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      itemCount: allImages.length,
+                      separatorBuilder: (_, __) =>
+                          const SizedBox(width: 8),
+                      itemBuilder: (_, i) => GestureDetector(
+                        onTap: () {
+                          _pageController.animateToPage(i,
+                              duration:
+                                  const Duration(milliseconds: 300),
+                              curve: Curves.easeInOut);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 48,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: _currentImageIndex == i
+                                  ? AppTheme.primary
+                                  : Colors.transparent,
+                              width: 2,
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: CachedNetworkImage(
+                              imageUrl: allImages[i],
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                  color: Colors.grey[900]),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // ── Content ──
               SliverToBoxAdapter(
                 child: Padding(
-                  padding: const EdgeInsets.all(AppTheme.sp24),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildHeader(context, product),
-                      const SizedBox(height: AppTheme.sp32),
-                      _buildStockCard(context, product),
-                      const SizedBox(height: AppTheme.sp32),
-                      _buildActions(context, product),
-                      const SizedBox(height: AppTheme.sp32),
-                      _buildDetailsGrid(product),
-                      const SizedBox(height: AppTheme.sp32),
-                      _buildRecentActivity(context, productTransactions),
+                      // Category + SKU
+                      Row(
+                        mainAxisAlignment:
+                            MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryLight,
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusSM),
+                            ),
+                            child: Text(
+                              product.category.toUpperCase(),
+                              style: const TextStyle(
+                                color: AppTheme.primary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          Text(
+                            'SKU: ${product.code}',
+                            style: const TextStyle(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Product Name
+                      Text(
+                        product.name,
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.3,
+                          color: AppTheme.textPrimary,
+                        ),
+                      ),
+                      if (product.description != null &&
+                          product.description!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(
+                          product.description!,
+                          style: const TextStyle(
+                            color: AppTheme.textSecondary,
+                            height: 1.5,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 16),
+
+                      // ── Stock Card ──
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              AppTheme.primary,
+                              AppTheme.primaryDark
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius:
+                              BorderRadius.circular(AppTheme.radiusXL),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppTheme.primary
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Available Stock',
+                                    style: TextStyle(
+                                        color: Colors.white70,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13)),
+                                StatusBadge(
+                                    status: product.stockStatus),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.end,
+                              children: [
+                                FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    '${product.quantity}',
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 44,
+                                        fontWeight: FontWeight.w900,
+                                        height: 1),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Padding(
+                                  padding:
+                                      const EdgeInsets.only(bottom: 6),
+                                  child: Text(
+                                    product.unit ?? 'Units',
+                                    style: const TextStyle(
+                                        color: Colors.white60,
+                                        fontSize: 16),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Divider(
+                                color: Colors.white24, height: 24),
+                            Row(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.spaceBetween,
+                              children: [
+                                _MiniStat('Threshold',
+                                    '${product.threshold}'),
+                                _MiniStat('Cost',
+                                    '₹${product.costPrice?.toStringAsFixed(0) ?? '0'}'),
+                                _MiniStat('Price',
+                                    '₹${product.price.toStringAsFixed(0)}'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // ── Stock Action Buttons ──
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => context.push(
+                                  '/stock-entry?productId=${product.id}&type=out'),
+                              icon: const Icon(
+                                  Icons.remove_circle_rounded,
+                                  size: 18),
+                              label: const Text('STOCK OUT'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.danger,
+                                foregroundColor: Colors.white,
+                                minimumSize:
+                                    const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusMD)),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () => context.push(
+                                  '/stock-entry?productId=${product.id}&type=in'),
+                              icon: const Icon(
+                                  Icons.add_circle_rounded,
+                                  size: 18),
+                              label: const Text('STOCK IN'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.success,
+                                foregroundColor: Colors.white,
+                                minimumSize:
+                                    const Size.fromHeight(48),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        AppTheme.radiusMD)),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // ── Recent Activity ──
+                      const Text('Recent History',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16)),
+                      const SizedBox(height: 10),
+                      if (productTransactions.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.all(24),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AppTheme.surface,
+                            borderRadius: BorderRadius.circular(
+                                AppTheme.radiusLG),
+                            border: Border.all(
+                                color: const Color(0xFFE2E8F0)),
+                          ),
+                          child: const Text(
+                              'No movements recorded yet',
+                              style: TextStyle(
+                                  color: AppTheme.textMuted)),
+                        )
+                      else
+                        ...productTransactions
+                            .take(8)
+                            .map((tx) => _ActivityTile(tx: tx)),
+
+                      const SizedBox(height: 80),
                     ],
                   ),
                 ),
               ),
             ],
           ),
+          // ── FAB: Quick Stock Entry ──
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => _showStockEntrySheet(context, product),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Stock Entry',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            backgroundColor: AppTheme.primary,
+            foregroundColor: Colors.white,
+          ),
         );
       },
-      loading: () => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (err, _) => Scaffold(body: Center(child: Text('Error: $err'))),
+      loading: () => const Scaffold(
+          body: Center(child: CircularProgressIndicator())),
+      error: (err, _) =>
+          Scaffold(body: Center(child: Text('Error: $err'))),
     );
   }
 
-  Widget _buildAppBar(BuildContext context, Product product) {
-    final allImages = product.images.isNotEmpty 
-        ? product.images.map((e) => e.url).toList() 
-        : (product.imageUrl != null ? [product.imageUrl!] : []);
+  Widget _MiniStat(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: const TextStyle(
+                color: Colors.white60,
+                fontSize: 10,
+                fontWeight: FontWeight.w600)),
+        const SizedBox(height: 2),
+        Text(value,
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 14)),
+      ],
+    );
+  }
 
-    return SliverAppBar(
-      expandedHeight: 350,
-      pinned: true,
-      backgroundColor: Colors.black,
-      flexibleSpace: FlexibleSpaceBar(
-        background: allImages.isEmpty
-            ? Container(color: Colors.grey[200], child: const Icon(Icons.inventory_2_outlined, size: 64))
-            : Stack(
-                fit: StackFit.expand,
-                children: [
-                  PageView.builder(
-                    itemCount: allImages.length,
-                    onPageChanged: (index) => setState(() => _currentImageIndex = index),
-                    itemBuilder: (context, index) {
-                      return AppNetworkImage(imageUrl: allImages[index], fit: BoxFit.cover);
+  void _showStockEntrySheet(BuildContext context, Product product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        margin: const EdgeInsets.all(12),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Stock Entry – ${product.name}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.push(
+                          '/stock-entry?productId=${product.id}&type=out');
                     },
-                  ),
-                  if (allImages.length > 1)
-                    Positioned(
-                      bottom: 16,
-                      left: 0,
-                      right: 0,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: allImages.asMap().entries.map((entry) {
-                          return Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.symmetric(horizontal: 4),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white.withOpacity(_currentImageIndex == entry.key ? 0.9 : 0.4),
-                            ),
-                          );
-                        }).toList(),
-                      ),
+                    icon: const Icon(Icons.remove_rounded, size: 18),
+                    label: const Text('STOCK OUT'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.danger,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
                     ),
-                ],
-              ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context, Product product) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: AppTheme.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-              ),
-              child: Text(
-                product.category.toUpperCase(),
-                style: const TextStyle(color: AppTheme.primary, fontSize: 10, fontWeight: FontWeight.bold),
-              ),
-            ),
-            Text(
-              'SKU: ${product.code}',
-              style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        const SizedBox(height: AppTheme.sp12),
-        Text(
-          product.name,
-          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-        ),
-        if (product.description != null && product.description!.isNotEmpty) ...[
-          const SizedBox(height: AppTheme.sp8),
-          Text(
-            product.description!,
-            style: TextStyle(color: Colors.grey.shade600, height: 1.5),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildStockCard(BuildContext context, Product product) {
-    return Container(
-      padding: const EdgeInsets.all(AppTheme.sp24),
-      decoration: BoxDecoration(
-        color: AppTheme.primary,
-        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primary.withOpacity(0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Available Stock', style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold)),
-              StatusBadge(status: product.stockStatus),
-            ],
-          ),
-          const SizedBox(height: AppTheme.sp12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                '${product.quantity}',
-                style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: Text(
-                  product.unit ?? 'Units',
-                  style: const TextStyle(color: Colors.white60, fontSize: 18, fontWeight: FontWeight.w500),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const Divider(color: Colors.white24, height: 32),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildMiniStat('Alert Threshold', '${product.threshold}'),
-              _buildMiniStat('Buying Price', '₹${product.costPrice ?? 0}'),
-              _buildMiniStat('Selling Price', '₹${product.price}'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMiniStat(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.bold)),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 15)),
-      ],
-    );
-  }
-
-  Widget _buildActions(BuildContext context, Product product) {
-    return Row(
-      children: [
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => context.push('/stock-entry?productId=${product.id}&type=out'),
-            icon: const Icon(Icons.remove_circle_rounded),
-            label: const Text('STOCK OUT'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.danger,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(60),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusLG)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.push(
+                          '/stock-entry?productId=${product.id}&type=in');
+                    },
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('STOCK IN'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.success,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-        ),
-        const SizedBox(width: AppTheme.sp16),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () => context.push('/stock-entry?productId=${product.id}&type=in'),
-            icon: const Icon(Icons.add_circle_rounded),
-            label: const Text('STOCK IN'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.success,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(60),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusLG)),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDetailsGrid(Product product) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Product Details', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-        const SizedBox(height: 16),
-        _buildDetailRow('Manufacturer', 'StockIQ Global'),
-        _buildDetailRow('Storage Zone', 'Zone A-42'),
-        _buildDetailRow('Weight/Vol', '2.5 kg'),
-        _buildDetailRow('Last Synced', DateFormat('MMM d, yyyy HH:mm').format(product.updatedAt ?? DateTime.now())),
-      ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRecentActivity(BuildContext context, List<Transaction> transactions) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text('Recent History', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
-            TextButton(onPressed: () {}, child: const Text('View All')),
           ],
         ),
-        const SizedBox(height: 8),
-        if (transactions.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Center(child: Text('No recent movements recorded', style: TextStyle(color: Colors.grey))),
-          )
-        else
-          ...transactions.take(5).map((tx) => _ActivityTile(tx: tx)),
-      ],
+      ),
     );
   }
 }
 
+// ─── Activity Tile ───────────────────────────────────────────
 class _ActivityTile extends StatelessWidget {
   final Transaction tx;
   const _ActivityTile({required this.tx});
 
   @override
   Widget build(BuildContext context) {
-    final isStockIn = tx.type == TransactionType.stockIn;
-    final color = isStockIn ? AppTheme.success : AppTheme.danger;
+    final isIn = tx.isStockIn;
+    final color = isIn ? AppTheme.success : AppTheme.danger;
 
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-        child: Icon(isStockIn ? Icons.south_west_rounded : Icons.north_east_rounded, color: color, size: 18),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      title: Text(
-        '${isStockIn ? 'Stock In' : 'Stock Out'}: ${tx.quantity} units',
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              isIn
+                  ? Icons.south_west_rounded
+                  : Icons.north_east_rounded,
+              color: color,
+              size: 16,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${isIn ? 'Stock In' : 'Stock Out'}: ${tx.quantity} units',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                Text(
+                  '${tx.workerName.isEmpty ? 'Worker' : tx.workerName} • ${DateFormat('MMM d, h:mm a').format(tx.createdAt)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${isIn ? '+' : '-'}${tx.quantity}',
+            style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w800,
+                fontSize: 14),
+          ),
+        ],
       ),
-      subtitle: Text('${tx.workerName.isEmpty ? 'Worker' : tx.workerName} • ${DateFormat('MMM d, h:mm a').format(tx.createdAt)}'),
-      trailing: const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
     );
   }
 }

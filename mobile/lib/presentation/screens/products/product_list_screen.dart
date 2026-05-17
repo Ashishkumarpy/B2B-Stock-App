@@ -1,36 +1,44 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/skeleton_loading.dart';
+import '../../../domain/entities/product.dart';
 
 class ProductListScreen extends ConsumerStatefulWidget {
   final String? initialFilter;
 
-  const ProductListScreen({
-    super.key,
-    this.initialFilter,
-  });
+  const ProductListScreen({super.key, this.initialFilter});
 
   @override
-  ConsumerState<ProductListScreen> createState() => _ProductListScreenState();
+  ConsumerState<ProductListScreen> createState() =>
+      _ProductListScreenState();
 }
 
-class _ProductListScreenState extends ConsumerState<ProductListScreen> {
-  final TextEditingController _searchController = TextEditingController();
-  String _selectedCategory = 'All';
+class _ProductListScreenState
+    extends ConsumerState<ProductListScreen> {
+  final TextEditingController _searchController =
+      TextEditingController();
+  String? _openFolder; // null = folder view, string = inside a folder
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    if (widget.initialFilter == 'low') {
-      _selectedCategory = 'Low Stock';
+    if (widget.initialFilter != null &&
+        widget.initialFilter != 'low') {
+      _openFolder = widget.initialFilter;
     }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -39,94 +47,183 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     final categoriesAsync = ref.watch(categoriesProvider);
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       appBar: AppBar(
-        title: const Text('Inventory Library'),
+        backgroundColor: AppTheme.surface,
+        title: _openFolder != null
+            ? Row(children: [
+                const Icon(Icons.folder_rounded,
+                    color: AppTheme.primary, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _openFolder!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ])
+            : const Text('Products'),
+        leading: _openFolder != null
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => setState(() => _openFolder = null),
+              )
+            : null,
         actions: [
           IconButton(
-            icon: const Icon(Icons.add_box_rounded),
+            icon: const Icon(Icons.add_box_rounded,
+                color: AppTheme.primary),
             onPressed: () => context.go('/add-product'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.upload_file_rounded),
-            onPressed: () => context.go('/bulk-import-products'),
           ),
         ],
       ),
       body: Column(
         children: [
-          _buildSearchBar(),
-          _buildCategoryFilter(categoriesAsync),
+          // Search bar
+          Container(
+            color: AppTheme.surface,
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) =>
+                  setState(() => _searchQuery = v.trim()),
+              decoration: InputDecoration(
+                hintText: _openFolder != null
+                    ? 'Search in $_openFolder...'
+                    : 'Search folders or products...',
+                prefixIcon: const Icon(Icons.search_rounded,
+                    size: 20, color: AppTheme.textMuted),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear_rounded,
+                            size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        })
+                    : null,
+                contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 10),
+              ),
+            ),
+          ),
+
+          // Main content
           Expanded(
             child: productsAsync.when(
-              data: (products) {
-                var filtered = products;
-
-                // Apply Category Filter
-                if (_selectedCategory == 'Low Stock') {
-                  filtered =
-                      filtered.where((p) => p.quantity <= p.threshold).toList();
-                } else if (_selectedCategory != 'All') {
-                  filtered = filtered
-                      .where((p) => p.category == _selectedCategory)
-                      .toList();
-                }
-
-                // Apply Search Filter
+              data: (allProducts) {
+                // ── Search mode (cross-folder) ──
                 if (_searchQuery.isNotEmpty) {
-                  filtered = filtered
+                  final results = allProducts
                       .where((p) =>
                           p.name
                               .toLowerCase()
                               .contains(_searchQuery.toLowerCase()) ||
-                          p.sku
+                          p.code
                               .toLowerCase()
                               .contains(_searchQuery.toLowerCase()))
                       .toList();
+                  return _buildProductGrid(results, 'Search Results');
                 }
 
-                if (filtered.isEmpty) {
-                  return _buildEmptyState();
+                // ── Inside a folder ──
+                if (_openFolder != null) {
+                  var folderProducts = allProducts
+                      .where((p) => p.category == _openFolder)
+                      .toList();
+
+                  return _buildProductGrid(
+                      folderProducts, _openFolder!);
                 }
 
-                return RefreshIndicator(
-                  onRefresh: () async => ref.invalidate(productsProvider),
-                  child: AnimationLimiter(
-                    child: GridView.builder(
-                      padding: const EdgeInsets.all(AppTheme.sp12),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: AppTheme.sp12,
-                        crossAxisSpacing: AppTheme.sp12,
-                        childAspectRatio: 0.78,
+                // ── Folder view (default) ──
+                return categoriesAsync.when(
+                  data: (categories) {
+                    if (categories.isEmpty) {
+                      return _buildEmptyFolders();
+                    }
+
+                    // Build folder summaries
+                    final folders = categories.map((cat) {
+                      final catProds = allProducts
+                          .where((p) => p.category == cat)
+                          .toList();
+                      final sampleImg = catProds
+                          .where((p) =>
+                              p.imageUrl != null &&
+                              p.imageUrl!.isNotEmpty)
+                          .map((p) => p.imageUrl!)
+                          .firstOrNull;
+                      final totalQty = catProds.fold<int>(
+                          0, (s, p) => s + p.quantity);
+                      final alerts = catProds
+                          .where((p) => p.quantity <= p.threshold)
+                          .length;
+                      return _FolderData(
+                        name: cat,
+                        count: catProds.length,
+                        totalQty: totalQty,
+                        alerts: alerts,
+                        sampleImage: sampleImg,
+                      );
+                    }).toList();
+
+                    return RefreshIndicator(
+                      color: AppTheme.primary,
+                      onRefresh: () async =>
+                          ref.invalidate(productsProvider),
+                      child: GridView.builder(
+                        padding: const EdgeInsets.all(12),
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 1.0,
+                          crossAxisSpacing: 12,
+                          mainAxisSpacing: 12,
+                        ),
+                        itemCount: folders.length,
+                        itemBuilder: (context, index) {
+                          return _FolderCard(
+                            folder: folders[index],
+                            onTap: () => setState(
+                                () => _openFolder = folders[index].name),
+                          );
+                        },
                       ),
-                      itemCount: filtered.length,
-                      itemBuilder: (context, index) {
-                        final product = filtered[index];
-                        return AnimationConfiguration.staggeredGrid(
-                          position: index,
-                          duration: const Duration(milliseconds: 375),
-                          columnCount: 2,
-                          child: ScaleAnimation(
-                            child: FadeInAnimation(
-                              child: ProductCard(
-                                product: product,
-                                onTap: () =>
-                                    context.push('/products/${product.id}'),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
+                    );
+                  },
+                  loading: () => const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SkeletonList(count: 4, height: 160),
                   ),
+                  error: (e, _) => Center(child: Text('$e')),
                 );
               },
               loading: () => const Padding(
-                padding: EdgeInsets.all(AppTheme.sp16),
-                child: SkeletonList(count: 6, height: 180),
+                padding: EdgeInsets.all(12),
+                child: SkeletonList(count: 4, height: 160),
               ),
-              error: (err, _) => Center(child: Text('Error: $err')),
+              error: (err, _) => Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline_rounded,
+                        color: AppTheme.danger, size: 48),
+                    const SizedBox(height: 12),
+                    Text('$err',
+                        textAlign: TextAlign.center,
+                        style:
+                            const TextStyle(color: AppTheme.danger)),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () =>
+                          ref.invalidate(productsProvider),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ],
@@ -134,99 +231,249 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
   }
 
-  Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-          AppTheme.sp16, 0, AppTheme.sp16, AppTheme.sp12),
-      child: TextField(
-        controller: _searchController,
-        onChanged: (val) => setState(() => _searchQuery = val),
-        decoration: InputDecoration(
-          hintText: 'Search by product name or SKU...',
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear_rounded),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = '');
-                  })
-              : null,
-          filled: true,
-          fillColor: Theme.of(context).cardColor,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-            borderSide: BorderSide.none,
-          ),
+  Widget _buildProductGrid(List<Product> products, String title) {
+    if (products.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.inventory_2_outlined,
+                size: 56, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            const Text('No products found',
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.textSecondary)),
+          ],
         ),
+      );
+    }
+    return RefreshIndicator(
+      color: AppTheme.primary,
+      onRefresh: () async => ref.invalidate(productsProvider),
+      child: GridView.builder(
+        padding: const EdgeInsets.all(12),
+        gridDelegate:
+            const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          childAspectRatio: 0.78,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemCount: products.length,
+        itemBuilder: (context, index) {
+          final product = products[index];
+          return ProductCard(
+            product: product,
+            onTap: () =>
+                context.push('/products/${product.id}'),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildCategoryFilter(AsyncValue<List<String>> categoriesAsync) {
-    return categoriesAsync.when(
-      data: (categories) {
-        final allFilters = ['All', 'Low Stock', ...categories];
-        return SizedBox(
-          height: 40,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16),
-            itemCount: allFilters.length,
-            itemBuilder: (context, index) {
-              final cat = allFilters[index];
-              final isSelected = _selectedCategory == cat;
-              return Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: FilterChip(
-                  label: Text(cat),
-                  selected: isSelected,
-                  onSelected: (val) => setState(() => _selectedCategory = cat),
-                  selectedColor: AppTheme.primary.withOpacity(0.2),
-                  checkmarkColor: AppTheme.primary,
-                  labelStyle: TextStyle(
-                    color: isSelected ? AppTheme.primary : Colors.grey,
-                    fontWeight:
-                        isSelected ? FontWeight.bold : FontWeight.normal,
-                    fontSize: 12,
-                  ),
-                  backgroundColor: Theme.of(context).cardColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                    side: BorderSide(
-                      color: isSelected ? AppTheme.primary : Colors.transparent,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-      loading: () => const SizedBox(height: 40),
-      error: (_, __) => const SizedBox.shrink(),
-    );
-  }
-
-  Widget _buildEmptyState() {
+  Widget _buildEmptyFolders() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.inventory_2_outlined,
+          Icon(Icons.folder_open_rounded,
               size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          Text(
-            'No products found',
-            style: TextStyle(
-                color: Colors.grey.shade500, fontWeight: FontWeight.bold),
-          ),
+          const Text('No folders yet',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.textSecondary,
+                  fontSize: 16)),
           const SizedBox(height: 8),
-          Text(
-            'Try adjusting your search or filters',
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+          const Text(
+              'Add products with categories to see folders here',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppTheme.textMuted, fontSize: 12)),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: () => context.go('/add-product'),
+            icon: const Icon(Icons.add_rounded),
+            label: const Text('Add Product'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── Folder Data Model ──────────────────────────────────────
+class _FolderData {
+  final String name;
+  final int count;
+  final int totalQty;
+  final int alerts;
+  final String? sampleImage;
+
+  const _FolderData({
+    required this.name,
+    required this.count,
+    required this.totalQty,
+    required this.alerts,
+    this.sampleImage,
+  });
+}
+
+// ─── Folder Card ────────────────────────────────────────────
+class _FolderCard extends StatelessWidget {
+  final _FolderData folder;
+  final VoidCallback onTap;
+
+  const _FolderCard({required this.folder, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background image or colour
+            folder.sampleImage != null
+                ? CachedNetworkImage(
+                    imageUrl: folder.sampleImage!,
+                    fit: BoxFit.cover,
+                    placeholder: (_, __) =>
+                        Container(color: AppTheme.primaryLight),
+                    errorWidget: (_, __, ___) =>
+                        Container(color: AppTheme.primaryLight),
+                  )
+                : Container(
+                    color: AppTheme.primaryLight,
+                    child: const Center(
+                      child: Icon(Icons.folder_rounded,
+                          color: AppTheme.primary, size: 48),
+                    ),
+                  ),
+
+            // Gradient overlay
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.75),
+                  ],
+                ),
+              ),
+            ),
+
+            // Info overlay at bottom
+            Positioned(
+              left: 10,
+              right: 10,
+              bottom: 10,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius:
+                      BorderRadius.circular(AppTheme.radiusMD),
+                  border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            folder.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color:
+                                Colors.white.withValues(alpha: 0.2),
+                            borderRadius:
+                                BorderRadius.circular(99),
+                          ),
+                          child: Text(
+                            '${folder.count}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        _MiniStat(
+                            label: 'Qty',
+                            value: '${folder.totalQty}'),
+                        const SizedBox(width: 8),
+                        if (folder.alerts > 0)
+                          _MiniStat(
+                            label: 'Alerts',
+                            value: '${folder.alerts}',
+                            isAlert: true,
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final bool isAlert;
+
+  const _MiniStat(
+      {required this.label,
+      required this.value,
+      this.isAlert = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: isAlert
+            ? AppTheme.warning.withValues(alpha: 0.3)
+            : Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        '$label: $value',
+        style: TextStyle(
+          fontSize: 9,
+          color: isAlert ? AppTheme.warning : Colors.white,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

@@ -1,20 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/version_check_service.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/transactions_provider.dart';
-import '../../providers/ai_insights_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../../domain/entities/product.dart';
-import '../../widgets/stat_card.dart';
-import '../../widgets/ai_insight_card.dart';
-import '../../widgets/stock_chart_widget.dart';
 import '../../widgets/skeleton_loading.dart';
-import '../../widgets/product_card.dart';
+import '../../widgets/stock_chart_widget.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -36,40 +30,78 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productsProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
-    final insightsAsync = ref.watch(aiInsightsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final user = ref.watch(authStateProvider).user;
 
     return Scaffold(
+      backgroundColor: AppTheme.background,
       body: RefreshIndicator(
+        color: AppTheme.primary,
         onRefresh: () async {
           ref.invalidate(productsProvider);
           ref.invalidate(transactionsProvider);
-          ref.invalidate(aiInsightsProvider);
           ref.invalidate(categoriesProvider);
         },
         child: CustomScrollView(
           slivers: [
-            _buildAppBar(user?.name ?? 'Main Warehouse'),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp16, vertical: AppTheme.sp8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildHeader(user?.name ?? 'Admin'),
-                    const SizedBox(height: AppTheme.sp16),
-                    _buildStatsGrid(productsAsync),
-                    const SizedBox(height: AppTheme.sp20),
-                    _buildStockMovementSection(transactionsAsync),
-                    const SizedBox(height: AppTheme.sp20),
-                    _buildAiInsightsSection(insightsAsync),
-                    const SizedBox(height: AppTheme.sp20),
-                    _buildCategoriesSection(categoriesAsync),
-                    const SizedBox(height: AppTheme.sp20),
-                    _buildRecentProductsSection(productsAsync),
-                  ],
+            // Compact AppBar — no giant user section
+            SliverAppBar(
+              floating: true,
+              snap: true,
+              backgroundColor: AppTheme.surface,
+              elevation: 0,
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Good ${_greeting()},',
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                        fontWeight: FontWeight.w500),
+                  ),
+                  Text(
+                    user?.name ?? 'Admin',
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textPrimary),
+                  ),
+                ],
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.notifications_none_rounded,
+                      color: AppTheme.textPrimary),
+                  onPressed: () {},
                 ),
+                const SizedBox(width: 4),
+              ],
+            ),
+
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Stats Row
+                  _buildStatsSection(productsAsync),
+                  const SizedBox(height: 20),
+
+                  // Quick Actions
+                  _buildQuickActions(),
+                  const SizedBox(height: 20),
+
+                  // Stock Movement Chart
+                  _buildChartSection(transactionsAsync),
+                  const SizedBox(height: 20),
+
+                  // Category Folders
+                  _buildFoldersSection(categoriesAsync, productsAsync),
+                  const SizedBox(height: 20),
+
+                  // Recent Transactions
+                  _buildRecentActivitySection(transactionsAsync),
+                ]),
               ),
             ),
           ],
@@ -78,128 +110,166 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildAppBar(String title) {
-    return SliverAppBar(
-      expandedHeight: 120,
-      floating: true,
-      pinned: true,
-      elevation: 0,
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      flexibleSpace: FlexibleSpaceBar(
-        titlePadding:
-            const EdgeInsets.symmetric(horizontal: AppTheme.sp24, vertical: 16),
-        centerTitle: false,
-        title: Text(
-          title,
-          style: TextStyle(
-            color: AppTheme.isDarkMode(context) ? Colors.white : Colors.black87,
-            fontWeight: FontWeight.w900,
-            fontSize: 20,
-          ),
-        ),
+  String _greeting() {
+    final h = DateTime.now().hour;
+    if (h < 12) return 'Morning';
+    if (h < 17) return 'Afternoon';
+    return 'Evening';
+  }
+
+  Widget _buildStatsSection(AsyncValue<List<dynamic>> productsAsync) {
+    return productsAsync.when(
+      data: (products) {
+        final totalSkus = products.length;
+        final totalUnits =
+            products.fold<int>(0, (s, p) => s + (p.quantity as int));
+        final lowStock =
+            products.where((p) => p.quantity <= p.threshold).length;
+        final inStock = products
+            .where((p) => p.quantity > p.threshold)
+            .length;
+
+        return Column(
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    label: 'Total SKUs',
+                    value: '$totalSkus',
+                    icon: Icons.inventory_2_rounded,
+                    color: AppTheme.primary,
+                    onTap: () => context.go('/products'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: 'Total Units',
+                    value: '$totalUnits',
+                    icon: Icons.layers_rounded,
+                    color: AppTheme.success,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    label: 'Low Stock',
+                    value: '$lowStock',
+                    icon: Icons.warning_amber_rounded,
+                    color: AppTheme.warning,
+                    onTap: () =>
+                        context.go('/products?filter=low'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _StatCard(
+                    label: 'In Stock',
+                    value: '$inStock',
+                    icon: Icons.check_circle_rounded,
+                    color: const Color(0xFF8B5CF6),
+                    onTap: () => context.go('/analytics'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        );
+      },
+      loading: () => Column(
+        children: [
+          Row(children: [
+            Expanded(
+                child: SkeletonLoading(
+                    width: double.infinity, height: 90)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: SkeletonLoading(
+                    width: double.infinity, height: 90)),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+                child: SkeletonLoading(
+                    width: double.infinity, height: 90)),
+            const SizedBox(width: 12),
+            Expanded(
+                child: SkeletonLoading(
+                    width: double.infinity, height: 90)),
+          ]),
+        ],
       ),
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.notifications_none_rounded),
-          onPressed: () {},
+      error: (err, _) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.dangerLight,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
         ),
-        const SizedBox(width: AppTheme.sp16),
-      ],
+        child: Text('Error loading stats: $err',
+            style: const TextStyle(color: AppTheme.danger)),
+      ),
     );
   }
 
-  Widget _buildHeader(String name) {
+  Widget _buildQuickActions() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Welcome back,',
-          style: TextStyle(
-            fontSize: 13,
-            color: Colors.grey.shade500,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        Text(
-          name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.w900,
-            letterSpacing: -0.5,
-          ),
+        const Text('Quick Actions',
+            style:
+                TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: _QuickActionBtn(
+                label: 'Stock In',
+                icon: Icons.add_circle_rounded,
+                color: AppTheme.success,
+                onTap: () =>
+                    context.push('/stock-entry?type=in'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _QuickActionBtn(
+                label: 'Stock Out',
+                icon: Icons.remove_circle_rounded,
+                color: AppTheme.danger,
+                onTap: () =>
+                    context.push('/stock-entry?type=out'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _QuickActionBtn(
+                label: 'Products',
+                icon: Icons.inventory_2_rounded,
+                color: AppTheme.primary,
+                onTap: () => context.go('/products'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _QuickActionBtn(
+                label: 'Analytics',
+                icon: Icons.bar_chart_rounded,
+                color: const Color(0xFF8B5CF6),
+                onTap: () => context.go('/analytics'),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildStatsGrid(AsyncValue<List<dynamic>> productsAsync) {
-    return productsAsync.when(
-      data: (products) {
-        final totalItems = products.length;
-        final totalStock =
-            products.fold<int>(0, (sum, p) => sum + (p.quantity as int));
-        final lowStock =
-            products.where((p) => p.quantity <= p.threshold).length;
-
-        return AnimationLimiter(
-          child: GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: AppTheme.sp16,
-            crossAxisSpacing: AppTheme.sp16,
-            childAspectRatio: 1.5,
-            children: [
-              _buildStatCard(
-                  0,
-                  'Total SKU',
-                  '$totalItems',
-                  Icons.inventory_2_rounded,
-                  AppTheme.primary,
-                  () => context.go('/products')),
-              _buildStatCard(1, 'Total Units', '$totalStock',
-                  Icons.layers_rounded, AppTheme.success, null),
-              _buildStatCard(
-                  2,
-                  'Low Stock',
-                  '$lowStock',
-                  Icons.warning_amber_rounded,
-                  AppTheme.warning,
-                  () => context.go('/products?filter=low')),
-              _buildStatCard(3, 'Analytics', 'View', Icons.analytics_rounded,
-                  Colors.blue, () => context.go('/analytics')),
-            ],
-          ),
-        );
-      },
-      loading: () => const SkeletonList(count: 2, height: 120),
-      error: (err, _) => Center(child: Text('Error: $err')),
-    );
-  }
-
-  Widget _buildStatCard(int pos, String title, String value, IconData icon,
-      Color color, VoidCallback? onTap) {
-    return AnimationConfiguration.staggeredGrid(
-      position: pos,
-      duration: const Duration(milliseconds: 375),
-      columnCount: 2,
-      child: ScaleAnimation(
-        child: FadeInAnimation(
-          child: StatCard(
-            title: title,
-            value: value,
-            icon: icon,
-            color: color,
-            onTap: onTap,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStockMovementSection(
+  Widget _buildChartSection(
       AsyncValue<List<dynamic>> transactionsAsync) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -207,183 +277,403 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Stock Movement',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const Text('Stock Movement',
+                style: TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 15)),
             TextButton(
               onPressed: () => context.go('/stock-activity'),
-              child: const Text('View All'),
+              child: const Text('View All',
+                  style: TextStyle(
+                      color: AppTheme.primary, fontSize: 13)),
             ),
           ],
         ),
-        const SizedBox(height: AppTheme.sp16),
+        const SizedBox(height: 8),
         Container(
-          height: 200,
-          padding: const EdgeInsets.all(AppTheme.sp16),
+          height: 180,
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
+            color: AppTheme.surface,
+            borderRadius:
+                BorderRadius.circular(AppTheme.radiusLG),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: transactionsAsync.when(
-            data: (transactions) =>
-                StockChartWidget(transactions: transactions.cast()),
-            loading: () =>
-                const SkeletonLoading(width: double.infinity, height: 160),
-            error: (err, _) => Center(child: Text('Error: $err')),
+            data: (txns) =>
+                StockChartWidget(transactions: txns.cast()),
+            loading: () => const SkeletonLoading(
+                width: double.infinity, height: 150),
+            error: (_, __) => const Center(
+                child: Text('Chart unavailable',
+                    style: TextStyle(color: AppTheme.textMuted))),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildAiInsightsSection(AsyncValue<List<String>> insightsAsync) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Smart Insights',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: AppTheme.sp16),
-        insightsAsync.when(
-          data: (insights) => Column(
-            children: insights
-                .asMap()
-                .entries
-                .map((e) => AiInsightCard(insight: e.value, index: e.key))
-                .toList(),
-          ),
-          loading: () => const SkeletonList(count: 2, height: 80),
-          error: (err, _) => Center(child: Text('Error: $err')),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCategoriesSection(AsyncValue<List<String>> categoriesAsync) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Categories',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: AppTheme.sp16),
-        categoriesAsync.when(
-          data: (categories) => SizedBox(
-            height: 120,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: categories.length,
-              separatorBuilder: (_, __) => const SizedBox(width: AppTheme.sp12),
-              itemBuilder: (context, index) =>
-                  _CategoryCard(category: categories[index]),
-            ),
-          ),
-          loading: () =>
-              const SkeletonLoading(width: double.infinity, height: 120),
-          error: (err, _) => Center(child: Text('Error: $err')),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecentProductsSection(AsyncValue<List<Product>> productsAsync) {
+  Widget _buildFoldersSection(
+    AsyncValue<List<String>> categoriesAsync,
+    AsyncValue<List<dynamic>> productsAsync,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              'Recent Inventory',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
+            const Text('Folders',
+                style: TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 15)),
             TextButton(
               onPressed: () => context.go('/products'),
-              child: const Text('See All'),
+              child: const Text('See All',
+                  style: TextStyle(
+                      color: AppTheme.primary, fontSize: 13)),
             ),
           ],
         ),
-        const SizedBox(height: AppTheme.sp16),
-        productsAsync.when(
-          data: (products) => GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.82,
-              crossAxisSpacing: AppTheme.sp12,
-              mainAxisSpacing: AppTheme.sp12,
+        const SizedBox(height: 8),
+        categoriesAsync.when(
+          data: (categories) {
+            if (categories.isEmpty) {
+              return const SizedBox.shrink();
+            }
+            return SizedBox(
+              height: 100,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: categories.length,
+                separatorBuilder: (_, __) =>
+                    const SizedBox(width: 10),
+                itemBuilder: (context, index) {
+                  return _FolderChip(
+                    category: categories[index],
+                    productsAsync: productsAsync,
+                    onTap: () => context.go(
+                        '/products?filter=${Uri.encodeComponent(categories[index])}'),
+                  );
+                },
+              ),
+            );
+          },
+          loading: () => const SkeletonLoading(
+              width: double.infinity, height: 100),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRecentActivitySection(
+      AsyncValue<List<dynamic>> transactionsAsync) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Recent Activity',
+                style: TextStyle(
+                    fontWeight: FontWeight.w800, fontSize: 15)),
+            TextButton(
+              onPressed: () => context.go('/stock-activity'),
+              child: const Text('View All',
+                  style: TextStyle(
+                      color: AppTheme.primary, fontSize: 13)),
             ),
-            itemCount: products.length > 4 ? 4 : products.length,
-            itemBuilder: (context, index) => ProductCard(
-              product: products[index],
-              onTap: () => context.push('/products/${products[index].id}'),
-            ),
-          ),
-          loading: () => const SkeletonList(count: 2, height: 200),
-          error: (err, _) => Center(child: Text('Error: $err')),
+          ],
+        ),
+        const SizedBox(height: 8),
+        transactionsAsync.when(
+          data: (txns) {
+            if (txns.isEmpty) {
+              return Container(
+                padding: const EdgeInsets.all(24),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: AppTheme.surface,
+                  borderRadius:
+                      BorderRadius.circular(AppTheme.radiusLG),
+                  border:
+                      Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Text('No transactions yet',
+                    style:
+                        TextStyle(color: AppTheme.textMuted)),
+              );
+            }
+            return Column(
+              children: txns
+                  .take(5)
+                  .map<Widget>((txn) => _ActivityRow(txn: txn))
+                  .toList(),
+            );
+          },
+          loading: () =>
+              const SkeletonList(count: 3, height: 64),
+          error: (_, __) => const SizedBox.shrink(),
         ),
       ],
     );
   }
 }
 
-class _CategoryCard extends ConsumerWidget {
+// ─── Stat Card ──────────────────────────────────────────────
+class _StatCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _StatCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+          border: Border.all(color: color.withValues(alpha: 0.15)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius:
+                    BorderRadius.circular(AppTheme.radiusMD),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      value,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: color,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: color.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Quick Action Button ────────────────────────────────────
+class _QuickActionBtn extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _QuickActionBtn({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: AppTheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Folder Chip ────────────────────────────────────────────
+class _FolderChip extends ConsumerWidget {
   final String category;
-  const _CategoryCard({required this.category});
+  final AsyncValue<List<dynamic>> productsAsync;
+  final VoidCallback onTap;
+
+  const _FolderChip({
+    required this.category,
+    required this.productsAsync,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final summaryAsync = ref.watch(categorySummaryProvider(category));
+    final count = productsAsync.maybeWhen(
+      data: (products) =>
+          products.where((p) => p.category == category).length,
+      orElse: () => 0,
+    );
 
-    return summaryAsync.when(
-      data: (summary) => InkWell(
-        onTap: () =>
-            context.push('/products?filter=${Uri.encodeComponent(category)}'),
-        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-        child: Container(
-          width: 140,
-          padding: const EdgeInsets.all(AppTheme.sp12),
-          decoration: BoxDecoration(
-            color: AppTheme.primary.withOpacity(0.05),
-            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-            border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(AppTheme.sp8),
-                decoration: BoxDecoration(
-                    color: AppTheme.primary.withOpacity(0.1),
-                    shape: BoxShape.circle),
-                child: const Icon(Icons.folder_rounded,
-                    color: AppTheme.primary, size: 20),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 110,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryLight,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+          border: Border.all(
+              color: AppTheme.primary.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.folder_rounded,
+                color: AppTheme.primary, size: 22),
+            const SizedBox(height: 6),
+            Text(
+              category,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+                color: AppTheme.textPrimary,
+                height: 1.2,
               ),
-              const Spacer(),
-              Text(
-                category,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                '${summary.productCount} Items',
-                style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '$count items',
+              style: const TextStyle(
+                  fontSize: 10, color: AppTheme.textSecondary),
+            ),
+          ],
         ),
       ),
-      loading: () => const SkeletonLoading(width: 140, height: 120),
-      error: (_, __) => const SizedBox.shrink(),
+    );
+  }
+}
+
+// ─── Activity Row ────────────────────────────────────────────
+class _ActivityRow extends StatelessWidget {
+  final dynamic txn;
+  const _ActivityRow({required this.txn});
+
+  @override
+  Widget build(BuildContext context) {
+    final isIn = txn.isStockIn as bool? ?? false;
+    final color = isIn ? AppTheme.success : AppTheme.danger;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppTheme.surface,
+        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius:
+                  BorderRadius.circular(AppTheme.radiusMD),
+            ),
+            child: Icon(
+              isIn
+                  ? Icons.south_west_rounded
+                  : Icons.north_east_rounded,
+              color: color,
+              size: 16,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  txn.productName?.toString().isEmpty == true
+                      ? 'Unknown'
+                      : txn.productName.toString(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                Text(
+                  txn.workerName?.toString() ?? '',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: AppTheme.textSecondary, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            '${isIn ? '+' : '-'}${txn.quantity}',
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
