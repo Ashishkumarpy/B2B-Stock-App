@@ -453,6 +453,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               value: '$stockInSum',
               icon: Icons.trending_up_rounded,
               color: AppTheme.primary,
+              onTap: () => context.push('/stock-activity'),
             ),
             const SizedBox(width: AppTheme.sp12),
             _TransactionSummaryCard(
@@ -460,6 +461,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               value: '$stockOutSum',
               icon: Icons.trending_down_rounded,
               color: AppTheme.danger,
+              onTap: () => context.push('/stock-activity'),
             ),
           ],
         ),
@@ -468,6 +470,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           label: 'Net Flow ($dateLabel)',
           value: '${stockInSum - stockOutSum >= 0 ? "+" : ""}${stockInSum - stockOutSum}',
           color: (stockInSum - stockOutSum) >= 0 ? AppTheme.success : AppTheme.danger,
+          onTap: () => context.push('/stock-activity'),
         ),
       ],
     );
@@ -745,47 +748,56 @@ class _TransactionSummaryCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final VoidCallback? onTap;
 
   const _TransactionSummaryCard({
     required this.label,
     required this.value,
     required this.icon,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(AppTheme.sp16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(AppTheme.radiusXL),
-          border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+          child: Container(
+            padding: const EdgeInsets.all(AppTheme.sp16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.12)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(icon, color: color, size: 20),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                  ),
+                Row(
+                  children: [
+                    Icon(icon, color: color, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -796,45 +808,54 @@ class _NetFlowCard extends StatelessWidget {
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   const _NetFlowCard({
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppTheme.sp16),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.06),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(AppTheme.radiusXL),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppTheme.sp16),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(AppTheme.radiusXL),
+            border: Border.all(color: color.withValues(alpha: 0.15)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Calculated flow metric',
+                    style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              const Text(
-                'Calculated flow metric',
-                style: TextStyle(fontSize: 10, color: AppTheme.textMuted),
+              Text(
+                value,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color),
               ),
             ],
           ),
-          Text(
-            value,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color),
-          ),
-        ],
+        ),
       ),
     );
   }
