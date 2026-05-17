@@ -40,15 +40,22 @@ class _BottomNavBar extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _NavBarItem(
-                icon: Icons.inventory_2_outlined,
-                activeIcon: Icons.inventory_2_rounded,
-                label: 'Inventory',
+                icon: Icons.dashboard_outlined,
+                activeIcon: Icons.dashboard_rounded,
+                label: 'Dashboard',
                 isActive: location == '/',
                 onTap: () => context.go('/'),
               ),
               _NavBarItem(
-                icon: Icons.history_outlined,
-                activeIcon: Icons.history_rounded,
+                icon: Icons.inventory_2_outlined,
+                activeIcon: Icons.inventory_2_rounded,
+                label: 'Products',
+                isActive: location.startsWith('/products') || location == '/add-product',
+                onTap: () => context.go('/products'),
+              ),
+              _NavBarItem(
+                icon: Icons.swap_vert_circle_outlined,
+                activeIcon: Icons.swap_vert_circle_rounded,
                 label: 'Activity',
                 isActive: location == '/stock-activity' || location == '/worker-activity',
                 onTap: () => context.go('/stock-activity'),

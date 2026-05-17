@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'api_client_provider.dart';
 
-final workersProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
-  final supabase = Supabase.instance.client;
-  return supabase
-      .from('workers')
-      .stream(primaryKey: ['id'])
-      .order('name')
-      .map((data) => data);
+/// Fetches workers list from the Node server (authenticated).
+final workersProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  final res = await client.get('/workers');
+  final data = res['data'] as List<dynamic>? ?? [];
+  return data.cast<Map<String, dynamic>>();
 });

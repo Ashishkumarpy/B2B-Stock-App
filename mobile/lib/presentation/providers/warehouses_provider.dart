@@ -1,11 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'api_client_provider.dart';
 
-final warehousesProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
-  final supabase = Supabase.instance.client;
-  return supabase
-      .from('warehouses')
-      .stream(primaryKey: ['id'])
-      .order('name')
-      .map((data) => data);
+/// Fetches warehouses list from the Node server (authenticated).
+final warehousesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final client = ref.watch(apiClientProvider);
+  final res = await client.get('/warehouses');
+  final data = res['data'] as List<dynamic>? ?? [];
+  return data.cast<Map<String, dynamic>>();
 });

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/version_check_service.dart';
 import '../../providers/products_provider.dart';
@@ -92,7 +91,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         centerTitle: false,
         title: Text(
           title,
-          style: GoogleFonts.outfit(
+          style: TextStyle(
             color: AppTheme.isDarkMode(context) ? Colors.white : Colors.black87,
             fontWeight: FontWeight.w900,
             fontSize: 20,
@@ -149,7 +148,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: AppTheme.sp16,
             crossAxisSpacing: AppTheme.sp16,
-            childAspectRatio: 1.1,
+            childAspectRatio: 1.5,
             children: [
               _buildStatCard(
                   0,
