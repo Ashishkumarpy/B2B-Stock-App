@@ -318,12 +318,13 @@ class _StockActivityTile extends ConsumerWidget {
           ),
         ),
         title: Text(
-          productName,
+          txn.productCode.isNotEmpty ? txn.productCode : 'No Code',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
-            fontSize: 14.5,
-            fontWeight: FontWeight.w800,
+            fontSize: 16.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
           ),
         ),
         subtitle: Padding(
@@ -331,14 +332,25 @@ class _StockActivityTile extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Text(
+                productName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 4),
               Row(
                 children: [
-                  Icon(Icons.person_rounded, size: 12, color: Colors.grey[500]),
+                  Icon(Icons.person_rounded, size: 11, color: Colors.grey[500]),
                   const SizedBox(width: 4),
                   Text(
                     workerName,
                     style: TextStyle(
-                      fontSize: 10,
+                      fontSize: 9.5,
                       fontWeight: FontWeight.w600,
                       color: Colors.grey[600],
                     ),
@@ -348,14 +360,14 @@ class _StockActivityTile extends ConsumerWidget {
                     Text(
                       '•  ${txn.colorName}',
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.w600,
                         color: Colors.grey[600],
                       ),
                     ),
                   ],
                   const SizedBox(width: 8),
-                  Icon(Icons.storefront_rounded, size: 12, color: Colors.grey[500]),
+                  Icon(Icons.storefront_rounded, size: 11, color: Colors.grey[500]),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
@@ -363,7 +375,7 @@ class _StockActivityTile extends ConsumerWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 10,
+                        fontSize: 9.5,
                         fontWeight: FontWeight.w500,
                         color: Colors.grey[600],
                       ),
@@ -374,12 +386,12 @@ class _StockActivityTile extends ConsumerWidget {
               const SizedBox(height: 3),
               Row(
                 children: [
-                  Icon(Icons.access_time_filled_rounded, size: 12, color: Colors.grey[400]),
+                  Icon(Icons.access_time_filled_rounded, size: 11, color: Colors.grey[400]),
                   const SizedBox(width: 4),
                   Text(
                     DateFormat('dd MMM, hh:mm a').format(txn.createdAt),
                     style: TextStyle(
-                      fontSize: 9.5,
+                      fontSize: 9,
                       fontWeight: FontWeight.w500,
                       color: Colors.grey[500],
                     ),
