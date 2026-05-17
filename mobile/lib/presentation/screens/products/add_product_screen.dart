@@ -263,6 +263,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               
               DropdownButtonFormField<String>(
                 value: _selectedCategory,
+                isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Category *',
                   prefixIcon: Icon(Icons.folder_open_rounded),
@@ -287,7 +288,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       controller: _priceController,
                       decoration: const InputDecoration(
                         labelText: 'Price (₹) *',
-                        prefixIcon: Icon(Icons.attach_money_rounded),
+                        prefixText: '₹ ',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       validator: (val) =>
@@ -300,7 +302,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       controller: _costPriceController,
                       decoration: const InputDecoration(
                         labelText: 'Cost Price (₹)',
-                        prefixIcon: Icon(Icons.money_off_rounded),
+                        prefixText: '₹ ',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     ),
@@ -315,8 +318,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     child: TextFormField(
                       controller: _thresholdController,
                       decoration: const InputDecoration(
-                        labelText: 'Alert Threshold *',
-                        prefixIcon: Icon(Icons.notifications_active_outlined),
+                        labelText: 'Threshold *',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
                       keyboardType: TextInputType.number,
                       validator: (val) =>
@@ -328,8 +331,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     child: TextFormField(
                       controller: _unitController,
                       decoration: const InputDecoration(
-                        labelText: 'Unit (e.g. Boxes, Pcs)',
-                        prefixIcon: Icon(Icons.workspaces_outline),
+                        labelText: 'Unit (e.g. Pcs)',
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
                     ),
                   ),
@@ -440,9 +443,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 ),
                               ),
                               const SizedBox(width: 4),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
-                                onPressed: () => _removeColorStock(index),
+                              SizedBox(
+                                width: 36,
+                                height: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
+                                  onPressed: () => _removeColorStock(index),
+                                ),
                               ),
                             ],
                           );
@@ -519,15 +528,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: _addExtraImage,
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(60, 42),
-                            shape: RoundedRectangleBorder(
+                        GestureDetector(
+                          onTap: _addExtraImage,
+                          child: Container(
+                            width: 50,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary,
                               borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                             ),
+                            child: const Icon(Icons.add, color: Colors.white, size: 22),
                           ),
-                          child: const Icon(Icons.add, size: 20),
                         ),
                       ],
                     ),
