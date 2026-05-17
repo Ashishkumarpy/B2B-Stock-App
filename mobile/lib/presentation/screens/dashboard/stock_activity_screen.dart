@@ -44,7 +44,9 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
     if (widget.initialType != oldWidget.initialType ||
         widget.initialDateMode != oldWidget.initialDateMode ||
         widget.initialDate != oldWidget.initialDate) {
-      _applyInitialParameters();
+      setState(() {
+        _applyInitialParameters();
+      });
     }
   }
 
@@ -57,6 +59,8 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
       } else if (widget.initialType == 'both') {
         _typeFilter = TypeFilterMode.both;
       }
+    } else {
+      _typeFilter = TypeFilterMode.both;
     }
     
     if (widget.initialDateMode != null) {
@@ -69,6 +73,9 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
       } else if (widget.initialDateMode == 'custom') {
         _dateFilter = DateFilterMode.custom;
       }
+    } else {
+      _dateFilter = DateFilterMode.today;
+      _customFilterDate = null;
     }
     
     if (widget.initialDate != null) {
