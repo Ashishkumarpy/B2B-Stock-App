@@ -55,7 +55,7 @@ class AnalyticsScreen extends ConsumerWidget {
     return Row(
       children: [
         _StatCard(
-            label: 'Total SKU', value: '$totalItems', color: AppTheme.primary),
+            label: 'Total Products', value: '$totalItems', color: AppTheme.primary),
         const SizedBox(width: AppTheme.sp16),
         _StatCard(
             label: 'Total Units',

@@ -182,7 +182,7 @@ class _BulkImportProductsScreenState
           const SizedBox(height: 12),
           const Text('• First row must contain headers.',
               style: TextStyle(fontSize: 13)),
-          const Text('• Required: name, sku, category.',
+          const Text('• Required: name, code (or sku), category.',
               style: TextStyle(fontSize: 13)),
           const Text('• Optional: quantity, threshold, price.',
               style: TextStyle(fontSize: 13)),

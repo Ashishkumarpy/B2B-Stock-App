@@ -289,7 +289,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                           ),
                           Text(
-                            'SKU: ${product.code}',
+                            'Code: ${product.code}',
                             style: const TextStyle(
                                 color: AppTheme.textSecondary,
                                 fontSize: 12,

@@ -253,11 +253,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               TextFormField(
                 controller: _codeController,
                 decoration: const InputDecoration(
-                  labelText: 'Product Code / SKU *',
+                  labelText: 'Product Code *',
                   prefixIcon: Icon(Icons.qr_code_rounded),
                 ),
                 validator: (val) =>
-                    val == null || val.isEmpty ? 'Enter code / SKU' : null,
+                    val == null || val.isEmpty ? 'Enter code' : null,
               ),
               const SizedBox(height: AppTheme.sp16),
               
