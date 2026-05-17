@@ -209,8 +209,10 @@ class AnalyticsScreen extends ConsumerWidget {
                             if (idx >= 0 && idx < monthlyTrend.length) {
                               return Padding(
                                 padding: const EdgeInsets.only(top: 8.0),
-                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
-                                child: Text(monthlyTrend[idx].label),
+                                child: Text(
+                                  monthlyTrend[idx].label,
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                                ),
                               );
                             }
                             return const SizedBox.shrink();
