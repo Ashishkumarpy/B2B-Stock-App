@@ -31,7 +31,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   late TextEditingController _costPriceController;
   
   // Images editing state
-  late TextEditingController _mainImageUrlController;
+  List<Map<String, String>> _productImages = [];
+  String _mainImageUrl = '';
   bool _isUploadingImage = false;
 
   // Color stocks editing state
@@ -61,8 +62,21 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         TextEditingController(text: widget.productToEdit?.costPrice?.toString() ?? '0');
 
     // Load initial images
-    _mainImageUrlController =
-        TextEditingController(text: widget.productToEdit?.imageUrl ?? '');
+    if (widget.productToEdit != null) {
+      _mainImageUrl = widget.productToEdit!.imageUrl ?? '';
+      _productImages = widget.productToEdit!.images
+          .map((img) => {
+                'url': img.url,
+                'publicId': img.publicId,
+              })
+          .toList();
+      if (_mainImageUrl.isNotEmpty && !_productImages.any((img) => img['url'] == _mainImageUrl)) {
+        _productImages.insert(0, {
+          'url': _mainImageUrl,
+          'publicId': '',
+        });
+      }
+    }
 
     // Load initial colors
     if (widget.productToEdit != null) {
@@ -85,7 +99,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _descriptionController.dispose();
     _unitController.dispose();
     _costPriceController.dispose();
-    _mainImageUrlController.dispose();
     super.dispose();
   }
 
@@ -127,7 +140,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
       if (response is Map && response.containsKey('url')) {
         setState(() {
-          _mainImageUrlController.text = response['url'] ?? '';
+          final newImg = {
+            'url': response['url']?.toString() ?? '',
+            'publicId': response['publicId']?.toString() ?? response['public_id']?.toString() ?? '',
+          };
+          _productImages.add(newImg);
+          if (_mainImageUrl.isEmpty) {
+            _mainImageUrl = newImg['url']!;
+          }
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -175,24 +195,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               })
           .toList();
 
-      final existingExtraImages = widget.productToEdit != null
-          ? widget.productToEdit!.images
-              .where((img) => img.url != widget.productToEdit!.imageUrl)
-              .map((img) => {
-                    'url': img.url,
-                    'publicId': img.publicId,
-                  })
-              .toList()
-          : const [];
-
-      final finalImages = [
-        if (_mainImageUrlController.text.trim().isNotEmpty)
-          {
-            'url': _mainImageUrlController.text.trim(),
-            'publicId': '',
-          },
-        ...existingExtraImages,
-      ];
+      final finalImages = _productImages
+          .where((img) => img['url']!.trim().isNotEmpty)
+          .map((img) => {
+                'url': img['url']!.trim(),
+                'publicId': img['publicId'] ?? '',
+              })
+          .toList();
 
       final data = {
         'name': _nameController.text.trim(),
@@ -203,7 +212,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         'quantity': finalQuantity,
         'color_stocks': finalColorStocks,
         'images': finalImages,
-        'image_url': finalImages.isNotEmpty ? finalImages.first['url'] : null,
+        'image_url': _mainImageUrl.isNotEmpty ? _mainImageUrl : (finalImages.isNotEmpty ? finalImages.first['url'] : null),
         'description': _descriptionController.text.trim(),
         'unit': _unitController.text.trim().isEmpty ? 'Units' : _unitController.text.trim(),
         'cost_price': double.tryParse(_costPriceController.text) ?? 0.0,
@@ -568,8 +577,6 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   }
 
   Widget _buildMainImageSection() {
-    final currentUrl = _mainImageUrlController.text.trim();
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -666,21 +673,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           
           const SizedBox(height: 16),
 
-          // ── Loading state or Preview state below ──
-          if (_isUploadingImage)
+          // ── Loading indicator ──
+          if (_isUploadingImage) ...[
             Container(
-              height: 180,
+              padding: const EdgeInsets.symmetric(vertical: 16),
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: const Center(
-                child: Column(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CircularProgressIndicator(),
-                    SizedBox(height: 12),
+                    SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    SizedBox(width: 12),
                     Text(
                       'Uploading to secure server...',
                       style: TextStyle(
@@ -691,97 +702,164 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ],
                 ),
               ),
-            )
-          else if (currentUrl.isNotEmpty)
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                  child: CachedNetworkImage(
-                    imageUrl: currentUrl,
-                    height: 200,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(
-                      height: 200,
-                      color: Colors.grey[100],
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (_, __, ___) => Container(
-                      height: 200,
-                      color: Colors.grey[100],
-                      child: const Icon(Icons.broken_image,
-                          size: 48, color: AppTheme.textMuted),
-                    ),
-                  ),
-                ),
-                // "Main Image" badge overlay at top-left
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.star, color: Colors.amber.shade400, size: 14),
-                        const SizedBox(width: 4),
-                        const Text(
-                          'Main Banner Photo',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+            ),
+            const SizedBox(height: 16),
+          ],
+
+          // ── Images Gallery Grid ──
+          if (_productImages.isNotEmpty) ...[
+            const Text(
+              'Product Gallery & Management',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+                color: AppTheme.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 0.82,
+              ),
+              itemCount: _productImages.length,
+              itemBuilder: (context, index) {
+                final img = _productImages[index];
+                final url = img['url'] ?? '';
+                final isMain = url == _mainImageUrl;
+
+                return Container(
+                  decoration: BoxDecoration(
+                    color: AppTheme.surface,
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                    border: Border.all(
+                      color: isMain ? AppTheme.primary : const Color(0xFFE2E8F0),
+                      width: isMain ? 2 : 1,
                     ),
                   ),
-                ),
-                // "Remove" button overlay at top-right
-                Positioned(
-                  top: 12,
-                  right: 12,
-                  child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _mainImageUrlController.clear();
-                      });
-                    },
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade900.withOpacity(0.85),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.delete_forever_outlined, color: Colors.white, size: 14),
-                          SizedBox(width: 4),
-                          Text(
-                            'Remove',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CachedNetworkImage(
+                              imageUrl: url,
+                              fit: BoxFit.cover,
+                              placeholder: (_, __) => Container(
+                                color: Colors.grey[100],
+                                child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              ),
+                              errorWidget: (_, __, ___) => Container(
+                                color: Colors.grey[100],
+                                child: const Icon(Icons.broken_image, size: 32, color: AppTheme.textMuted),
+                              ),
                             ),
-                          ),
-                        ],
+                            if (isMain)
+                              Positioned(
+                                top: 8,
+                                left: 8,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primary,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.star, color: Colors.white, size: 10),
+                                      SizedBox(width: 4),
+                                      Text(
+                                        'Main',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
+                      // Card Actions
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                        color: Colors.grey[50],
+                        child: Row(
+                          children: [
+                            // "Main" Toggle Button
+                            Expanded(
+                              child: InkWell(
+                                onTap: isMain
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          _mainImageUrl = url;
+                                        });
+                                      },
+                                borderRadius: BorderRadius.circular(4),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        isMain ? Icons.star : Icons.star_border,
+                                        color: isMain ? Colors.amber.shade700 : AppTheme.textMuted,
+                                        size: 14,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        isMain ? 'Main' : 'Set Main',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: isMain ? FontWeight.bold : FontWeight.normal,
+                                          color: isMain ? Colors.amber.shade900 : AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
+                            // "Remove" Button
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 16),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              onPressed: () {
+                                setState(() {
+                                  _productImages.removeAt(index);
+                                  if (isMain) {
+                                    _mainImageUrl = _productImages.isNotEmpty
+                                        ? _productImages.first['url'] ?? ''
+                                        : '';
+                                  }
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-              ],
-            )
-          else
+                );
+              },
+            ),
+          ] else ...[
             Container(
-              height: 120,
+              height: 100,
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -794,10 +872,10 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.add_a_photo_outlined,
-                      size: 30, color: Colors.indigo.shade300),
-                  const SizedBox(height: 8),
+                      size: 26, color: Colors.indigo.shade300),
+                  const SizedBox(height: 6),
                   const Text(
-                    'No photo captured yet',
+                    'No photos added yet',
                     style: TextStyle(
                         color: AppTheme.textMuted,
                         fontSize: 12,
@@ -805,7 +883,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   ),
                   const SizedBox(height: 2),
                   const Text(
-                    'Choose a method above to add product photo',
+                    'Snap a photo or choose from gallery above',
                     style: TextStyle(
                         color: AppTheme.textMuted,
                         fontSize: 10),
@@ -813,6 +891,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 ],
               ),
             ),
+          ],
         ],
       ),
     );
