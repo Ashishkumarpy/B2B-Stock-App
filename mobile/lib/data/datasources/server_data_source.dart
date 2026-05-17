@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/transaction.dart' as t_entity;
 import '../../domain/entities/supplier.dart';
@@ -62,12 +63,32 @@ class ServerDataSource {
     }
 
     final colorStocks = <ProductColorStock>[];
-    final rawColorStocks = d['color_stocks'];
+    dynamic rawColorStocks = d['color_stocks'];
+
+    if (rawColorStocks is String && rawColorStocks.isNotEmpty) {
+      try {
+        rawColorStocks = jsonDecode(rawColorStocks);
+      } catch (_) {}
+    }
+
     if (rawColorStocks is List) {
       for (final entry in rawColorStocks) {
-        if (entry is! Map) continue;
-        final name = (entry['color'] as String? ?? '').trim();
-        final qty = (entry['quantity'] as num?)?.toInt() ?? 0;
+        if (entry == null) continue;
+        Map<dynamic, dynamic>? mapEntry;
+        if (entry is Map) {
+          mapEntry = entry;
+        } else if (entry is String && entry.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(entry);
+            if (decoded is Map) {
+              mapEntry = decoded;
+            }
+          } catch (_) {}
+        }
+        if (mapEntry == null) continue;
+
+        final name = (mapEntry['color']?.toString() ?? '').trim();
+        final qty = (mapEntry['quantity'] as num?)?.toInt() ?? 0;
         if (name.isEmpty) continue;
         colorStocks.add(ProductColorStock(
           color: name,

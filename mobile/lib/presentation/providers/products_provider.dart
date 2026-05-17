@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/product.dart';
@@ -59,12 +60,34 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
     final imagesList = (json['images'] as List?)?.map((i) => ProductImage.fromMap(i as Map<String, dynamic>)).toList() ?? [];
     
     final colorStocks = <ProductColorStock>[];
-    final rawColorStocks = json['color_stocks'];
+    dynamic rawColorStocks = json['color_stocks'];
+
+    if (rawColorStocks is String && rawColorStocks.isNotEmpty) {
+      try {
+        rawColorStocks = jsonDecode(rawColorStocks);
+      } catch (e) {
+        AppLog.d('Error decoding color_stocks JSON string: $e');
+      }
+    }
+
     if (rawColorStocks is List) {
       for (final entry in rawColorStocks) {
-        if (entry is! Map) continue;
-        final name = (entry['color'] as String? ?? '').trim();
-        final qty = (entry['quantity'] as num?)?.toInt() ?? 0;
+        if (entry == null) continue;
+        Map<dynamic, dynamic>? mapEntry;
+        if (entry is Map) {
+          mapEntry = entry;
+        } else if (entry is String && entry.isNotEmpty) {
+          try {
+            final decoded = jsonDecode(entry);
+            if (decoded is Map) {
+              mapEntry = decoded;
+            }
+          } catch (_) {}
+        }
+        if (mapEntry == null) continue;
+
+        final name = (mapEntry['color']?.toString() ?? '').trim();
+        final qty = (mapEntry['quantity'] as num?)?.toInt() ?? 0;
         if (name.isEmpty) continue;
         colorStocks.add(ProductColorStock(
           color: name,
