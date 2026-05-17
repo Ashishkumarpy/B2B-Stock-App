@@ -581,15 +581,92 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text(
-            'Product Photo',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 13,
-              color: AppTheme.textPrimary,
-            ),
+          // ── Nice triggers section on top of card ──
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: _isUploadingImage ? null : () => _pickAndUploadImage(ImageSource.camera),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                      border: Border.all(color: AppTheme.primary.withOpacity(0.15)),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.camera_alt_outlined, color: AppTheme.primary, size: 24),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Take Photo from Mobile',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Snap via camera instantly',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: AppTheme.primary.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: _isUploadingImage ? null : () => _pickAndUploadImage(ImageSource.gallery),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                      border: Border.all(color: Colors.indigo.withOpacity(0.15)),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(Icons.photo_library_outlined, color: Colors.indigo.shade700, size: 24),
+                        const SizedBox(height: 6),
+                        const Text(
+                          'Choose from your Mobile',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                            color: Colors.indigo,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Select from your gallery',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 9,
+                            color: Colors.indigo.shade700.withOpacity(0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          
+          const SizedBox(height: 16),
+
+          // ── Loading state or Preview state below ──
           if (_isUploadingImage)
             Container(
               height: 180,
@@ -616,68 +693,95 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
             )
           else if (currentUrl.isNotEmpty)
-            Column(
+            Stack(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                   child: CachedNetworkImage(
                     imageUrl: currentUrl,
-                    height: 180,
+                    height: 200,
                     width: double.infinity,
                     fit: BoxFit.cover,
                     placeholder: (_, __) => Container(
-                      height: 180,
+                      height: 200,
                       color: Colors.grey[100],
                       child: const Center(child: CircularProgressIndicator()),
                     ),
                     errorWidget: (_, __, ___) => Container(
-                      height: 180,
+                      height: 200,
                       color: Colors.grey[100],
                       child: const Icon(Icons.broken_image,
                           size: 48, color: AppTheme.textMuted),
                     ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _pickAndUploadImage(ImageSource.camera),
-                        icon: const Icon(Icons.camera_alt_outlined, size: 16),
-                        label: const Text('Retake', style: TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                // "Main Image" badge overlay at top-left
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star, color: Colors.amber.shade400, size: 14),
+                        const SizedBox(width: 4),
+                        const Text(
+                          'Main Banner Photo',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+                // "Remove" button overlay at top-right
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _mainImageUrlController.clear();
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade900.withOpacity(0.85),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.delete_forever_outlined, color: Colors.white, size: 14),
+                          SizedBox(width: 4),
+                          Text(
+                            'Remove',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _pickAndUploadImage(ImageSource.gallery),
-                        icon: const Icon(Icons.photo_library_outlined, size: 16),
-                        label: const Text('Choose', style: TextStyle(fontSize: 12)),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, color: AppTheme.danger),
-                      onPressed: () {
-                        setState(() {
-                          _mainImageUrlController.clear();
-                        });
-                      },
-                    ),
-                  ],
-                )
+                  ),
+                ),
               ],
             )
           else
             Container(
-              height: 150,
+              height: 120,
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -690,8 +794,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.add_a_photo_outlined,
-                      size: 36, color: Colors.indigo.shade300),
-                  const SizedBox(height: 10),
+                      size: 30, color: Colors.indigo.shade300),
+                  const SizedBox(height: 8),
                   const Text(
                     'No photo captured yet',
                     style: TextStyle(
@@ -699,34 +803,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         fontSize: 12,
                         fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ElevatedButton.icon(
-                        onPressed: () => _pickAndUploadImage(ImageSource.camera),
-                        icon: const Icon(Icons.camera_alt_rounded, size: 14),
-                        label: const Text('Camera', style: TextStyle(fontSize: 11)),
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      OutlinedButton.icon(
-                        onPressed: () => _pickAndUploadImage(ImageSource.gallery),
-                        icon: const Icon(Icons.photo_library_outlined, size: 14),
-                        label: const Text('Gallery', style: TextStyle(fontSize: 11)),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 8),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  const Text(
+                    'Choose a method above to add product photo',
+                    style: TextStyle(
+                        color: AppTheme.textMuted,
+                        fontSize: 10),
                   ),
                 ],
               ),
