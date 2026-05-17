@@ -1,11 +1,11 @@
 'use client';
 
 import NextImage from 'next/image';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { serverGet, ServerApiError } from '../../../lib/server_api';
 import { useRequireAuth } from '../../../lib/use_require_auth';
-import { useEffect } from 'react';
+import ProductFormModal from '../../../components/ProductFormModal';
 
 type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -15,9 +15,15 @@ interface Product {
   code: string;
   category: string;
   quantity: number;
+  threshold: number;
   price: number;
   image_url?: string;
+  images?: any[];
+  description?: string;
   stock_status: StockStatus;
+  color_stocks?: any[];
+  created_at?: string;
+  updated_at?: string;
 }
 
 const statusMap: Record<StockStatus, { label: string; cls: string }> = {
@@ -62,6 +68,9 @@ export default function FolderExplorerPage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategory, setNewCategory] = useState('');
 
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem('product_categories');
@@ -96,36 +105,21 @@ export default function FolderExplorerPage() {
     router.push(`/products/folder?name=${encodeURIComponent(value)}`);
   };
 
-  const handleDeleteFolder = async () => {
-    const folderPath = currentSegments.join(' / ');
-    const count = productsInFolder.length;
+  const openEdit = (product: Product) => {
+    setEditingProduct(product);
+    setShowEditModal(true);
+  };
 
-    let message = `Are you sure you want to delete the folder "${folderPath}"?`;
-    if (count > 0) {
-      message = `Are you sure you want to delete the folder "${folderPath}" and all of its ${count} products? This action cannot be undone.`;
-    }
-
-    if (!window.confirm(message)) return;
-
+  const handleDeleteProduct = async (product: Product) => {
+    if (!confirm(`Delete product "${product.name}"? This cannot be undone.`)) return;
     setLoading(true);
     try {
       const { serverDelete } = await import('../../../lib/server_api');
-      
-      // Delete all products in this folder
-      for (const p of productsInFolder) {
-        await serverDelete(`/products/${p.id}`);
-      }
-
-      // Remove from custom categories
-      const cleanPath = folderPath.toLowerCase();
-      const updatedCustom = customCategories.filter(c => c.toLowerCase() !== cleanPath);
-      saveCustomCategories(updatedCustom);
-
-      alert('Folder and its products deleted successfully.');
-      router.push('/products/folder'); // Redirect to root
+      await serverDelete(`/products/${product.id}`);
+      await fetchProducts();
     } catch (e) {
-      console.error(e);
-      alert('Failed to delete folder.');
+      console.error('Failed to delete product:', e);
+      alert('Failed to delete product.');
     } finally {
       setLoading(false);
     }
@@ -135,22 +129,23 @@ export default function FolderExplorerPage() {
   const currentSegments = useMemo(() => splitCategoryPath(rawPath), [rawPath]);
   const currentLabel = currentSegments.length > 0 ? currentSegments[currentSegments.length - 1] : 'Root';
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await serverGet('/products');
-        const data = (res as { data?: Product[] }).data ?? [];
-        setProducts(data);
-      } catch (error) {
-        if (error instanceof ServerApiError && error.status === 401) {
-          router.push('/login');
-          return;
-        }
-        console.error(error);
-      } finally {
-        setLoading(false);
+  const fetchProducts = async () => {
+    try {
+      const res = await serverGet('/products');
+      const data = (res as { data?: Product[] }).data ?? [];
+      setProducts(data);
+    } catch (error) {
+      if (error instanceof ServerApiError && error.status === 401) {
+        router.push('/login');
+        return;
       }
-    };
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProducts();
   }, [router]);
 
@@ -193,15 +188,6 @@ export default function FolderExplorerPage() {
           >
             Back to Products
           </button>
-          {currentSegments.length > 0 && (
-            <button
-              type="button"
-              onClick={handleDeleteFolder}
-              className="rounded-xl border border-red-500/40 bg-red-600/10 px-4 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-600/20"
-            >
-              Delete Folder
-            </button>
-          )}
           <button
             type="button"
             onClick={() => {
@@ -300,18 +286,40 @@ export default function FolderExplorerPage() {
                       <span>Qty: {product.quantity}</span>
                       <span>Rs {product.price.toLocaleString()}</span>
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
+                    <div className="mt-2 flex items-center justify-between gap-1.5">
                       <span className={`inline-flex badge ${status.cls}`}>{status.label}</span>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          router.push(`/products/${encodeURIComponent(product.id)}`);
-                        }}
-                        className="rounded-lg border border-indigo-500/40 bg-indigo-600/20 px-2.5 py-1 text-[11px] font-semibold text-indigo-200 hover:bg-indigo-600/30"
-                      >
-                        Details
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            router.push(`/products/${encodeURIComponent(product.id)}`);
+                          }}
+                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-300 hover:bg-white/10"
+                        >
+                          Details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openEdit(product);
+                          }}
+                          className="rounded-lg border border-indigo-500/40 bg-indigo-600/20 px-2 py-1 text-[10px] font-semibold text-indigo-200 hover:bg-indigo-600/30"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteProduct(product);
+                          }}
+                          className="rounded-lg border border-red-500/40 bg-red-600/20 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-600/30"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -333,6 +341,24 @@ export default function FolderExplorerPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showEditModal && (
+        <ProductFormModal
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setEditingProduct(null);
+          }}
+          onSuccess={() => {
+            setShowEditModal(false);
+            setEditingProduct(null);
+            fetchProducts();
+          }}
+          editingProduct={editingProduct}
+          allCategories={allCategories}
+          existingProducts={products}
+        />
       )}
     </div>
   );

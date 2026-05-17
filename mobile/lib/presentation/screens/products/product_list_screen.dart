@@ -201,7 +201,6 @@ class _ProductListScreenState
                             folder: folders[index],
                             onTap: () => setState(
                                 () => _openFolder = folders[index].name),
-                            onLongPress: () => _confirmDeleteFolder(context, ref, folders[index], allProducts),
                           );
                         },
                       ),
@@ -286,6 +285,8 @@ class _ProductListScreenState
             product: product,
             onTap: () =>
                 context.push('/products/${product.id}'),
+            onEdit: () => context.push('/edit-product', extra: product),
+            onDelete: () => _confirmDeleteProduct(context, ref, product),
           );
         },
       ),
@@ -321,7 +322,7 @@ class _ProductListScreenState
       ),
     );
   }
-  void _confirmDeleteFolder(BuildContext context, WidgetRef ref, _FolderData folder, List<Product> allProducts) {
+  void _confirmDeleteProduct(BuildContext context, WidgetRef ref, Product product) {
     showDialog(
       context: context,
       builder: (context) {
@@ -333,166 +334,73 @@ class _ProductListScreenState
             children: [
               const Icon(Icons.delete_forever_rounded, color: AppTheme.danger),
               const SizedBox(width: 8),
-              Expanded(child: Text('Delete "${folder.name}"?')),
+              const Expanded(child: Text('Delete Product?')),
             ],
           ),
           content: Text(
-            'This folder contains ${folder.count} products.\n\n'
-            'How would you like to delete the folder?',
+            'Are you sure you want to permanently delete "${product.name}" (${product.code})?\n\n'
+            'This action cannot be undone and will delete all stock history for this item.',
             style: const TextStyle(fontSize: 14),
           ),
-          actionsAlignment: MainAxisAlignment.center,
           actions: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Option 1: Keep products, just delete folder (move to Uncategorized)
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                    ),
-                  ),
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    _executeFolderDeleteAction(context, ref, folder, allProducts, deleteProducts: false);
-                  },
-                  icon: const Icon(Icons.drive_file_move_outlined, size: 18),
-                  label: const Text('Delete Folder, Keep Products'),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.danger,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                 ),
-                const SizedBox(height: 8),
+              ),
+              onPressed: () async {
+                Navigator.pop(context);
                 
-                // Option 2: Delete folder and all products
-                ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.danger,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                    ),
+                // Show loading
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (ctx) => const Center(
+                    child: CircularProgressIndicator(color: AppTheme.primary),
                   ),
-                  onPressed: () async {
-                    Navigator.pop(context);
-                    
-                    // Extra confirmation for deleting all products
-                    final confirmAll = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Confirm Total Deletion'),
-                        content: Text('Are you sure you want to permanently delete folder "${folder.name}" and all of its ${folder.count} products? This cannot be undone.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx, false),
-                            child: const Text('Cancel'),
-                          ),
-                          ElevatedButton(
-                            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
-                            onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text('Delete All', style: TextStyle(color: Colors.white)),
-                          ),
-                        ],
+                );
+                
+                try {
+                  final client = ref.read(apiClientProvider);
+                  await client.delete('/products/${product.id}');
+                  
+                  ref.invalidate(productsProvider);
+                  ref.invalidate(categoriesProvider);
+                  
+                  if (context.mounted) {
+                    Navigator.pop(context); // Pop loading
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Product "${product.name}" deleted successfully.'),
+                        backgroundColor: AppTheme.success,
                       ),
                     );
-                    
-                    if (confirmAll == true && context.mounted) {
-                      _executeFolderDeleteAction(context, ref, folder, allProducts, deleteProducts: true);
-                    }
-                  },
-                  icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-                  label: const Text('Delete Folder & All Products'),
-                ),
-                const SizedBox(height: 8),
-                
-                // Cancel
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
-                ),
-              ],
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.pop(context); // Pop loading
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to delete product: $e'),
+                        backgroundColor: AppTheme.danger,
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Delete'),
             ),
           ],
         );
       },
     );
-  }
-
-  void _executeFolderDeleteAction(
-    BuildContext context,
-    WidgetRef ref,
-    _FolderData folder,
-    List<Product> allProducts, {
-    required bool deleteProducts,
-  }) async {
-    // Show progress dialog
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(color: AppTheme.primary),
-      ),
-    );
-
-    try {
-      final client = ref.read(apiClientProvider);
-      final productsInFolder = allProducts.where((p) => p.category == folder.name).toList();
-
-      if (deleteProducts) {
-        // Delete all products
-        for (final p in productsInFolder) {
-          await client.delete('/products/${p.id}');
-        }
-      } else {
-        // Move all products to 'Uncategorized'
-        for (final p in productsInFolder) {
-          final updatedData = {
-            'name': p.name,
-            'code': p.code,
-            'price': p.price,
-            'threshold': p.threshold,
-            'category': 'Uncategorized',
-            'quantity': p.quantity,
-            'color_stocks': p.colorStocks,
-            'images': p.images,
-            'image_url': p.imageUrl,
-            'description': p.description,
-            'unit': p.unit ?? 'Units',
-            'cost_price': p.costPrice ?? 0.0,
-          };
-          await client.putJson('/products/${p.id}', updatedData);
-        }
-      }
-
-      // Invalidate provider caches so the UI refreshes immediately
-      ref.invalidate(productsProvider);
-      ref.invalidate(categoriesProvider);
-
-      if (context.mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(deleteProducts
-                ? 'Folder "${folder.name}" and all products deleted successfully.'
-                : 'Folder "${folder.name}" deleted. Products moved to Uncategorized.'),
-            backgroundColor: AppTheme.success,
-          ),
-        );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        Navigator.pop(context); // Close loading dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete folder: $e'),
-            backgroundColor: AppTheme.danger,
-          ),
-        );
-      }
-    }
   }
 }
 
@@ -517,19 +425,16 @@ class _FolderData {
 class _FolderCard extends StatelessWidget {
   final _FolderData folder;
   final VoidCallback onTap;
-  final VoidCallback? onLongPress;
 
   const _FolderCard({
     required this.folder,
     required this.onTap,
-    this.onLongPress,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      onLongPress: onLongPress,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(AppTheme.radiusXL),
         child: Stack(
@@ -563,30 +468,6 @@ class _FolderCard extends StatelessWidget {
                     Colors.transparent,
                     Colors.black.withValues(alpha: 0.75),
                   ],
-                ),
-              ),
-            ),
-
-            // Trash button top right
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Material(
-                color: Colors.black.withValues(alpha: 0.4),
-                shape: const CircleBorder(),
-                clipBehavior: Clip.antiAlias,
-                child: IconButton(
-                  constraints: const BoxConstraints(
-                    minWidth: 32,
-                    minHeight: 32,
-                  ),
-                  padding: EdgeInsets.zero,
-                  icon: const Icon(
-                    Icons.delete_outline_rounded,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                  onPressed: onLongPress,
                 ),
               ),
             ),

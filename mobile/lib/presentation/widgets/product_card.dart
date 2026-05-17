@@ -7,11 +7,15 @@ import '../../domain/entities/product.dart';
 class ProductCard extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const ProductCard({
     super.key,
     required this.product,
     required this.onTap,
+    this.onEdit,
+    this.onDelete,
   });
 
   @override
@@ -83,6 +87,68 @@ class ProductCard extends StatelessWidget {
                             fontSize: 9,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Three-dots menu (Top Left)
+                  if (onEdit != null || onDelete != null)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Material(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        shape: const CircleBorder(),
+                        clipBehavior: Clip.antiAlias,
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            cardColor: Theme.of(context).canvasColor,
+                          ),
+                          child: PopupMenuButton<String>(
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(
+                              Icons.more_vert_rounded,
+                              color: Colors.white,
+                              size: 16,
+                            ),
+                            onSelected: (value) {
+                              if (value == 'edit' && onEdit != null) {
+                                onEdit!();
+                              } else if (value == 'delete' && onDelete != null) {
+                                onDelete!();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              if (onEdit != null)
+                                PopupMenuItem(
+                                  value: 'edit',
+                                  height: 36,
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.edit_rounded, size: 16, color: Theme.of(context).textTheme.bodyMedium?.color),
+                                      const SizedBox(width: 8),
+                                      const Text('Edit', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                ),
+                              if (onDelete != null)
+                                const PopupMenuItem(
+                                  value: 'delete',
+                                  height: 36,
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.delete_outline_rounded, size: 16, color: AppTheme.danger),
+                                      SizedBox(width: 8),
+                                      Text('Delete', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.danger)),
+                                    ],
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ),
