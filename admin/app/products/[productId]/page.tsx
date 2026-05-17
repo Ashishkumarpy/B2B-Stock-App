@@ -365,6 +365,7 @@ export default function ProductDetailAdminPage() {
         onClose={() => setShowEditModal(false)}
         onSuccess={() => load()}
         editingProduct={product}
+        existingProducts={products}
       />
     </div>
   );

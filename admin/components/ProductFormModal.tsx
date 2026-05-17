@@ -47,6 +47,7 @@ interface ProductFormModalProps {
   editingProduct?: Product | null;
   initialCategory?: string;
   allCategories?: string[];
+  existingProducts?: Product[];
 }
 
 const EMPTY_FORM = {
@@ -118,6 +119,7 @@ export default function ProductFormModal({
   editingProduct,
   initialCategory,
   allCategories = [],
+  existingProducts = [],
 }: ProductFormModalProps) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [images, setImages] = useState<ImageAsset[]>([]);
@@ -225,6 +227,18 @@ export default function ProductFormModal({
     setSaveError(null);
 
     try {
+      // Validate duplicate product code
+      const enteredCode = form.code.trim().toLowerCase();
+      const isDuplicate = existingProducts.some(p => 
+        p.code.trim().toLowerCase() === enteredCode && 
+        p.id !== editingProduct?.id
+      );
+      if (isDuplicate) {
+        setSaveError("This Product Code is already taken.");
+        setSaving(false);
+        return;
+      }
+
       const finalQuantity = syncQuantityFromColors ? colorTotalQuantity : Number(form.quantity);
       const stockStatus = deriveStatus(finalQuantity, Number(form.threshold));
       const finalImages = [...images];

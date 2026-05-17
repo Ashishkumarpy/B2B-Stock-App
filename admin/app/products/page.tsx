@@ -319,6 +319,7 @@ export default function ProductsPage() {
         editingProduct={editingProduct}
         initialCategory={initialCategory}
         allCategories={allCategories}
+        existingProducts={products}
       />
 
       {viewerImages.length > 0 && (

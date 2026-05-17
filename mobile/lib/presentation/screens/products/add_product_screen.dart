@@ -359,8 +359,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   labelText: 'Product Code *',
                   prefixIcon: Icon(Icons.qr_code_rounded),
                 ),
-                validator: (val) =>
-                    val == null || val.isEmpty ? 'Enter code' : null,
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Enter code';
+                  final enteredCode = val.trim();
+                  final products = ref.read(productsProvider).value ?? [];
+                  final duplicate = products.any((p) =>
+                      p.code.toLowerCase() == enteredCode.toLowerCase() &&
+                      p.id != widget.productToEdit?.id);
+                  if (duplicate) {
+                    return 'This Product Code is already taken';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: AppTheme.sp16),
               
