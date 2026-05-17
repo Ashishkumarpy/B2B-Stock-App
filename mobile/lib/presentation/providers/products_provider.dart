@@ -58,6 +58,21 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
     // Mapping from Supabase Snake Case to Dart Camel Case
     final imagesList = (json['images'] as List?)?.map((i) => ProductImage.fromMap(i as Map<String, dynamic>)).toList() ?? [];
     
+    final colorStocks = <ProductColorStock>[];
+    final rawColorStocks = json['color_stocks'];
+    if (rawColorStocks is List) {
+      for (final entry in rawColorStocks) {
+        if (entry is! Map) continue;
+        final name = (entry['color'] as String? ?? '').trim();
+        final qty = (entry['quantity'] as num?)?.toInt() ?? 0;
+        if (name.isEmpty) continue;
+        colorStocks.add(ProductColorStock(
+          color: name,
+          quantity: qty < 0 ? 0 : qty,
+        ));
+      }
+    }
+
     return Product(
       id: json['id']?.toString() ?? '',
       name: json['name'] ?? 'Unknown',
@@ -71,6 +86,7 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
       imageUrl: json['image_url'] ?? (imagesList.isNotEmpty ? imagesList.first.url : null),
       images: imagesList,
       unit: json['unit'],
+      colorStocks: colorStocks,
       description: json['description'],
       stockStatus: _mapStatus(json['stock_status']),
       updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']) : null,
