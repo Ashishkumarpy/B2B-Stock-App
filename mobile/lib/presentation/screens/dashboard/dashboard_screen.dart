@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/version_check_service.dart';
 import '../../providers/products_provider.dart';
@@ -32,6 +33,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final transactionsAsync = ref.watch(transactionsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final user = ref.watch(authStateProvider).user;
+
+    final lowStockCount = productsAsync.maybeWhen(
+      data: (p) => p.where((x) => x.stockStatus == StockStatus.lowStock).length,
+      orElse: () => 0,
+    );
 
     return Scaffold(
       backgroundColor: AppTheme.background,
@@ -70,10 +76,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ],
               ),
               actions: [
-                IconButton(
-                  icon: const Icon(Icons.notifications_none_rounded,
-                      color: AppTheme.textPrimary),
-                  onPressed: () {},
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.notifications_none_rounded,
+                          color: AppTheme.textPrimary),
+                      onPressed: () => _showNotificationsBottomSheet(context),
+                    ),
+                    if (lowStockCount > 0)
+                      Positioned(
+                        right: 8,
+                        top: 8,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: AppTheme.danger,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 8,
+                            minHeight: 8,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 4),
               ],
@@ -423,6 +450,318 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
       ],
     );
+  }
+
+  void _showNotificationsBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Consumer(
+              builder: (context, ref, _) {
+                final productsAsync = ref.watch(productsProvider);
+                final transactionsAsync = ref.watch(transactionsProvider);
+
+                final lowStockProds = productsAsync.maybeWhen(
+                  data: (p) => p.where((x) => x.stockStatus == StockStatus.lowStock).toList(),
+                  orElse: () => [],
+                );
+
+                final recentTxs = transactionsAsync.maybeWhen(
+                  data: (txs) => txs.take(15).toList(),
+                  orElse: () => [],
+                );
+
+                return Container(
+                  decoration: const BoxDecoration(
+                    color: AppTheme.background,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(AppTheme.radiusXL),
+                      topRight: Radius.circular(AppTheme.radiusXL),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      // Header drag bar
+                      const SizedBox(height: 8),
+                      Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Title
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Notifications & Alerts',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: AppTheme.textPrimary,
+                              ),
+                            ),
+                            if (lowStockProds.isNotEmpty)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.danger.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${lowStockProds.length} Alerts',
+                                  style: const TextStyle(
+                                    color: AppTheme.danger,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Custom Tab List
+                      Expanded(
+                        child: DefaultTabController(
+                          length: 2,
+                          child: Column(
+                            children: [
+                              TabBar(
+                                indicatorColor: AppTheme.primary,
+                                labelColor: AppTheme.primary,
+                                unselectedLabelColor: AppTheme.textSecondary,
+                                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                tabs: const [
+                                  Tab(text: '🚨 Critical Alerts'),
+                                  Tab(text: '📝 Activity Log'),
+                                ],
+                              ),
+                              Expanded(
+                                child: TabBarView(
+                                  children: [
+                                    // 1. Alerts View
+                                    _buildAlertsTab(lowStockProds, scrollController),
+                                    // 2. Activity Log View
+                                    _buildActivityTab(recentTxs, scrollController),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAlertsTab(List<dynamic> lowStockProds, ScrollController scrollController) {
+    if (lowStockProds.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.check_circle_outline_rounded, color: AppTheme.success, size: 48),
+            const SizedBox(height: 12),
+            const Text(
+              'All Systems Healthy',
+              style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'No items are currently below stock threshold.',
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      controller: scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: lowStockProds.length,
+      itemBuilder: (context, index) {
+        final product = lowStockProds[index];
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+            side: BorderSide(color: AppTheme.danger.withValues(alpha: 0.15)),
+          ),
+          color: AppTheme.danger.withValues(alpha: 0.02),
+          child: InkWell(
+            onTap: () {
+              Navigator.pop(context); // Close bottom sheet
+              context.push('/products?filter=low');
+            },
+            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.danger.withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.warning_rounded, color: AppTheme.danger, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          product.code,
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          product.name,
+                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              'Stock: ${product.quantity}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.danger),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Threshold: ${product.threshold}',
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppTheme.textMuted),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildActivityTab(List<dynamic> recentTxs, ScrollController scrollController) {
+    if (recentTxs.isEmpty) {
+      return const Center(
+        child: Text('No recent transaction activity.', style: TextStyle(color: AppTheme.textSecondary)),
+      );
+    }
+
+    return ListView.builder(
+      controller: scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: recentTxs.length,
+      itemBuilder: (context, index) {
+        final tx = recentTxs[index];
+        final isStockIn = tx.isStockIn;
+        final timeStr = _formatTimeAgo(tx.createdAt);
+
+        return Card(
+          margin: const EdgeInsets.only(bottom: 8),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+            side: BorderSide(color: Colors.grey.withValues(alpha: 0.12)),
+          ),
+          child: InkWell(
+            onTap: () {
+              Navigator.pop(context); // Close bottom sheet
+              context.push('/stock-activity');
+            },
+            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (isStockIn ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.08),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isStockIn ? Icons.south_west_rounded : Icons.north_east_rounded,
+                      color: isStockIn ? AppTheme.success : AppTheme.danger,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          tx.productCode ?? 'UNKNOWN',
+                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${isStockIn ? "Stocked In" : "Stocked Out"}: ${tx.quantity} units',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                        ),
+                        if (tx.workerName != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            'By: ${tx.workerName}',
+                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        timeStr,
+                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatTimeAgo(DateTime dt) {
+    final diff = DateTime.now().difference(dt);
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
   }
 }
 
