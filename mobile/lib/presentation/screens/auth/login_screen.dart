@@ -176,7 +176,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                     color: AppTheme.textSecondary,
                                   ),
                         ),
-                        const SizedBox(height: 48),
+                        const SizedBox(height: AppTheme.sp8),
+                        Consumer(
+                          builder: (context, ref, child) {
+                            final serverUrl = ref.watch(serverBaseUrlProvider);
+                            return Text(
+                              serverUrl.isEmpty
+                                  ? 'No Server Configured'
+                                  : 'Server: ${serverUrl.replaceAll('https://', '').replaceAll('http://', '')}',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: serverUrl.isEmpty ? AppTheme.danger : AppTheme.primary,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.2,
+                                  ),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: AppTheme.sp32),
 
                         if (ref.watch(serverBaseUrlProvider).isEmpty)
                           Padding(
