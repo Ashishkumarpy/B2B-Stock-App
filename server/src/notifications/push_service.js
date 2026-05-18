@@ -213,32 +213,23 @@ export async function sendWorkerOtpPush(workerId, otp, clientToken) {
 
   const safeClientToken = String(clientToken || '').trim();
 
-  // If a clientToken is provided, verify it is registered for this worker.
-  // If registered, send the OTP ONLY to this device to prevent notifications on other devices!
+  // If a clientToken is provided by the requesting device, target it directly!
+  // This allows new devices to receive the OTP notification instantly and register afterwards.
   if (safeClientToken) {
-    const { data: matchedDevice, error: matchError } = await supabaseAdmin
-      .from('notification_devices')
-      .select('token')
-      .eq('worker_id', workerId)
-      .eq('token', safeClientToken)
-      .maybeSingle();
-
-    if (!matchError && matchedDevice) {
-      console.log('Targeting OTP push notification specifically to requesting device token');
-      return await sendPushNotification({
-        title: 'Verification Code',
-        body: `Your login code is: ${otp}. It will expire in 5 minutes.`,
-        data: {
-          type: 'otp_verification',
-          otp: String(otp)
-        },
-        apps: ['mobile'],
-        tokens: [safeClientToken]
-      });
-    }
+    console.log('Targeting OTP push notification specifically to requesting device token');
+    return await sendPushNotification({
+      title: 'Verification Code',
+      body: `Your login code is: ${otp}. It will expire in 5 minutes.`,
+      data: {
+        type: 'otp_verification',
+        otp: String(otp)
+      },
+      apps: ['mobile'],
+      tokens: [safeClientToken]
+    });
   }
 
-  // Fallback to all devices associated with the worker if clientToken is not matched or not provided
+  // Fallback to all devices associated with the worker if clientToken was not provided
   const { data: devices, error } = await supabaseAdmin
     .from('notification_devices')
     .select('token')
