@@ -31,7 +31,7 @@ class AppConstants {
   static const String darkModeKey = 'dark_mode_enabled';
 
   // ── UI ───────────────────────────────────────────────────────────────────
-  static const String appName = 'StockIQ';
+  static const String appName = 'Zentory';
   static const String appTagline = 'Smart B2B Inventory';
 
   // ── Pagination ──────────────────────────────────────────────────────────
@@ -58,8 +58,21 @@ enum UserRole {
       };
 
   bool get canManageUsers => this == UserRole.admin;
+  bool get canManageProducts => this == UserRole.admin;
+  bool get canManageWarehouses =>
+      this == UserRole.admin || this == UserRole.manager;
   bool get canViewAnalytics =>
       this != UserRole.worker && this != UserRole.customer;
+  bool get canViewWorkerActivity =>
+      this == UserRole.admin || this == UserRole.manager;
+  bool get canViewStockActivity =>
+      this == UserRole.admin ||
+      this == UserRole.manager ||
+      this == UserRole.worker;
+  bool get canRecordStock =>
+      this == UserRole.admin ||
+      this == UserRole.manager ||
+      this == UserRole.worker;
   bool get canManageSuppliers => this == UserRole.admin;
 }
 

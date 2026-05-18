@@ -74,7 +74,7 @@ class B2BStockApp extends ConsumerWidget {
     MobilePushNotifications.instance.setRouter(router);
 
     return MaterialApp.router(
-      title: 'StockIQ — B2B Inventory',
+      title: 'Zentory — B2B Inventory',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,

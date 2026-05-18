@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 class AppTheme {
   // Brand Colors — Blue & White
-  static const Color primary = Color(0xFF2563EB);       // Blue-600
-  static const Color primaryDark = Color(0xFF1D4ED8);   // Blue-700
-  static const Color primaryLight = Color(0xFFEFF6FF);  // Blue-50
+  static const Color primary = Color(0xFF2563EB); // Blue-600
+  static const Color primaryDark = Color(0xFF1D4ED8); // Blue-700
+  static const Color primaryLight = Color(0xFFEFF6FF); // Blue-50
   static const Color secondary = Color(0xFFF8FAFC);
   static const Color accent = Color(0xFFE2E8F0);
   static const Color success = Color(0xFF10B981);
@@ -49,9 +49,27 @@ class AppTheme {
   static Color surfaceColor(BuildContext context) =>
       isDarkMode(context) ? const Color(0xFF1E293B) : Colors.white;
 
+  static Color backgroundColor(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF0F172A) : background;
+
+  static Color cardColor(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF1E293B) : cardBackground;
+
   static Color borderColor(BuildContext context) => isDarkMode(context)
       ? Colors.white.withValues(alpha: 0.08)
       : const Color(0xFFE2E8F0);
+
+  static Color inputFillColor(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF111827) : const Color(0xFFF1F5F9);
+
+  static Color primaryTextColor(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFFF8FAFC) : textPrimary;
+
+  static Color secondaryTextColor(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFFCBD5E1) : textSecondary;
+
+  static Color mutedTextColor(BuildContext context) =>
+      isDarkMode(context) ? const Color(0xFF94A3B8) : textMuted;
 
   // Light Theme
   static ThemeData get lightTheme {
@@ -149,6 +167,54 @@ class AppTheme {
         seedColor: primary,
         primary: const Color(0xFF60A5FA),
         brightness: Brightness.dark,
+        surface: const Color(0xFF1E293B),
+        error: danger,
+      ),
+      scaffoldBackgroundColor: const Color(0xFF0F172A),
+      cardColor: const Color(0xFF1E293B),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF0F172A),
+        foregroundColor: Color(0xFFF8FAFC),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: Color(0xFFF8FAFC),
+          fontSize: 17,
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.3,
+        ),
+        iconTheme: IconThemeData(color: Color(0xFFF8FAFC)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: const Color(0xFF111827),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMD),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMD),
+          borderSide: const BorderSide(color: Color(0xFF334155)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMD),
+          borderSide: const BorderSide(color: Color(0xFF60A5FA), width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMD),
+          borderSide: const BorderSide(color: danger, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: sp16,
+          vertical: sp14,
+        ),
+        hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: Color(0xFF334155),
+        thickness: 1,
+        space: 1,
       ),
     );
   }

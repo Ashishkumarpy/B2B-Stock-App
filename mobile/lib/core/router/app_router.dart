@@ -47,15 +47,23 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isOnServerConfig = path == '/server';
       final isOnLogs = path == '/debug-logs';
       final isOnLogin = path == '/login';
-      if (serverBaseUrl.isEmpty && !isOnServerConfig && !isOnLogin) return '/server';
+      if (serverBaseUrl.isEmpty && !isOnServerConfig && !isOnLogin) {
+        return '/server';
+      }
 
       final isLoggedIn = authState.user != null;
       final role = authState.user?.role;
-      final isAdminOnlyRoute = path == '/add-product' ||
+      final isProductManageRoute = path == '/add-product' ||
           path == '/bulk-import-products' ||
-          path == '/manage-workers' ||
-          path == '/create-worker';
+          path == '/edit-product';
+      final isUserManageRoute =
+          path == '/manage-workers' || path == '/create-worker';
       final isWarehouseManageRoute = path == '/manage-warehouses';
+      final isAnalyticsRoute = path == '/analytics';
+      final isWorkerActivityRoute =
+          path == '/worker-activity' || path.startsWith('/worker-detail/');
+      final isStockActivityRoute = path == '/stock-activity';
+      final isStockEntryRoute = path == '/stock-entry';
 
       // Allow accessing Server config and Login without an active session.
       if (!isLoggedIn && !isOnLogin && !isOnServerConfig && !isOnLogs) {
@@ -63,11 +71,45 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/login';
       }
       if (isLoggedIn &&
-          (role == UserRole.worker || role == UserRole.manager) &&
-          isAdminOnlyRoute) {
+          role != null &&
+          isProductManageRoute &&
+          !role.canManageProducts) {
         return '/';
       }
-      if (isLoggedIn && role == UserRole.worker && isWarehouseManageRoute) {
+      if (isLoggedIn &&
+          role != null &&
+          isUserManageRoute &&
+          !role.canManageUsers) {
+        return '/';
+      }
+      if (isLoggedIn &&
+          role != null &&
+          isWarehouseManageRoute &&
+          !role.canManageWarehouses) {
+        return '/';
+      }
+      if (isLoggedIn &&
+          role != null &&
+          isAnalyticsRoute &&
+          !role.canViewAnalytics) {
+        return '/';
+      }
+      if (isLoggedIn &&
+          role != null &&
+          isWorkerActivityRoute &&
+          !role.canViewWorkerActivity) {
+        return '/';
+      }
+      if (isLoggedIn &&
+          role != null &&
+          isStockActivityRoute &&
+          !role.canViewStockActivity) {
+        return '/';
+      }
+      if (isLoggedIn &&
+          role != null &&
+          isStockEntryRoute &&
+          !role.canRecordStock) {
         return '/';
       }
       if (isLoggedIn && isOnLogin) return '/';

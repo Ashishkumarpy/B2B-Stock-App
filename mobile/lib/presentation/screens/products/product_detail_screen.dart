@@ -8,8 +8,10 @@ import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../widgets/status_badge.dart';
@@ -61,6 +63,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productsProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
+    final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
 
     return productsAsync.when(
       data: (products) {
@@ -81,32 +84,32 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         );
 
         return Scaffold(
-          backgroundColor: AppTheme.background,
+          backgroundColor: AppTheme.backgroundColor(context),
           body: CustomScrollView(
             slivers: [
               // ── Simple Elegant App Bar with Edit Feature ──
               SliverAppBar(
                 pinned: true,
-                backgroundColor: AppTheme.surface,
+                backgroundColor: AppTheme.surfaceColor(context),
                 foregroundColor: AppTheme.textPrimary,
                 scrolledUnderElevation: 0,
                 title: Text(
                   product.name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
                   ),
                 ),
                 actions: [
-                  IconButton(
-                    icon:
-                        const Icon(Icons.edit_rounded, color: AppTheme.primary),
-                    tooltip: 'Edit Product',
-                    onPressed: () =>
-                        context.push('/edit-product', extra: product),
-                  ),
+                  if (role.canManageProducts)
+                    IconButton(
+                      icon: Icon(Icons.edit_rounded, color: AppTheme.primary),
+                      tooltip: 'Edit Product',
+                      onPressed: () =>
+                          context.push('/edit-product', extra: product),
+                    ),
                   const SizedBox(width: 8),
                 ],
               ),
@@ -155,7 +158,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                       child: CircularProgressIndicator(
                                           color: Colors.white),
                                     ),
-                                    errorWidget: (_, __, ___) => const Icon(
+                                    errorWidget: (_, __, ___) => Icon(
                                       Icons.broken_image_outlined,
                                       color: Colors.white,
                                       size: 48,
@@ -175,7 +178,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                       ),
                                       child: Text(
                                         '${_currentImageIndex + 1}/${allImages.length}',
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                             color: Colors.white,
                                             fontSize: 11,
                                             fontWeight: FontWeight.bold),
@@ -191,7 +194,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                       color: Colors.black38,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.fullscreen_rounded,
                                       color: Colors.white,
                                       size: 18,
@@ -263,7 +266,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                             child: Text(
                               product.category.toUpperCase(),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 color: AppTheme.primary,
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
@@ -277,11 +280,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       // 1. BIG Product Code (First)
                       Text(
                         product.code,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 32,
                           fontWeight: FontWeight.w900,
                           letterSpacing: -0.5,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.primaryTextColor(context),
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -289,8 +292,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       // 2. Product Name/Title (Small, under the code)
                       Text(
                         product.name,
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
+                        style: TextStyle(
+                          color: AppTheme.secondaryTextColor(context),
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -300,8 +303,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         const SizedBox(height: 6),
                         Text(
                           product.description!,
-                          style: const TextStyle(
-                            color: AppTheme.textSecondary,
+                          style: TextStyle(
+                            color: AppTheme.secondaryTextColor(context),
                             height: 1.5,
                             fontSize: 13,
                           ),
@@ -334,7 +337,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text('Available Stock',
+                                Text('Available Stock',
                                     style: TextStyle(
                                         color: Colors.white70,
                                         fontWeight: FontWeight.w600,
@@ -350,7 +353,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                   fit: BoxFit.scaleDown,
                                   child: Text(
                                     '${product.quantity}',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         color: Colors.white,
                                         fontSize: 44,
                                         fontWeight: FontWeight.w900,
@@ -362,7 +365,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                   padding: const EdgeInsets.only(bottom: 6),
                                   child: Text(
                                     product.unit ?? 'Units',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                         color: Colors.white60, fontSize: 16),
                                   ),
                                 ),
@@ -386,55 +389,56 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       const SizedBox(height: 16),
 
                       // ── Stock Action Buttons ──
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => context.push(
-                                  '/stock-entry?productId=${product.id}&type=out'),
-                              icon: const Icon(Icons.remove_circle_rounded,
-                                  size: 18),
-                              label: const Text('STOCK OUT'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.danger,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size.fromHeight(48),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusMD)),
+                      if (role.canRecordStock) ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => context.push(
+                                    '/stock-entry?productId=${product.id}&type=out'),
+                                icon:
+                                    Icon(Icons.remove_circle_rounded, size: 18),
+                                label: Text('STOCK OUT'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.danger,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size.fromHeight(48),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMD)),
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () => context.push(
-                                  '/stock-entry?productId=${product.id}&type=in'),
-                              icon: const Icon(Icons.add_circle_rounded,
-                                  size: 18),
-                              label: const Text('STOCK IN'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.success,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size.fromHeight(48),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusMD)),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => context.push(
+                                    '/stock-entry?productId=${product.id}&type=in'),
+                                icon: Icon(Icons.add_circle_rounded, size: 18),
+                                label: Text('STOCK IN'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.success,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size.fromHeight(48),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMD)),
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
 
                       const SizedBox(height: 24),
 
                       // ── Color Stock Section (Color Stock matching Admin) ──
-                      const Text(
+                      Text(
                         'Color Stock',
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.primaryTextColor(context),
                         ),
                       ),
                       const SizedBox(height: 10),
@@ -443,16 +447,17 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               padding: const EdgeInsets.all(16),
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                color: AppTheme.surface,
+                                color: AppTheme.surfaceColor(context),
                                 borderRadius:
                                     BorderRadius.circular(AppTheme.radiusLG),
-                                border:
-                                    Border.all(color: const Color(0xFFE2E8F0)),
+                                border: Border.all(
+                                    color: AppTheme.borderColor(context)),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'No color-wise stock added.',
                                 style: TextStyle(
-                                    color: AppTheme.textMuted, fontSize: 13),
+                                    color: AppTheme.mutedTextColor(context),
+                                    fontSize: 13),
                               ),
                             )
                           : Wrap(
@@ -463,11 +468,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 6),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.surface,
+                                    color: AppTheme.surfaceColor(context),
                                     borderRadius: BorderRadius.circular(
                                         AppTheme.radiusLG),
                                     border: Border.all(
-                                        color: const Color(0xFFE2E8F0)),
+                                        color: AppTheme.borderColor(context)),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -483,10 +488,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                       const SizedBox(width: 6),
                                       Text(
                                         entry.color,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.w600,
                                           fontSize: 12,
-                                          color: AppTheme.textPrimary,
+                                          color: AppTheme.primaryTextColor(
+                                              context),
                                         ),
                                       ),
                                       const SizedBox(width: 6),
@@ -500,7 +506,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                         ),
                                         child: Text(
                                           '${entry.quantity}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 11,
                                             color: AppTheme.primary,
@@ -516,7 +522,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       const SizedBox(height: 24),
 
                       // ── Recent Activity ──
-                      const Text('Recent History',
+                      Text('Recent History',
                           style: TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 16)),
                       const SizedBox(height: 10),
@@ -525,13 +531,15 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                           padding: const EdgeInsets.all(24),
                           alignment: Alignment.center,
                           decoration: BoxDecoration(
-                            color: AppTheme.surface,
+                            color: AppTheme.surfaceColor(context),
                             borderRadius:
                                 BorderRadius.circular(AppTheme.radiusLG),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            border: Border.all(
+                                color: AppTheme.borderColor(context)),
                           ),
-                          child: const Text('No movements recorded yet',
-                              style: TextStyle(color: AppTheme.textMuted)),
+                          child: Text('No movements recorded yet',
+                              style: TextStyle(
+                                  color: AppTheme.mutedTextColor(context))),
                         )
                       else
                         ...productTransactions
@@ -546,14 +554,16 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ],
           ),
           // ── FAB: Quick Stock Entry ──
-          floatingActionButton: FloatingActionButton.extended(
-            onPressed: () => _showStockEntrySheet(context, product),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Stock Entry',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-            backgroundColor: AppTheme.primary,
-            foregroundColor: Colors.white,
-          ),
+          floatingActionButton: role.canRecordStock
+              ? FloatingActionButton.extended(
+                  onPressed: () => _showStockEntrySheet(context, product),
+                  icon: Icon(Icons.add_rounded),
+                  label: Text('Stock Entry',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  backgroundColor: AppTheme.primary,
+                  foregroundColor: Colors.white,
+                )
+              : null,
         );
       },
       loading: () =>
@@ -583,13 +593,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label,
-            style: const TextStyle(
+            style: TextStyle(
                 color: Colors.white60,
                 fontSize: 10,
                 fontWeight: FontWeight.w600)),
         const SizedBox(height: 2),
         Text(value,
-            style: const TextStyle(
+            style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,
                 fontSize: 14)),
@@ -611,7 +621,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           bottom: MediaQuery.of(context).viewInsets.bottom + 20,
         ),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceColor(context),
           borderRadius: BorderRadius.circular(AppTheme.radiusXL),
         ),
         child: Column(
@@ -621,8 +631,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             Text('Stock Entry – ${product.name}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -633,8 +642,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       context.push(
                           '/stock-entry?productId=${product.id}&type=out');
                     },
-                    icon: const Icon(Icons.remove_rounded, size: 18),
-                    label: const Text('STOCK OUT'),
+                    icon: Icon(Icons.remove_rounded, size: 18),
+                    label: Text('STOCK OUT'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.danger,
                       foregroundColor: Colors.white,
@@ -650,8 +659,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       context
                           .push('/stock-entry?productId=${product.id}&type=in');
                     },
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('STOCK IN'),
+                    icon: Icon(Icons.add_rounded, size: 18),
+                    label: Text('STOCK IN'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.success,
                       foregroundColor: Colors.white,
@@ -674,6 +683,7 @@ class FullScreenImageViewer extends StatefulWidget {
   final int initialIndex;
 
   const FullScreenImageViewer({
+    super.key,
     required this.images,
     required this.initialIndex,
   });
@@ -755,7 +765,12 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
       final file = File('${temp.path}/share_image.jpg');
       await file.writeAsBytes(bytes);
 
-      await Share.shareXFiles([XFile(file.path)], text: 'B2B Product Image');
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          text: 'B2B Product Image',
+        ),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -780,7 +795,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
         scrolledUnderElevation: 0,
         title: Text(
           '${_currentIndex + 1} / ${widget.images.length}',
-          style: const TextStyle(color: Colors.white, fontSize: 16),
+          style: TextStyle(color: Colors.white, fontSize: 16),
         ),
         actions: [
           IconButton(
@@ -791,7 +806,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                     child: CircularProgressIndicator(
                         color: Colors.white, strokeWidth: 2),
                   )
-                : const Icon(Icons.download_rounded, color: Colors.white),
+                : Icon(Icons.download_rounded, color: Colors.white),
             onPressed: _isDownloading ? null : _downloadImage,
           ),
           IconButton(
@@ -802,7 +817,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                     child: CircularProgressIndicator(
                         color: Colors.white, strokeWidth: 2),
                   )
-                : const Icon(Icons.share_rounded, color: Colors.white),
+                : Icon(Icons.share_rounded, color: Colors.white),
             onPressed: _isSharing ? null : _shareImage,
           ),
         ],
@@ -826,10 +841,8 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
                 fit: BoxFit.contain,
                 placeholder: (context, url) =>
                     const CircularProgressIndicator(color: Colors.white),
-                errorWidget: (context, url, error) => const Icon(
-                    Icons.broken_image,
-                    color: Colors.white,
-                    size: 64),
+                errorWidget: (context, url, error) =>
+                    Icon(Icons.broken_image, color: Colors.white, size: 64),
               ),
             ),
           );
@@ -853,9 +866,9 @@ class _ActivityTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppTheme.borderColor(context)),
       ),
       child: Row(
         children: [
@@ -879,15 +892,15 @@ class _ActivityTile extends StatelessWidget {
               children: [
                 Text(
                   '${isIn ? 'Stock In' : 'Stock Out'}: ${tx.quantity} units',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 Text(
                   '${tx.workerName.isEmpty ? 'Worker' : tx.workerName} • ${DateFormat('MMM d, h:mm a').format(tx.createdAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: AppTheme.textSecondary, fontSize: 11),
+                  style: TextStyle(
+                      color: AppTheme.secondaryTextColor(context),
+                      fontSize: 11),
                 ),
               ],
             ),

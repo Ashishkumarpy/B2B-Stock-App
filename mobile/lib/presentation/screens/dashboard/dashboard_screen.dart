@@ -10,6 +10,7 @@ import '../../providers/categories_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/skeleton_loading.dart';
 import '../../widgets/stock_chart_widget.dart';
+import '../../providers/settings_provider.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -23,7 +24,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      VersionCheckService.check(context, ref);
+      final settings = ref.read(settingsProvider);
+      if (settings.inAppUpdates) {
+        VersionCheckService.check(context, ref);
+      }
     });
   }
 
@@ -33,6 +37,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final transactionsAsync = ref.watch(transactionsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final user = ref.watch(authStateProvider).user;
+    final role = user?.role ?? UserRole.customer;
 
     final lowStockCount = productsAsync.maybeWhen(
       data: (p) => p.where((x) => x.stockStatus == StockStatus.lowStock).length,
@@ -40,7 +45,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.backgroundColor(context),
       body: RefreshIndicator(
         color: AppTheme.primary,
         onRefresh: () async {
@@ -54,24 +59,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             SliverAppBar(
               floating: true,
               snap: true,
-              backgroundColor: AppTheme.surface,
+              backgroundColor: AppTheme.surfaceColor(context),
               elevation: 0,
               title: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     'Good ${_greeting()},',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 12,
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.secondaryTextColor(context),
                         fontWeight: FontWeight.w500),
                   ),
                   Text(
                     user?.name ?? 'Admin',
-                    style: const TextStyle(
+                    style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w800,
-                        color: AppTheme.textPrimary),
+                        color: AppTheme.primaryTextColor(context)),
                   ),
                 ],
               ),
@@ -80,9 +85,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   alignment: Alignment.center,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.notifications_none_rounded,
-                          color: AppTheme.textPrimary),
-                      onPressed: () => _showNotificationsBottomSheet(context),
+                      icon: Icon(Icons.notifications_none_rounded,
+                          color: AppTheme.primaryTextColor(context)),
+                      onPressed: () =>
+                          _showNotificationsBottomSheet(context, role),
                     ),
                     if (lowStockCount > 0)
                       Positioned(
@@ -111,23 +117,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Stats Row
-                  _buildStatsSection(productsAsync, transactionsAsync),
+                  _buildStatsSection(productsAsync, transactionsAsync, role),
                   const SizedBox(height: 20),
 
                   // Quick Actions
-                  _buildQuickActions(),
+                  _buildQuickActions(role),
                   const SizedBox(height: 20),
 
                   // Stock Movement Chart
-                  _buildChartSection(transactionsAsync),
-                  const SizedBox(height: 20),
+                  if (role.canViewStockActivity) ...[
+                    _buildChartSection(transactionsAsync),
+                    const SizedBox(height: 20),
+                  ],
 
                   // Category Folders
                   _buildFoldersSection(categoriesAsync, productsAsync),
                   const SizedBox(height: 20),
 
                   // Recent Transactions
-                  _buildRecentActivitySection(transactionsAsync),
+                  if (role.canViewStockActivity)
+                    _buildRecentActivitySection(transactionsAsync),
                 ]),
               ),
             ),
@@ -147,6 +156,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildStatsSection(
     AsyncValue<List<dynamic>> productsAsync,
     AsyncValue<List<dynamic>> transactionsAsync,
+    UserRole role,
   ) {
     final totalProducts = productsAsync.maybeWhen(
       data: (p) => p.length,
@@ -159,7 +169,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final now = DateTime.now();
     final stockIn = transactionsAsync.maybeWhen(
       data: (txs) => txs
-          .where((t) => t.isStockIn == true &&
+          .where((t) =>
+              t.isStockIn == true &&
               t.createdAt.year == now.year &&
               t.createdAt.month == now.month &&
               t.createdAt.day == now.day)
@@ -168,7 +179,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
     final stockOut = transactionsAsync.maybeWhen(
       data: (txs) => txs
-          .where((t) => t.isStockOut == true &&
+          .where((t) =>
+              t.isStockOut == true &&
               t.createdAt.year == now.year &&
               t.createdAt.month == now.month &&
               t.createdAt.day == now.day)
@@ -176,22 +188,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       orElse: () => 0,
     );
 
-    final isLoading = productsAsync is AsyncLoading ||
-        transactionsAsync is AsyncLoading;
+    final isLoading =
+        productsAsync is AsyncLoading || transactionsAsync is AsyncLoading;
 
     if (isLoading) {
       return Column(
         children: [
           Row(children: [
-            Expanded(child: SkeletonLoading(width: double.infinity, height: 88)),
+            Expanded(
+                child: SkeletonLoading(width: double.infinity, height: 88)),
             const SizedBox(width: 12),
-            Expanded(child: SkeletonLoading(width: double.infinity, height: 88)),
+            Expanded(
+                child: SkeletonLoading(width: double.infinity, height: 88)),
           ]),
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(child: SkeletonLoading(width: double.infinity, height: 88)),
+            Expanded(
+                child: SkeletonLoading(width: double.infinity, height: 88)),
             const SizedBox(width: 12),
-            Expanded(child: SkeletonLoading(width: double.infinity, height: 88)),
+            Expanded(
+                child: SkeletonLoading(width: double.infinity, height: 88)),
           ]),
         ],
       );
@@ -231,7 +247,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 value: '+$stockIn',
                 icon: Icons.south_west_rounded,
                 color: AppTheme.success,
-                onTap: () => context.push('/stock-activity?type=stockIn&dateMode=today'),
+                onTap: role.canViewStockActivity
+                    ? () => context
+                        .push('/stock-activity?type=stockIn&dateMode=today')
+                    : null,
               ),
             ),
             const SizedBox(width: 12),
@@ -241,7 +260,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 value: '-$stockOut',
                 icon: Icons.north_east_rounded,
                 color: AppTheme.danger,
-                onTap: () => context.push('/stock-activity?type=stockOut&dateMode=today'),
+                onTap: role.canViewStockActivity
+                    ? () => context
+                        .push('/stock-activity?type=stockOut&dateMode=today')
+                    : null,
               ),
             ),
           ],
@@ -250,75 +272,68 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickActions() {
+  Widget _buildQuickActions(UserRole role) {
+    final actions = <Widget>[
+      if (role.canRecordStock)
+        _QuickActionBtn(
+          label: 'Stock In',
+          icon: Icons.add_circle_rounded,
+          color: AppTheme.success,
+          onTap: () => context.push('/stock-entry?type=in'),
+        ),
+      if (role.canRecordStock)
+        _QuickActionBtn(
+          label: 'Stock Out',
+          icon: Icons.remove_circle_rounded,
+          color: AppTheme.danger,
+          onTap: () => context.push('/stock-entry?type=out'),
+        ),
+      _QuickActionBtn(
+        label: 'Products',
+        icon: Icons.inventory_2_rounded,
+        color: AppTheme.primary,
+        onTap: () => context.go('/products'),
+      ),
+      if (role.canViewAnalytics)
+        _QuickActionBtn(
+          label: 'Analytics',
+          icon: Icons.bar_chart_rounded,
+          color: const Color(0xFF8B5CF6),
+          onTap: () => context.go('/analytics'),
+        ),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Quick Actions',
-            style:
-                TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        Text('Quick Actions',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(
-              child: _QuickActionBtn(
-                label: 'Stock In',
-                icon: Icons.add_circle_rounded,
-                color: AppTheme.success,
-                onTap: () =>
-                    context.push('/stock-entry?type=in'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _QuickActionBtn(
-                label: 'Stock Out',
-                icon: Icons.remove_circle_rounded,
-                color: AppTheme.danger,
-                onTap: () =>
-                    context.push('/stock-entry?type=out'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _QuickActionBtn(
-                label: 'Products',
-                icon: Icons.inventory_2_rounded,
-                color: AppTheme.primary,
-                onTap: () => context.go('/products'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: _QuickActionBtn(
-                label: 'Analytics',
-                icon: Icons.bar_chart_rounded,
-                color: const Color(0xFF8B5CF6),
-                onTap: () => context.go('/analytics'),
-              ),
-            ),
+            for (var i = 0; i < actions.length; i++) ...[
+              if (i > 0) const SizedBox(width: 10),
+              Expanded(child: actions[i]),
+            ],
           ],
         ),
       ],
     );
   }
 
-  Widget _buildChartSection(
-      AsyncValue<List<dynamic>> transactionsAsync) {
+  Widget _buildChartSection(AsyncValue<List<dynamic>> transactionsAsync) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Stock Movement',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 15)),
+            Text('Stock Movement',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             TextButton(
               onPressed: () => context.go('/stock-activity'),
-              child: const Text('View All',
-                  style: TextStyle(
-                      color: AppTheme.primary, fontSize: 13)),
+              child: Text('View All',
+                  style: TextStyle(color: AppTheme.primary, fontSize: 13)),
             ),
           ],
         ),
@@ -327,19 +342,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           height: 180,
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppTheme.surface,
-            borderRadius:
-                BorderRadius.circular(AppTheme.radiusLG),
+            color: AppTheme.surfaceColor(context),
+            borderRadius: BorderRadius.circular(AppTheme.radiusLG),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           child: transactionsAsync.when(
-            data: (txns) =>
-                StockChartWidget(transactions: txns.cast()),
-            loading: () => const SkeletonLoading(
-                width: double.infinity, height: 150),
-            error: (_, __) => const Center(
+            data: (txns) => StockChartWidget(transactions: txns.cast()),
+            loading: () =>
+                const SkeletonLoading(width: double.infinity, height: 150),
+            error: (_, __) => Center(
                 child: Text('Chart unavailable',
-                    style: TextStyle(color: AppTheme.textMuted))),
+                    style: TextStyle(color: AppTheme.mutedTextColor(context)))),
           ),
         ),
       ],
@@ -356,14 +369,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Folders',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 15)),
+            Text('Folders',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             TextButton(
               onPressed: () => context.go('/products'),
-              child: const Text('See All',
-                  style: TextStyle(
-                      color: AppTheme.primary, fontSize: 13)),
+              child: Text('See All',
+                  style: TextStyle(color: AppTheme.primary, fontSize: 13)),
             ),
           ],
         ),
@@ -378,8 +389,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: categories.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(width: 10),
+                separatorBuilder: (_, __) => const SizedBox(width: 10),
                 itemBuilder: (context, index) {
                   return _FolderChip(
                     category: categories[index],
@@ -391,8 +401,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
             );
           },
-          loading: () => const SkeletonLoading(
-              width: double.infinity, height: 112),
+          loading: () =>
+              const SkeletonLoading(width: double.infinity, height: 112),
           error: (_, __) => const SizedBox.shrink(),
         ),
       ],
@@ -407,14 +417,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text('Recent Activity',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800, fontSize: 15)),
+            Text('Recent Activity',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
             TextButton(
               onPressed: () => context.go('/stock-activity'),
-              child: const Text('View All',
-                  style: TextStyle(
-                      color: AppTheme.primary, fontSize: 13)),
+              child: Text('View All',
+                  style: TextStyle(color: AppTheme.primary, fontSize: 13)),
             ),
           ],
         ),
@@ -426,15 +434,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 padding: const EdgeInsets.all(24),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: AppTheme.surface,
-                  borderRadius:
-                      BorderRadius.circular(AppTheme.radiusLG),
-                  border:
-                      Border.all(color: const Color(0xFFE2E8F0)),
+                  color: AppTheme.surfaceColor(context),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: const Text('No transactions yet',
-                    style:
-                        TextStyle(color: AppTheme.textMuted)),
+                child: Text('No transactions yet',
+                    style: TextStyle(color: AppTheme.mutedTextColor(context))),
               );
             }
             return Column(
@@ -444,15 +449,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   .toList(),
             );
           },
-          loading: () =>
-              const SkeletonList(count: 3, height: 64),
+          loading: () => const SkeletonList(count: 3, height: 64),
           error: (_, __) => const SizedBox.shrink(),
         ),
       ],
     );
   }
 
-  void _showNotificationsBottomSheet(BuildContext context) {
+  void _showNotificationsBottomSheet(BuildContext context, UserRole role) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -469,7 +473,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 final transactionsAsync = ref.watch(transactionsProvider);
 
                 final lowStockProds = productsAsync.maybeWhen(
-                  data: (p) => p.where((x) => x.stockStatus == StockStatus.lowStock).toList(),
+                  data: (p) => p
+                      .where((x) => x.stockStatus == StockStatus.lowStock)
+                      .toList(),
                   orElse: () => [],
                 );
 
@@ -479,9 +485,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 );
 
                 return Container(
-                  decoration: const BoxDecoration(
-                    color: AppTheme.background,
-                    borderRadius: BorderRadius.only(
+                  decoration: BoxDecoration(
+                    color: AppTheme.backgroundColor(context),
+                    borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(AppTheme.radiusXL),
                       topRight: Radius.circular(AppTheme.radiusXL),
                     ),
@@ -505,24 +511,25 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
+                            Text(
                               'Notifications & Alerts',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
-                                color: AppTheme.textPrimary,
+                                color: AppTheme.primaryTextColor(context),
                               ),
                             ),
                             if (lowStockProds.isNotEmpty)
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
                                   color: AppTheme.danger.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   '${lowStockProds.length} Alerts',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppTheme.danger,
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -536,26 +543,32 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       // Custom Tab List
                       Expanded(
                         child: DefaultTabController(
-                          length: 2,
+                          length: role.canViewStockActivity ? 2 : 1,
                           child: Column(
                             children: [
-                              TabBar(
-                                indicatorColor: AppTheme.primary,
-                                labelColor: AppTheme.primary,
-                                unselectedLabelColor: AppTheme.textSecondary,
-                                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                                tabs: const [
-                                  Tab(text: '🚨 Critical Alerts'),
-                                  Tab(text: '📝 Activity Log'),
-                                ],
-                              ),
+                              if (role.canViewStockActivity)
+                                TabBar(
+                                  indicatorColor: AppTheme.primary,
+                                  labelColor: AppTheme.primary,
+                                  unselectedLabelColor: AppTheme.textSecondary,
+                                  labelStyle: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13),
+                                  tabs: const [
+                                    Tab(text: '🚨 Critical Alerts'),
+                                    Tab(text: '📝 Activity Log'),
+                                  ],
+                                ),
                               Expanded(
                                 child: TabBarView(
                                   children: [
                                     // 1. Alerts View
-                                    _buildAlertsTab(lowStockProds, scrollController),
+                                    _buildAlertsTab(
+                                        lowStockProds, scrollController),
                                     // 2. Activity Log View
-                                    _buildActivityTab(recentTxs, scrollController),
+                                    if (role.canViewStockActivity)
+                                      _buildActivityTab(
+                                          recentTxs, scrollController),
                                   ],
                                 ),
                               ),
@@ -574,17 +587,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildAlertsTab(List<dynamic> lowStockProds, ScrollController scrollController) {
+  Widget _buildAlertsTab(
+      List<dynamic> lowStockProds, ScrollController scrollController) {
     if (lowStockProds.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.check_circle_outline_rounded, color: AppTheme.success, size: 48),
+            Icon(Icons.check_circle_outline_rounded,
+                color: AppTheme.success, size: 48),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'All Systems Healthy',
-              style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.textPrimary),
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AppTheme.primaryTextColor(context)),
             ),
             const SizedBox(height: 4),
             Text(
@@ -626,7 +643,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       color: AppTheme.danger.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.warning_rounded, color: AppTheme.danger, size: 20),
+                    child: Icon(Icons.warning_rounded,
+                        color: AppTheme.danger, size: 20),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -635,31 +653,41 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Text(
                           product.code,
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                              color: AppTheme.primaryTextColor(context)),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           product.name,
-                          style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                          style: TextStyle(
+                              fontSize: 12,
+                              color: AppTheme.secondaryTextColor(context)),
                         ),
                         const SizedBox(height: 4),
                         Row(
                           children: [
                             Text(
                               'Stock: ${product.quantity}',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.danger),
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.danger),
                             ),
                             const SizedBox(width: 8),
                             Text(
                               'Threshold: ${product.threshold}',
-                              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                              style: TextStyle(
+                                  fontSize: 11, color: Colors.grey.shade500),
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppTheme.textMuted),
+                  Icon(Icons.arrow_forward_ios_rounded,
+                      size: 12, color: AppTheme.mutedTextColor(context)),
                 ],
               ),
             ),
@@ -669,10 +697,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildActivityTab(List<dynamic> recentTxs, ScrollController scrollController) {
+  Widget _buildActivityTab(
+      List<dynamic> recentTxs, ScrollController scrollController) {
     if (recentTxs.isEmpty) {
-      return const Center(
-        child: Text('No recent transaction activity.', style: TextStyle(color: AppTheme.textSecondary)),
+      return Center(
+        child: Text('No recent transaction activity.',
+            style: TextStyle(color: AppTheme.secondaryTextColor(context))),
       );
     }
 
@@ -705,11 +735,14 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: (isStockIn ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.08),
+                      color: (isStockIn ? AppTheme.success : AppTheme.danger)
+                          .withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      isStockIn ? Icons.south_west_rounded : Icons.north_east_rounded,
+                      isStockIn
+                          ? Icons.south_west_rounded
+                          : Icons.north_east_rounded,
                       color: isStockIn ? AppTheme.success : AppTheme.danger,
                       size: 20,
                     ),
@@ -721,18 +754,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       children: [
                         Text(
                           tx.productCode ?? 'UNKNOWN',
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.textPrimary),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 14,
+                              color: AppTheme.primaryTextColor(context)),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           '${isStockIn ? "Stocked In" : "Stocked Out"}: ${tx.quantity} units',
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.primaryTextColor(context)),
                         ),
                         if (tx.workerName != null) ...[
                           const SizedBox(height: 2),
                           Text(
                             'By: ${tx.workerName}',
-                            style: const TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: AppTheme.secondaryTextColor(context)),
                           ),
                         ],
                       ],
@@ -743,7 +784,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     children: [
                       Text(
                         timeStr,
-                        style: const TextStyle(fontSize: 10, color: AppTheme.textMuted),
+                        style: TextStyle(
+                            fontSize: 10,
+                            color: AppTheme.mutedTextColor(context)),
                       ),
                     ],
                   ),
@@ -798,8 +841,7 @@ class _StatCard extends StatelessWidget {
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: color.withValues(alpha: 0.15),
-                borderRadius:
-                    BorderRadius.circular(AppTheme.radiusMD),
+                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
               ),
               child: Icon(icon, color: color, size: 20),
             ),
@@ -862,7 +904,7 @@ class _QuickActionBtn extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.surfaceColor(context),
           borderRadius: BorderRadius.circular(AppTheme.radiusLG),
           border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
@@ -903,8 +945,7 @@ class _FolderChip extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = productsAsync.maybeWhen(
-      data: (products) =>
-          products.where((p) => p.category == category).length,
+      data: (products) => products.where((p) => p.category == category).length,
       orElse: () => 0,
     );
 
@@ -916,32 +957,30 @@ class _FolderChip extends ConsumerWidget {
         decoration: BoxDecoration(
           color: AppTheme.primaryLight,
           borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-          border: Border.all(
-              color: AppTheme.primary.withValues(alpha: 0.2)),
+          border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.folder_rounded,
-                color: AppTheme.primary, size: 22),
+            Icon(Icons.folder_rounded, color: AppTheme.primary, size: 22),
             const SizedBox(height: 6),
             Text(
               category,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: 12,
-                color: AppTheme.textPrimary,
+                color: AppTheme.primaryTextColor(context),
                 height: 1.2,
               ),
             ),
             const SizedBox(height: 2),
             Text(
               '$count items',
-              style: const TextStyle(
-                  fontSize: 10, color: AppTheme.textSecondary),
+              style: TextStyle(
+                  fontSize: 10, color: AppTheme.secondaryTextColor(context)),
             ),
           ],
         ),
@@ -964,7 +1003,7 @@ class _ActivityRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(AppTheme.radiusLG),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
@@ -975,13 +1014,10 @@ class _ActivityRow extends StatelessWidget {
             height: 36,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.1),
-              borderRadius:
-                  BorderRadius.circular(AppTheme.radiusMD),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
             ),
             child: Icon(
-              isIn
-                  ? Icons.south_west_rounded
-                  : Icons.north_east_rounded,
+              isIn ? Icons.south_west_rounded : Icons.north_east_rounded,
               color: color,
               size: 16,
             ),
@@ -997,15 +1033,15 @@ class _ActivityRow extends StatelessWidget {
                       : txn.productName.toString(),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, fontSize: 13),
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 Text(
                   txn.workerName?.toString() ?? '',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: AppTheme.textSecondary, fontSize: 11),
+                  style: TextStyle(
+                      color: AppTheme.secondaryTextColor(context),
+                      fontSize: 11),
                 ),
               ],
             ),

@@ -8,36 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/services/version_check_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/theme_mode_provider.dart';
-
-class _SettingsState {
-  final bool pushNotifications;
-  final bool lowStockAlerts;
-  final bool deadStockAlerts;
-  final bool weeklyReport;
-
-  const _SettingsState({
-    this.pushNotifications = true,
-    this.lowStockAlerts = true,
-    this.deadStockAlerts = true,
-    this.weeklyReport = false,
-  });
-
-  _SettingsState copyWith({
-    bool? pushNotifications,
-    bool? lowStockAlerts,
-    bool? deadStockAlerts,
-    bool? weeklyReport,
-  }) {
-    return _SettingsState(
-      pushNotifications: pushNotifications ?? this.pushNotifications,
-      lowStockAlerts: lowStockAlerts ?? this.lowStockAlerts,
-      deadStockAlerts: deadStockAlerts ?? this.deadStockAlerts,
-      weeklyReport: weeklyReport ?? this.weeklyReport,
-    );
-  }
-}
-
-final _settingsProvider = StateProvider<_SettingsState>((ref) => const _SettingsState());
+import '../../providers/settings_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -45,7 +16,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
-    final settings = ref.watch(_settingsProvider);
+    final settings = ref.watch(settingsProvider);
     final themeMode = ref.watch(themeModeProvider);
     final isDarkMode = themeMode == ThemeMode.dark;
 
@@ -66,9 +37,11 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   CircleAvatar(
                     radius: 32,
-                    backgroundColor: Colors.white.withOpacity(0.2),
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
                     child: Text(
-                      user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'U',
+                      user?.name.isNotEmpty == true
+                          ? user!.name[0].toUpperCase()
+                          : 'U',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w700,
@@ -92,7 +65,7 @@ class SettingsScreen extends ConsumerWidget {
                         Text(
                           user?.email ?? '',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 13,
                           ),
                         ),
@@ -106,11 +79,14 @@ class SettingsScreen extends ConsumerWidget {
             const _SectionHeader(title: 'Appearance'),
             _SettingsCard(children: [
               _SwitchTile(
-                icon: isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                icon: isDarkMode
+                    ? Icons.dark_mode_rounded
+                    : Icons.light_mode_rounded,
                 label: 'Dark Mode',
                 subtitle: 'Enable dark theme throughout the app',
                 value: isDarkMode,
-                onChanged: (v) => ref.read(themeModeProvider.notifier).setDarkMode(v),
+                onChanged: (v) =>
+                    ref.read(themeModeProvider.notifier).setDarkMode(v),
               ),
             ]),
             const SizedBox(height: AppTheme.sp24),
@@ -121,7 +97,7 @@ class SettingsScreen extends ConsumerWidget {
                 label: 'Push Notifications',
                 subtitle: 'Enable all app notifications',
                 value: settings.pushNotifications,
-                onChanged: (v) => ref.read(_settingsProvider.notifier).state = settings.copyWith(pushNotifications: v),
+                onChanged: (v) => ref.read(settingsProvider.notifier).setPushNotifications(v),
               ),
               const Divider(height: 1),
               _SwitchTile(
@@ -131,7 +107,7 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: 'Notify when items fall below threshold',
                 value: settings.lowStockAlerts,
                 enabled: settings.pushNotifications,
-                onChanged: (v) => ref.read(_settingsProvider.notifier).state = settings.copyWith(lowStockAlerts: v),
+                onChanged: (v) => ref.read(settingsProvider.notifier).setLowStockAlerts(v),
               ),
               const Divider(height: 1),
               _SwitchTile(
@@ -140,7 +116,16 @@ class SettingsScreen extends ConsumerWidget {
                 label: 'Weekly Report',
                 subtitle: 'Receive a weekly stock summary',
                 value: settings.weeklyReport,
-                onChanged: (v) => ref.read(_settingsProvider.notifier).state = settings.copyWith(weeklyReport: v),
+                onChanged: (v) => ref.read(settingsProvider.notifier).setWeeklyReport(v),
+              ),
+              const Divider(height: 1),
+              _SwitchTile(
+                icon: Icons.system_update_rounded,
+                iconColor: AppTheme.primary,
+                label: 'In-App Update Alerts',
+                subtitle: 'Notify when new updates are available',
+                value: settings.inAppUpdates,
+                onChanged: (v) => ref.read(settingsProvider.notifier).setInAppUpdates(v),
               ),
             ]),
             const SizedBox(height: AppTheme.sp24),
@@ -168,7 +153,8 @@ class SettingsScreen extends ConsumerWidget {
                 iconColor: AppTheme.primary,
                 label: 'Check for Updates',
                 subtitle: 'Manually check for latest version',
-                onTap: () => VersionCheckService.check(context, ref, force: true),
+                onTap: () =>
+                    VersionCheckService.check(context, ref, force: true),
               ),
               const Divider(height: 1),
               _ActionTile(
@@ -193,7 +179,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppTheme.sp24),
             const _SectionHeader(title: 'Account'),
             _SettingsCard(children: [
-              if (user?.role == UserRole.admin || user?.role == UserRole.manager) ...[
+              if (user?.role.canManageWarehouses == true) ...[
                 _ActionTile(
                   icon: Icons.warehouse_rounded,
                   label: 'Manage Warehouses',
@@ -201,6 +187,8 @@ class SettingsScreen extends ConsumerWidget {
                   onTap: () => context.push('/manage-warehouses'),
                 ),
                 const Divider(height: 1),
+              ],
+              if (user?.role.canManageUsers == true) ...[
                 _ActionTile(
                   icon: Icons.people_rounded,
                   label: 'Manage Workers',
@@ -226,8 +214,10 @@ class SettingsScreen extends ConsumerWidget {
                           child: const Text('Cancel'),
                         ),
                         TextButton(
-                          onPressed: () => Navigator.of(dialogContext).pop(true),
-                          child: const Text('Sign Out', style: TextStyle(color: AppTheme.danger)),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
+                          child: const Text('Sign Out',
+                              style: TextStyle(color: AppTheme.danger)),
                         ),
                       ],
                     ),
@@ -261,7 +251,9 @@ class SettingsScreen extends ConsumerWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Close')),
+          TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Close')),
         ],
       ),
     );
@@ -298,7 +290,7 @@ class _SettingsCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-        border: Border.all(color: Colors.grey.withOpacity(0.1)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
       ),
       child: Column(children: children),
     );
@@ -328,7 +320,8 @@ class _SwitchTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: iconColor, size: 22),
-      title: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+      title: Text(label,
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       trailing: Switch(
         value: value,
@@ -343,14 +336,17 @@ class _InfoTile extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoTile({required this.icon, required this.label, required this.value});
+  const _InfoTile(
+      {required this.icon, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
       leading: Icon(icon, color: Colors.grey, size: 22),
       title: Text(label, style: const TextStyle(fontSize: 14)),
-      trailing: Text(value, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+      trailing: Text(value,
+          style:
+              const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
     );
   }
 }
@@ -379,9 +375,12 @@ class _ActionTile extends StatelessWidget {
       leading: Icon(icon, color: iconColor, size: 22),
       title: Text(
         label,
-        style: TextStyle(color: labelColor, fontWeight: FontWeight.bold, fontSize: 14),
+        style: TextStyle(
+            color: labelColor, fontWeight: FontWeight.bold, fontSize: 14),
       ),
-      subtitle: subtitle != null ? Text(subtitle!, style: const TextStyle(fontSize: 12)) : null,
+      subtitle: subtitle != null
+          ? Text(subtitle!, style: const TextStyle(fontSize: 12))
+          : null,
       trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
     );
   }

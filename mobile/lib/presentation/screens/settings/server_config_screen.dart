@@ -58,41 +58,47 @@ class _ServerConfigScreenState extends ConsumerState<ServerConfigScreen> {
       appBar: AppBar(
         title: const Text('Server Configuration'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(AppTheme.sp24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Icon(Icons.lan_outlined, size: 64, color: AppTheme.primary),
-            const SizedBox(height: AppTheme.sp24),
-            Text(
-              'Connect to Backend',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: AppTheme.sp8),
-            const Text(
-              'Enter the address of your Node.js server (e.g., http://192.168.1.10:8080)',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 48),
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              decoration: const InputDecoration(
-                labelText: 'Server Base URL',
-                hintText: 'http://192.168.0.7:8080',
-                prefixIcon: Icon(Icons.link_rounded),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(AppTheme.sp24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 40),
+              const Icon(Icons.lan_outlined, size: 64, color: AppTheme.primary),
+              const SizedBox(height: AppTheme.sp24),
+              Text(
+                'Connect to Backend',
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
               ),
-              keyboardType: TextInputType.url,
-            ),
-            const SizedBox(height: AppTheme.sp32),
-            ElevatedButton(
-              onPressed: _handleSave,
-              child: const Text('Save and Connect'),
-            ),
-          ],
+              const SizedBox(height: AppTheme.sp8),
+              const Text(
+                'Enter the address of your Node.js server (e.g., http://192.168.1.10:8080)',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 48),
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                decoration: const InputDecoration(
+                  labelText: 'Server Base URL',
+                  hintText: 'http://192.168.0.7:8080',
+                  prefixIcon: Icon(Icons.link_rounded),
+                ),
+                keyboardType: TextInputType.url,
+              ),
+              const SizedBox(height: AppTheme.sp32),
+              ElevatedButton(
+                onPressed: _handleSave,
+                child: const Text('Save and Connect'),
+              ),
+            ],
+          ),
         ),
       ),
     );

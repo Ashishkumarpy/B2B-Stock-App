@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.example" "\0"
-            VALUE "FileDescription", "b2b_stock_app" "\0"
+            VALUE "FileDescription", "zentory" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "b2b_stock_app" "\0"
+            VALUE "InternalName", "zentory" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.example. All rights reserved." "\0"
-            VALUE "OriginalFilename", "b2b_stock_app.exe" "\0"
-            VALUE "ProductName", "b2b_stock_app" "\0"
+            VALUE "OriginalFilename", "zentory.exe" "\0"
+            VALUE "ProductName", "zentory" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

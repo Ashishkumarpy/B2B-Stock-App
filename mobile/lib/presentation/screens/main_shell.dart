@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
+import '../providers/auth_provider.dart';
 
-class MainShell extends StatelessWidget {
+class MainShell extends ConsumerWidget {
   final Widget child;
 
   const MainShell({
@@ -11,11 +14,14 @@ class MainShell extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
+
     return Scaffold(
       body: child,
       bottomNavigationBar: _BottomNavBar(
         location: GoRouterState.of(context).uri.path,
+        role: role,
       ),
     );
   }
@@ -23,15 +29,16 @@ class MainShell extends StatelessWidget {
 
 class _BottomNavBar extends StatelessWidget {
   final String location;
+  final UserRole role;
 
-  const _BottomNavBar({required this.location});
+  const _BottomNavBar({required this.location, required this.role});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+        color: AppTheme.surfaceColor(context),
+        border: Border(top: BorderSide(color: AppTheme.borderColor(context))),
       ),
       child: SafeArea(
         child: Padding(
@@ -53,28 +60,42 @@ class _BottomNavBar extends StatelessWidget {
                   icon: Icons.inventory_2_outlined,
                   activeIcon: Icons.inventory_2_rounded,
                   label: 'Products',
-                  isActive: location.startsWith('/products') || location == '/add-product',
+                  isActive: location.startsWith('/products') ||
+                      location == '/add-product',
                   onTap: () => context.go('/products'),
                 ),
               ),
-              Expanded(
-                child: _NavBarItem(
-                  icon: Icons.swap_vert_circle_outlined,
-                  activeIcon: Icons.swap_vert_circle_rounded,
-                  label: 'Activity',
-                  isActive: location == '/stock-activity' || location == '/worker-activity',
-                  onTap: () => context.go('/stock-activity'),
+              if (role.canViewStockActivity)
+                Expanded(
+                  child: _NavBarItem(
+                    icon: Icons.swap_vert_circle_outlined,
+                    activeIcon: Icons.swap_vert_circle_rounded,
+                    label: 'Activity',
+                    isActive: location == '/stock-activity' ||
+                        location == '/worker-activity',
+                    onTap: () => context.go('/stock-activity'),
+                  ),
+                )
+              else if (role.canRecordStock)
+                Expanded(
+                  child: _NavBarItem(
+                    icon: Icons.swap_vert_circle_outlined,
+                    activeIcon: Icons.swap_vert_circle_rounded,
+                    label: 'Entry',
+                    isActive: location == '/stock-entry',
+                    onTap: () => context.go('/stock-entry'),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: _NavBarItem(
-                  icon: Icons.analytics_outlined,
-                  activeIcon: Icons.analytics_rounded,
-                  label: 'Analytics',
-                  isActive: location == '/analytics',
-                  onTap: () => context.go('/analytics'),
+              if (role.canViewAnalytics)
+                Expanded(
+                  child: _NavBarItem(
+                    icon: Icons.analytics_outlined,
+                    activeIcon: Icons.analytics_rounded,
+                    label: 'Analytics',
+                    isActive: location == '/analytics',
+                    onTap: () => context.go('/analytics'),
+                  ),
                 ),
-              ),
               Expanded(
                 child: _NavBarItem(
                   icon: Icons.settings_outlined,

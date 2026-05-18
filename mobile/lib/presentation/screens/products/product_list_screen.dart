@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/api_client_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../widgets/product_card.dart';
 import '../../widgets/skeleton_loading.dart';
 import '../../../domain/entities/product.dart';
@@ -16,14 +18,11 @@ class ProductListScreen extends ConsumerStatefulWidget {
   const ProductListScreen({super.key, this.initialFilter});
 
   @override
-  ConsumerState<ProductListScreen> createState() =>
-      _ProductListScreenState();
+  ConsumerState<ProductListScreen> createState() => _ProductListScreenState();
 }
 
-class _ProductListScreenState
-    extends ConsumerState<ProductListScreen> {
-  final TextEditingController _searchController =
-      TextEditingController();
+class _ProductListScreenState extends ConsumerState<ProductListScreen> {
+  final TextEditingController _searchController = TextEditingController();
   String? _openFolder; // null = folder view, string = inside a folder
   String _searchQuery = '';
 
@@ -60,21 +59,23 @@ class _ProductListScreenState
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
+    final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceColor(context),
         title: _openFolder != null
             ? Row(children: [
-                const Icon(Icons.folder_rounded,
-                    color: AppTheme.primary, size: 20),
+                Icon(Icons.folder_rounded, color: AppTheme.primary, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     widget.initialFilter == 'low'
                         ? '$_openFolder (Low Stock)'
-                        : (widget.initialFilter == 'in_stock' ? '$_openFolder (In Stock)' : _openFolder!),
+                        : (widget.initialFilter == 'in_stock'
+                            ? '$_openFolder (In Stock)'
+                            : _openFolder!),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -83,20 +84,22 @@ class _ProductListScreenState
             : Text(
                 widget.initialFilter == 'low'
                     ? 'Low Stock Products'
-                    : (widget.initialFilter == 'in_stock' ? 'In Stock Products' : 'Products'),
+                    : (widget.initialFilter == 'in_stock'
+                        ? 'In Stock Products'
+                        : 'Products'),
               ),
         leading: _openFolder != null
             ? IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
+                icon: Icon(Icons.arrow_back_rounded),
                 onPressed: () => setState(() => _openFolder = null),
               )
             : null,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_box_rounded,
-                color: AppTheme.primary),
-            onPressed: () => context.go('/add-product'),
-          ),
+          if (role.canManageProducts)
+            IconButton(
+              icon: Icon(Icons.add_box_rounded, color: AppTheme.primary),
+              onPressed: () => context.go('/add-product'),
+            ),
         ],
       ),
       body: Column(
@@ -108,7 +111,8 @@ class _ProductListScreenState
               color: AppTheme.danger.withValues(alpha: 0.08),
               child: Row(
                 children: [
-                  const Icon(Icons.warning_amber_rounded, size: 14, color: AppTheme.danger),
+                  Icon(Icons.warning_amber_rounded,
+                      size: 14, color: AppTheme.danger),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -122,7 +126,7 @@ class _ProductListScreenState
                   ),
                   GestureDetector(
                     onTap: () => context.go('/products'),
-                    child: const Text(
+                    child: Text(
                       'Clear',
                       style: TextStyle(
                         fontSize: 11,
@@ -141,7 +145,8 @@ class _ProductListScreenState
               color: AppTheme.success.withValues(alpha: 0.08),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, size: 14, color: AppTheme.success),
+                  Icon(Icons.check_circle_rounded,
+                      size: 14, color: AppTheme.success),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -155,7 +160,7 @@ class _ProductListScreenState
                   ),
                   GestureDetector(
                     onTap: () => context.go('/products'),
-                    child: const Text(
+                    child: Text(
                       'Clear',
                       style: TextStyle(
                         fontSize: 11,
@@ -169,29 +174,27 @@ class _ProductListScreenState
             ),
           // Search bar
           Container(
-            color: AppTheme.surface,
+            color: AppTheme.surfaceColor(context),
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
             child: TextField(
               controller: _searchController,
-              onChanged: (v) =>
-                  setState(() => _searchQuery = v.trim()),
+              onChanged: (v) => setState(() => _searchQuery = v.trim()),
               decoration: InputDecoration(
                 hintText: _openFolder != null
                     ? 'Search in $_openFolder...'
                     : 'Search folders or products...',
-                prefixIcon: const Icon(Icons.search_rounded,
-                    size: 20, color: AppTheme.textMuted),
+                prefixIcon: Icon(Icons.search_rounded,
+                    size: 20, color: AppTheme.mutedTextColor(context)),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear_rounded,
-                            size: 18),
+                        icon: Icon(Icons.clear_rounded, size: 18),
                         onPressed: () {
                           _searchController.clear();
                           setState(() => _searchQuery = '');
                         })
                     : null,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 10),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
             ),
           ),
@@ -211,7 +214,7 @@ class _ProductListScreenState
                               .toLowerCase()
                               .contains(_searchQuery.toLowerCase()))
                       .toList();
-                  return _buildProductGrid(results, 'Search Results');
+                  return _buildProductGrid(results, 'Search Results', role);
                 }
 
                 // ── Inside a folder ──
@@ -221,35 +224,35 @@ class _ProductListScreenState
                       .toList();
 
                   if (widget.initialFilter == 'in_stock') {
-                    folderProducts = folderProducts.where((p) => p.quantity > 0).toList();
+                    folderProducts =
+                        folderProducts.where((p) => p.quantity > 0).toList();
                   } else if (widget.initialFilter == 'low') {
-                    folderProducts = folderProducts.where((p) => p.quantity <= p.threshold).toList();
+                    folderProducts = folderProducts
+                        .where((p) => p.quantity <= p.threshold)
+                        .toList();
                   }
 
-                  return _buildProductGrid(
-                      folderProducts, _openFolder!);
+                  return _buildProductGrid(folderProducts, _openFolder!, role);
                 }
 
                 // ── Folder view (default) ──
                 return categoriesAsync.when(
                   data: (categories) {
                     if (categories.isEmpty) {
-                      return _buildEmptyFolders();
+                      return _buildEmptyFolders(role);
                     }
 
                     // Build folder summaries
                     final folders = categories.map((cat) {
-                      final catProds = allProducts
-                          .where((p) => p.category == cat)
-                          .toList();
+                      final catProds =
+                          allProducts.where((p) => p.category == cat).toList();
                       final sampleImg = catProds
                           .where((p) =>
-                              p.imageUrl != null &&
-                              p.imageUrl!.isNotEmpty)
+                              p.imageUrl != null && p.imageUrl!.isNotEmpty)
                           .map((p) => p.imageUrl!)
                           .firstOrNull;
-                      final totalQty = catProds.fold<int>(
-                          0, (s, p) => s + p.quantity);
+                      final totalQty =
+                          catProds.fold<int>(0, (s, p) => s + p.quantity);
                       final alerts = catProds
                           .where((p) => p.quantity <= p.threshold)
                           .length;
@@ -264,15 +267,15 @@ class _ProductListScreenState
 
                     var foldersList = folders;
                     if (widget.initialFilter == 'in_stock') {
-                      foldersList = folders.where((f) => f.totalQty > 0).toList();
+                      foldersList =
+                          folders.where((f) => f.totalQty > 0).toList();
                     } else if (widget.initialFilter == 'low') {
                       foldersList = folders.where((f) => f.alerts > 0).toList();
                     }
 
                     return RefreshIndicator(
                       color: AppTheme.primary,
-                      onRefresh: () async =>
-                          ref.invalidate(productsProvider),
+                      onRefresh: () async => ref.invalidate(productsProvider),
                       child: GridView.builder(
                         padding: const EdgeInsets.all(12),
                         gridDelegate:
@@ -308,18 +311,16 @@ class _ProductListScreenState
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline_rounded,
+                    Icon(Icons.error_outline_rounded,
                         color: AppTheme.danger, size: 48),
                     const SizedBox(height: 12),
                     Text('$err',
                         textAlign: TextAlign.center,
-                        style:
-                            const TextStyle(color: AppTheme.danger)),
+                        style: TextStyle(color: AppTheme.danger)),
                     const SizedBox(height: 12),
                     ElevatedButton(
-                      onPressed: () =>
-                          ref.invalidate(productsProvider),
-                      child: const Text('Retry'),
+                      onPressed: () => ref.invalidate(productsProvider),
+                      child: Text('Retry'),
                     ),
                   ],
                 ),
@@ -331,7 +332,8 @@ class _ProductListScreenState
     );
   }
 
-  Widget _buildProductGrid(List<Product> products, String title) {
+  Widget _buildProductGrid(
+      List<Product> products, String title, UserRole role) {
     if (products.isEmpty) {
       return Center(
         child: Column(
@@ -340,10 +342,10 @@ class _ProductListScreenState
             Icon(Icons.inventory_2_outlined,
                 size: 56, color: Colors.grey.shade300),
             const SizedBox(height: 12),
-            const Text('No products found',
+            Text('No products found',
                 style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textSecondary)),
+                    color: AppTheme.secondaryTextColor(context))),
           ],
         ),
       );
@@ -351,15 +353,15 @@ class _ProductListScreenState
 
     // Sort products by their code/SKU alphabetically
     final sortedProducts = List<Product>.from(products);
-    sortedProducts.sort((a, b) => a.code.toLowerCase().compareTo(b.code.toLowerCase()));
+    sortedProducts
+        .sort((a, b) => a.code.toLowerCase().compareTo(b.code.toLowerCase()));
 
     return RefreshIndicator(
       color: AppTheme.primary,
       onRefresh: () async => ref.invalidate(productsProvider),
       child: GridView.builder(
         padding: const EdgeInsets.all(12),
-        gridDelegate:
-            const SliverGridDelegateWithFixedCrossAxisCount(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
           childAspectRatio: 0.70,
           crossAxisSpacing: 12,
@@ -370,17 +372,20 @@ class _ProductListScreenState
           final product = sortedProducts[index];
           return ProductCard(
             product: product,
-            onTap: () =>
-                context.push('/products/${product.id}'),
-            onEdit: () => context.push('/edit-product', extra: product),
-            onDelete: () => _confirmDeleteProduct(context, ref, product),
+            onTap: () => context.push('/products/${product.id}'),
+            onEdit: role.canManageProducts
+                ? () => context.push('/edit-product', extra: product)
+                : null,
+            onDelete: role.canManageProducts
+                ? () => _confirmDeleteProduct(context, ref, product)
+                : null,
           );
         },
       ),
     );
   }
 
-  Widget _buildEmptyFolders() {
+  Widget _buildEmptyFolders(UserRole role) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -388,28 +393,31 @@ class _ProductListScreenState
           Icon(Icons.folder_open_rounded,
               size: 64, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          const Text('No folders yet',
+          Text('No folders yet',
               style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: AppTheme.textSecondary,
+                  color: AppTheme.secondaryTextColor(context),
                   fontSize: 16)),
           const SizedBox(height: 8),
-          const Text(
-              'Add products with categories to see folders here',
+          Text('Add products with categories to see folders here',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: AppTheme.textMuted, fontSize: 12)),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => context.go('/add-product'),
-            icon: const Icon(Icons.add_rounded),
-            label: const Text('Add Product'),
-          ),
+                  color: AppTheme.mutedTextColor(context), fontSize: 12)),
+          if (role.canManageProducts) ...[
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => context.go('/add-product'),
+              icon: Icon(Icons.add_rounded),
+              label: Text('Add Product'),
+            ),
+          ],
         ],
       ),
     );
   }
-  void _confirmDeleteProduct(BuildContext context, WidgetRef ref, Product product) {
+
+  void _confirmDeleteProduct(
+      BuildContext context, WidgetRef ref, Product product) {
     showDialog(
       context: context,
       builder: (context) {
@@ -419,7 +427,7 @@ class _ProductListScreenState
           ),
           title: Row(
             children: [
-              const Icon(Icons.delete_forever_rounded, color: AppTheme.danger),
+              Icon(Icons.delete_forever_rounded, color: AppTheme.danger),
               const SizedBox(width: 8),
               const Expanded(child: Text('Delete Product?')),
             ],
@@ -427,12 +435,13 @@ class _ProductListScreenState
           content: Text(
             'Are you sure you want to permanently delete "${product.name}" (${product.code})?\n\n'
             'This action cannot be undone and will delete all stock history for this item.',
-            style: const TextStyle(fontSize: 14),
+            style: TextStyle(fontSize: 14),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.textMuted)),
+              child: Text('Cancel',
+                  style: TextStyle(color: AppTheme.mutedTextColor(context))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -444,7 +453,7 @@ class _ProductListScreenState
               ),
               onPressed: () async {
                 Navigator.pop(context);
-                
+
                 // Show loading
                 showDialog(
                   context: context,
@@ -453,19 +462,20 @@ class _ProductListScreenState
                     child: CircularProgressIndicator(color: AppTheme.primary),
                   ),
                 );
-                
+
                 try {
                   final client = ref.read(apiClientProvider);
                   await client.delete('/products/${product.id}');
-                  
+
                   ref.invalidate(productsProvider);
                   ref.invalidate(categoriesProvider);
-                  
+
                   if (context.mounted) {
                     Navigator.pop(context); // Pop loading
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Product "${product.name}" deleted successfully.'),
+                        content: Text(
+                            'Product "${product.name}" deleted successfully.'),
                         backgroundColor: AppTheme.success,
                       ),
                     );
@@ -482,7 +492,7 @@ class _ProductListScreenState
                   }
                 }
               },
-              child: const Text('Delete'),
+              child: Text('Delete'),
             ),
           ],
         );
@@ -565,14 +575,13 @@ class _FolderCard extends StatelessWidget {
               right: 10,
               bottom: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.45),
-                  borderRadius:
-                      BorderRadius.circular(AppTheme.radiusMD),
-                  border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.2)),
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                  border:
+                      Border.all(color: Colors.white.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -584,7 +593,7 @@ class _FolderCard extends StatelessWidget {
                             folder.name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
+                            style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
                               fontSize: 13,
@@ -595,14 +604,12 @@ class _FolderCard extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
-                            color:
-                                Colors.white.withValues(alpha: 0.2),
-                            borderRadius:
-                                BorderRadius.circular(99),
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(99),
                           ),
                           child: Text(
                             '${folder.count}',
-                            style: const TextStyle(
+                            style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700),
@@ -613,9 +620,7 @@ class _FolderCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        _MiniStat(
-                            label: 'Qty',
-                            value: '${folder.totalQty}'),
+                        _MiniStat(label: 'Qty', value: '${folder.totalQty}'),
                         const SizedBox(width: 8),
                         if (folder.alerts > 0)
                           _MiniStat(
@@ -642,15 +647,12 @@ class _MiniStat extends StatelessWidget {
   final bool isAlert;
 
   const _MiniStat(
-      {required this.label,
-      required this.value,
-      this.isAlert = false});
+      {required this.label, required this.value, this.isAlert = false});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
         color: isAlert
             ? AppTheme.warning.withValues(alpha: 0.3)

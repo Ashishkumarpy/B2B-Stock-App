@@ -37,7 +37,7 @@ class AddProductScreen extends ConsumerStatefulWidget {
 
 class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   late TextEditingController _nameController;
   late TextEditingController _codeController;
   late TextEditingController _priceController;
@@ -46,7 +46,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   late TextEditingController _descriptionController;
   late TextEditingController _unitController;
   late TextEditingController _costPriceController;
-  
+
   // Images editing state
   List<Map<String, String>> _productImages = [];
   String _mainImageUrl = '';
@@ -63,21 +63,21 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   @override
   void initState() {
     super.initState();
-    
+
     _nameController = TextEditingController(text: widget.productToEdit?.name);
     _codeController = TextEditingController(text: widget.productToEdit?.code);
-    _priceController =
-        TextEditingController(text: widget.productToEdit?.price.toString() ?? '');
-    _thresholdController =
-        TextEditingController(text: widget.productToEdit?.threshold.toString() ?? '50');
-    _quantityController =
-        TextEditingController(text: widget.productToEdit?.quantity.toString() ?? '0');
+    _priceController = TextEditingController(
+        text: widget.productToEdit?.price.toString() ?? '');
+    _thresholdController = TextEditingController(
+        text: widget.productToEdit?.threshold.toString() ?? '50');
+    _quantityController = TextEditingController(
+        text: widget.productToEdit?.quantity.toString() ?? '0');
     _descriptionController =
         TextEditingController(text: widget.productToEdit?.description ?? '');
     _unitController =
         TextEditingController(text: widget.productToEdit?.unit ?? 'Units');
-    _costPriceController =
-        TextEditingController(text: widget.productToEdit?.costPrice?.toString() ?? '0');
+    _costPriceController = TextEditingController(
+        text: widget.productToEdit?.costPrice?.toString() ?? '0');
 
     // Load initial images
     if (widget.productToEdit != null) {
@@ -88,7 +88,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 'publicId': img.publicId,
               })
           .toList();
-      if (_mainImageUrl.isNotEmpty && !_productImages.any((img) => img['url'] == _mainImageUrl)) {
+      if (_mainImageUrl.isNotEmpty &&
+          !_productImages.any((img) => img['url'] == _mainImageUrl)) {
         _productImages.insert(0, {
           'url': _mainImageUrl,
           'publicId': '',
@@ -158,13 +159,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       setState(() => _isUploadingImage = true);
 
       final client = ref.read(apiClientProvider);
-      final response = await client.uploadFile('/uploads/image', pickedFile.path);
+      final response =
+          await client.uploadFile('/uploads/image', pickedFile.path);
 
       if (response is Map && response.containsKey('url')) {
         setState(() {
           final newImg = {
             'url': response['url']?.toString() ?? '',
-            'publicId': response['publicId']?.toString() ?? response['public_id']?.toString() ?? '',
+            'publicId': response['publicId']?.toString() ??
+                response['public_id']?.toString() ??
+                '',
           };
           _productImages.add(newImg);
           if (_mainImageUrl.isEmpty) {
@@ -204,7 +208,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     setState(() => _isSubmitting = true);
     try {
       final client = ref.read(apiClientProvider);
-      
+
       final finalQuantity = _syncQuantityFromColors
           ? _colorTotalQuantity
           : (int.tryParse(_quantityController.text) ?? 0);
@@ -234,9 +238,13 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         'quantity': finalQuantity,
         'color_stocks': finalColorStocks,
         'images': finalImages,
-        'image_url': _mainImageUrl.isNotEmpty ? _mainImageUrl : (finalImages.isNotEmpty ? finalImages.first['url'] : null),
+        'image_url': _mainImageUrl.isNotEmpty
+            ? _mainImageUrl
+            : (finalImages.isNotEmpty ? finalImages.first['url'] : null),
         'description': _descriptionController.text.trim(),
-        'unit': _unitController.text.trim().isEmpty ? 'Units' : _unitController.text.trim(),
+        'unit': _unitController.text.trim().isEmpty
+            ? 'Units'
+            : _unitController.text.trim(),
         'cost_price': double.tryParse(_costPriceController.text) ?? 0.0,
       };
 
@@ -283,7 +291,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('New Folder / Category', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text('New Folder / Category',
+            style: TextStyle(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
@@ -295,7 +304,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -308,7 +317,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 Navigator.pop(context);
               }
             },
-            child: const Text('Add'),
+            child: Text('Add'),
           ),
         ],
       ),
@@ -326,14 +335,14 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     final sortedCats = mergedCats.toList()..sort();
 
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.backgroundColor(context),
       appBar: AppBar(
-        backgroundColor: AppTheme.surface,
+        backgroundColor: AppTheme.surfaceColor(context),
         foregroundColor: AppTheme.textPrimary,
         scrolledUnderElevation: 0,
         title: Text(
           widget.productToEdit != null ? 'Edit Product' : 'Add New Product',
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
       ),
       body: SingleChildScrollView(
@@ -352,7 +361,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               // ── Basic Info Section ──
               _sectionHeader('Basic Information'),
               const SizedBox(height: 8),
-              
+
               TextFormField(
                 controller: _nameController,
                 decoration: const InputDecoration(
@@ -363,7 +372,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     val == null || val.isEmpty ? 'Enter name' : null,
               ),
               const SizedBox(height: AppTheme.sp16),
-              
+
               TextFormField(
                 controller: _codeController,
                 decoration: const InputDecoration(
@@ -384,23 +393,26 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 },
               ),
               const SizedBox(height: AppTheme.sp16),
-              
+
               Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
-                      value: _selectedCategory,
+                      initialValue: _selectedCategory,
                       isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'Category *',
                         prefixIcon: Icon(Icons.folder_open_rounded),
                       ),
                       items: sortedCats
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                          .map(
+                              (c) => DropdownMenuItem(value: c, child: Text(c)))
                           .toList(),
-                      onChanged: (val) => setState(() => _selectedCategory = val),
-                      validator: (val) => val == null ? 'Select category' : null,
+                      onChanged: (val) =>
+                          setState(() => _selectedCategory = val),
+                      validator: (val) =>
+                          val == null ? 'Select category' : null,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -412,18 +424,19 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                         borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                       ),
                     ),
-                    icon: const Icon(Icons.create_new_folder_rounded, color: AppTheme.primary),
+                    icon: Icon(Icons.create_new_folder_rounded,
+                        color: AppTheme.primary),
                     onPressed: () => _showCreateCategoryDialog(context),
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
 
               // ── Pricing & Specifications Section ──
               _sectionHeader('Pricing & Specifications'),
               const SizedBox(height: 8),
-              
+
               Row(
                 children: [
                   Expanded(
@@ -432,9 +445,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Price (₹) *',
                         prefixText: '₹ ',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                       validator: (val) =>
                           val == null || val.isEmpty ? 'Enter price' : null,
                     ),
@@ -446,15 +461,17 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       decoration: const InputDecoration(
                         labelText: 'Cost Price (₹)',
                         prefixText: '₹ ',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: AppTheme.sp16),
-              
+
               Row(
                 children: [
                   Expanded(
@@ -462,7 +479,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       controller: _thresholdController,
                       decoration: const InputDecoration(
                         labelText: 'Threshold *',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
                       keyboardType: TextInputType.number,
                       validator: (val) =>
@@ -475,19 +493,20 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       controller: _unitController,
                       decoration: const InputDecoration(
                         labelText: 'Unit (e.g. Pcs)',
-                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                       ),
                     ),
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 24),
 
               // ── Inventory Count Section ──
               _sectionHeader('Inventory Stock'),
               const SizedBox(height: 8),
-              
+
               TextFormField(
                 controller: _quantityController,
                 enabled: !_syncQuantityFromColors,
@@ -495,8 +514,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   labelText: _syncQuantityFromColors
                       ? 'Total Stock (Synced: $_colorTotalQuantity)'
                       : 'Stock Quantity *',
-                  prefixIcon: const Icon(Icons.inventory_2_outlined),
-                  fillColor: _syncQuantityFromColors ? Colors.grey.shade100 : null,
+                  prefixIcon: Icon(Icons.inventory_2_outlined),
+                  fillColor:
+                      _syncQuantityFromColors ? Colors.grey.shade100 : null,
                 ),
                 keyboardType: TextInputType.number,
                 validator: (val) {
@@ -504,16 +524,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   return val == null || val.isEmpty ? 'Enter quantity' : null;
                 },
               ),
-              
+
               const SizedBox(height: 24),
 
               // ── Color Stock Sub-Section ──
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppTheme.surface,
+                  color: AppTheme.surfaceColor(context),
                   borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                  border: Border.all(color: AppTheme.borderColor(context)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,28 +541,31 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
+                        Text(
                           'Color Stocks Breakdown',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
-                            color: AppTheme.textPrimary,
+                            color: AppTheme.primaryTextColor(context),
                           ),
                         ),
                         TextButton.icon(
                           onPressed: _addColorStock,
-                          icon: const Icon(Icons.add_rounded, size: 16),
-                          label: const Text('Add Color', style: TextStyle(fontSize: 12)),
+                          icon: Icon(Icons.add_rounded, size: 16),
+                          label:
+                              Text('Add Color', style: TextStyle(fontSize: 12)),
                         ),
                       ],
                     ),
                     const Divider(height: 16),
                     if (_colorStockInputs.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         child: Text(
                           'No color-wise stock added. Add colors below to track item variables.',
-                          style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+                          style: TextStyle(
+                              color: AppTheme.mutedTextColor(context),
+                              fontSize: 12),
                         ),
                       )
                     else ...[
@@ -562,7 +585,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                   controller: item.colorController,
                                   decoration: const InputDecoration(
                                     labelText: 'Color Name',
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 8),
                                   ),
                                 ),
                               ),
@@ -573,7 +597,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                   controller: item.qtyController,
                                   decoration: const InputDecoration(
                                     labelText: 'Qty',
-                                    contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                    contentPadding: EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 8),
                                   ),
                                   keyboardType: TextInputType.number,
                                   onChanged: (val) {
@@ -588,7 +613,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 child: IconButton(
                                   padding: EdgeInsets.zero,
                                   constraints: const BoxConstraints(),
-                                  icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 20),
+                                  icon: Icon(Icons.delete_outline,
+                                      color: AppTheme.danger, size: 20),
                                   onPressed: () => _removeColorStock(index),
                                 ),
                               ),
@@ -610,7 +636,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           const Expanded(
                             child: Text(
                               'Auto-sync main stock quantity from color values',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                              style: TextStyle(
+                                  fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ],
@@ -625,7 +652,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               // ── Description Section ──
               _sectionHeader('Description'),
               const SizedBox(height: 8),
-              
+
               TextFormField(
                 controller: _descriptionController,
                 maxLines: 4,
@@ -637,7 +664,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
 
               const SizedBox(height: AppTheme.sp32),
-              
+
               ElevatedButton(
                 onPressed: _isSubmitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
@@ -646,8 +673,11 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                 child: _isSubmitting
                     ? const CircularProgressIndicator(color: Colors.white)
                     : Text(
-                        widget.productToEdit != null ? 'Update Product' : 'Create Product',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        widget.productToEdit != null
+                            ? 'Update Product'
+                            : 'Create Product',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
                       ),
               ),
               const SizedBox(height: 40),
@@ -661,7 +691,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   Widget _sectionHeader(String title) {
     return Text(
       title,
-      style: const TextStyle(
+      style: TextStyle(
         fontWeight: FontWeight.w800,
         fontSize: 14,
         color: AppTheme.primary,
@@ -675,9 +705,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.surfaceColor(context),
         borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        border: Border.all(color: AppTheme.borderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -687,20 +717,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             children: [
               Expanded(
                 child: InkWell(
-                  onTap: _isUploadingImage ? null : () => _pickAndUploadImage(ImageSource.camera),
+                  onTap: _isUploadingImage
+                      ? null
+                      : () => _pickAndUploadImage(ImageSource.camera),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     decoration: BoxDecoration(
-                      color: AppTheme.primary.withOpacity(0.06),
+                      color: AppTheme.primary.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                      border: Border.all(color: AppTheme.primary.withOpacity(0.15)),
+                      border: Border.all(
+                          color: AppTheme.primary.withValues(alpha: 0.15)),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.camera_alt_outlined, color: AppTheme.primary, size: 24),
+                        Icon(Icons.camera_alt_outlined,
+                            color: AppTheme.primary, size: 24),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Take Photo from Mobile',
                           textAlign: TextAlign.center,
                           style: TextStyle(
@@ -715,7 +750,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 9,
-                            color: AppTheme.primary.withOpacity(0.8),
+                            color: AppTheme.primary.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
@@ -726,20 +761,25 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: InkWell(
-                  onTap: _isUploadingImage ? null : () => _pickAndUploadImage(ImageSource.gallery),
+                  onTap: _isUploadingImage
+                      ? null
+                      : () => _pickAndUploadImage(ImageSource.gallery),
                   borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                     decoration: BoxDecoration(
-                      color: Colors.indigo.withOpacity(0.06),
+                      color: Colors.indigo.withValues(alpha: 0.06),
                       borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                      border: Border.all(color: Colors.indigo.withOpacity(0.15)),
+                      border: Border.all(
+                          color: Colors.indigo.withValues(alpha: 0.15)),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.photo_library_outlined, color: Colors.indigo.shade700, size: 24),
+                        Icon(Icons.photo_library_outlined,
+                            color: Colors.indigo.shade700, size: 24),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'Choose from your Mobile',
                           textAlign: TextAlign.center,
                           style: TextStyle(
@@ -754,7 +794,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             fontSize: 9,
-                            color: Colors.indigo.shade700.withOpacity(0.8),
+                            color:
+                                Colors.indigo.shade700.withValues(alpha: 0.8),
                           ),
                         ),
                       ],
@@ -764,7 +805,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 16),
 
           // ── Loading indicator ──
@@ -774,22 +815,22 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
               decoration: BoxDecoration(
                 color: Colors.grey[50],
                 borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                border: Border.all(color: AppTheme.borderColor(context)),
               ),
-              child: const Center(
+              child: Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
+                    const SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     ),
-                    SizedBox(width: 12),
+                    const SizedBox(width: 12),
                     Text(
                       'Uploading to secure server...',
                       style: TextStyle(
-                          color: AppTheme.textSecondary,
+                          color: AppTheme.secondaryTextColor(context),
                           fontSize: 12,
                           fontWeight: FontWeight.w500),
                     ),
@@ -802,12 +843,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
           // ── Images Gallery Grid ──
           if (_productImages.isNotEmpty) ...[
-            const Text(
+            Text(
               'Product Gallery & Management',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 12,
-                color: AppTheme.textSecondary,
+                color: AppTheme.secondaryTextColor(context),
               ),
             ),
             const SizedBox(height: 8),
@@ -828,10 +869,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
 
                 return Container(
                   decoration: BoxDecoration(
-                    color: AppTheme.surface,
+                    color: AppTheme.surfaceColor(context),
                     borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                     border: Border.all(
-                      color: isMain ? AppTheme.primary : const Color(0xFFE2E8F0),
+                      color: isMain
+                          ? AppTheme.primary
+                          : AppTheme.borderColor(context),
                       width: isMain ? 2 : 1,
                     ),
                   ),
@@ -848,7 +891,9 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) => FullScreenImageViewer(
-                                      images: _productImages.map((img) => img['url']!).toList(),
+                                      images: _productImages
+                                          .map((img) => img['url']!)
+                                          .toList(),
                                       initialIndex: index,
                                     ),
                                   ),
@@ -859,11 +904,15 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 fit: BoxFit.cover,
                                 placeholder: (_, __) => Container(
                                   color: Colors.grey[100],
-                                  child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                  child: const Center(
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2)),
                                 ),
                                 errorWidget: (_, __, ___) => Container(
                                   color: Colors.grey[100],
-                                  child: const Icon(Icons.broken_image, size: 32, color: AppTheme.textMuted),
+                                  child: Icon(Icons.broken_image,
+                                      size: 32,
+                                      color: AppTheme.mutedTextColor(context)),
                                 ),
                               ),
                             ),
@@ -872,7 +921,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 top: 8,
                                 left: 8,
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: AppTheme.primary,
                                     borderRadius: BorderRadius.circular(12),
@@ -880,7 +930,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                   child: const Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.star, color: Colors.white, size: 10),
+                                      Icon(Icons.star,
+                                          color: Colors.white, size: 10),
                                       SizedBox(width: 4),
                                       Text(
                                         'Main',
@@ -899,7 +950,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       ),
                       // Card Actions
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 4),
                         color: Colors.grey[50],
                         child: Row(
                           children: [
@@ -915,13 +967,16 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                       },
                                 borderRadius: BorderRadius.circular(4),
                                 child: Padding(
-                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 6),
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       Icon(
                                         isMain ? Icons.star : Icons.star_border,
-                                        color: isMain ? Colors.amber.shade700 : AppTheme.textMuted,
+                                        color: isMain
+                                            ? Colors.amber.shade700
+                                            : AppTheme.textMuted,
                                         size: 14,
                                       ),
                                       const SizedBox(width: 4),
@@ -929,8 +984,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                         isMain ? 'Main' : 'Set Main',
                                         style: TextStyle(
                                           fontSize: 10,
-                                          fontWeight: isMain ? FontWeight.bold : FontWeight.normal,
-                                          color: isMain ? Colors.amber.shade900 : AppTheme.textSecondary,
+                                          fontWeight: isMain
+                                              ? FontWeight.bold
+                                              : FontWeight.normal,
+                                          color: isMain
+                                              ? Colors.amber.shade900
+                                              : AppTheme.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -938,10 +997,12 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                                 ),
                               ),
                             ),
-                            const VerticalDivider(width: 1, color: Color(0xFFE2E8F0)),
+                            const VerticalDivider(
+                                width: 1, color: Color(0xFFE2E8F0)),
                             // "Remove" Button
                             IconButton(
-                              icon: const Icon(Icons.delete_outline, color: AppTheme.danger, size: 16),
+                              icon: Icon(Icons.delete_outline,
+                                  color: AppTheme.danger, size: 16),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                               onPressed: () {
@@ -980,19 +1041,18 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                   Icon(Icons.add_a_photo_outlined,
                       size: 26, color: Colors.indigo.shade300),
                   const SizedBox(height: 6),
-                  const Text(
+                  Text(
                     'No photos added yet',
                     style: TextStyle(
-                        color: AppTheme.textMuted,
+                        color: AppTheme.mutedTextColor(context),
                         fontSize: 12,
                         fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 2),
-                  const Text(
+                  Text(
                     'Snap a photo or choose from gallery above',
                     style: TextStyle(
-                        color: AppTheme.textMuted,
-                        fontSize: 10),
+                        color: AppTheme.mutedTextColor(context), fontSize: 10),
                   ),
                 ],
               ),

@@ -1,6 +1,6 @@
 {
-    "name": "b2b_stock_app",
-    "short_name": "b2b_stock_app",
+    "name": "Zentory",
+    "short_name": "Zentory",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

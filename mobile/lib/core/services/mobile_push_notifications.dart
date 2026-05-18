@@ -228,7 +228,7 @@ class MobilePushNotifications {
 
     await _localNotifications.show(
       message.messageId?.hashCode ?? DateTime.now().millisecondsSinceEpoch,
-      notification.title ?? 'StockIQ Update',
+      notification.title ?? 'Zentory Update',
       notification.body ?? '',
       NotificationDetails(
         android: AndroidNotificationDetails(
