@@ -1,5 +1,8 @@
 const DEFAULT_SERVER_BASE_URL =
-  process.env.NEXT_PUBLIC_SERVER_BASE_URL || 'http://localhost:8080';
+  process.env.NEXT_PUBLIC_SERVER_BASE_URL ||
+  (typeof window !== 'undefined' && !window.location.hostname.includes('localhost')
+    ? 'https://zentory-api.onrender.com'
+    : 'http://localhost:8080');
 
 export function getServerBaseUrl() {
   if (typeof window === 'undefined') return DEFAULT_SERVER_BASE_URL;
