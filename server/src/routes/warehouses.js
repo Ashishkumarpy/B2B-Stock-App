@@ -4,16 +4,6 @@ import { authRequired, requireRole } from '../auth.js';
 
 export const warehousesRouter = express.Router();
 
-function isValidHttpUrl(value) {
-  if (!value) return true;
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-
 warehousesRouter.get('/', authRequired, async (_req, res) => {
   const includeInactive =
     String(_req.query?.include_inactive || '').trim().toLowerCase() === 'true';
@@ -38,22 +28,17 @@ warehousesRouter.post(
     const name = String(payload.name || '').trim();
     const code = String(payload.code || '').trim();
     const location = String(payload.location || '').trim();
-    const locationUrl = String(payload.location_url || '').trim();
 
     if (!name) {
       return res.status(400).json({ error: 'name is required' });
-    }
-    if (!isValidHttpUrl(locationUrl)) {
-      return res.status(400).json({ error: 'location_url must be a valid http/https URL' });
     }
 
     const { data, error } = await supabaseAdmin
       .from('warehouses')
       .insert({
         name,
-        code: code.isEmpty ? null : code,
-        location: location.isEmpty ? null : location,
-        location_url: locationUrl.isEmpty ? null : locationUrl,
+        code: code === '' ? null : code,
+        location: location === '' ? null : location,
         is_active: true
       })
       .select('*')
@@ -78,18 +63,11 @@ warehousesRouter.put(
     }
     if (typeof payload.code === 'string') {
       const code = payload.code.trim();
-      updateRow.code = code.isEmpty ? null : code;
+      updateRow.code = code === '' ? null : code;
     }
     if (typeof payload.location === 'string') {
       const location = payload.location.trim();
-      updateRow.location = location.isEmpty ? null : location;
-    }
-    if (typeof payload.location_url === 'string') {
-      const locationUrl = payload.location_url.trim();
-      if (!isValidHttpUrl(locationUrl)) {
-        return res.status(400).json({ error: 'location_url must be a valid http/https URL' });
-      }
-      updateRow.location_url = locationUrl.isEmpty ? null : locationUrl;
+      updateRow.location = location === '' ? null : location;
     }
     if (typeof payload.is_active === 'boolean') {
       updateRow.is_active = payload.is_active;
