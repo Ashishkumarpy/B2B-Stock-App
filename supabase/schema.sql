@@ -809,6 +809,27 @@ CREATE TRIGGER on_user_profile_upsert_worker
   AFTER INSERT OR UPDATE OF name, email ON public.users
   FOR EACH ROW EXECUTE FUNCTION public.sync_worker_from_user();
 
+-- 5.5 Cascade Product Name/Code Changes to Transactions
+CREATE OR REPLACE FUNCTION public.cascade_product_changes_to_transactions()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF (OLD.name IS DISTINCT FROM NEW.name OR OLD.code IS DISTINCT FROM NEW.code) THEN
+    UPDATE public.transactions
+    SET 
+      product_name = NEW.name,
+      product_code = NEW.code
+    WHERE product_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_cascade_product_changes ON public.products;
+CREATE TRIGGER trg_cascade_product_changes
+  AFTER UPDATE OF name, code ON public.products
+  FOR EACH ROW
+  EXECUTE FUNCTION public.cascade_product_changes_to_transactions();
+
 -- 6. PERMISSIONS (GRANTS)
 -- Note: RLS still applies for anon/authenticated; service_role bypasses RLS but needs table privileges.
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;

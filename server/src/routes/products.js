@@ -35,7 +35,26 @@ productsRouter.put('/:id', authRequired, requireRole(['admin', 'manager', 'worke
     .eq('id', id)
     .select('*')
     .single();
+    
   if (error) return res.status(400).json({ error: error.message });
+
+  // Cascade name/code changes to transactions history if they were updated
+  if (payload.name !== undefined || payload.code !== undefined) {
+    const transactionUpdates = {};
+    if (payload.name !== undefined) {
+      transactionUpdates.product_name = payload.name;
+    }
+    if (payload.code !== undefined) {
+      transactionUpdates.product_code = payload.code;
+    }
+
+    // Best-effort update, ignore errors so product edit doesn't fail
+    await supabaseAdmin
+      .from('transactions')
+      .update(transactionUpdates)
+      .eq('product_id', id);
+  }
+
   return res.json({ data });
 });
 
