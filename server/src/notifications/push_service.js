@@ -208,11 +208,37 @@ export async function sendStockTransactionPush(transactionRow) {
   }
 }
 
-export async function sendWorkerOtpPush(workerId, otp) {
+export async function sendWorkerOtpPush(workerId, otp, clientToken) {
   if (!workerId || !otp) return { skipped: true, reason: 'missing_params' };
 
-  // Query tokens registered for this worker even if currently inactive (due to logout)
-  // to ensure they can receive their verification code on their trusted device.
+  const safeClientToken = String(clientToken || '').trim();
+
+  // If a clientToken is provided, verify it is registered for this worker.
+  // If registered, send the OTP ONLY to this device to prevent notifications on other devices!
+  if (safeClientToken) {
+    const { data: matchedDevice, error: matchError } = await supabaseAdmin
+      .from('notification_devices')
+      .select('token')
+      .eq('worker_id', workerId)
+      .eq('token', safeClientToken)
+      .maybeSingle();
+
+    if (!matchError && matchedDevice) {
+      console.log('Targeting OTP push notification specifically to requesting device token');
+      return await sendPushNotification({
+        title: 'Verification Code',
+        body: `Your login code is: ${otp}. It will expire in 5 minutes.`,
+        data: {
+          type: 'otp_verification',
+          otp: String(otp)
+        },
+        apps: ['mobile'],
+        tokens: [safeClientToken]
+      });
+    }
+  }
+
+  // Fallback to all devices associated with the worker if clientToken is not matched or not provided
   const { data: devices, error } = await supabaseAdmin
     .from('notification_devices')
     .select('token')

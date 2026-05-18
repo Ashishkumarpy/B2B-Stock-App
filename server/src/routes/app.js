@@ -8,12 +8,11 @@ export const appRouter = express.Router();
  */
 appRouter.get('/version', (req, res) => {
   res.json({
-    latestVersion: '1.0.2',
-    buildNumber: 3,
-    releaseDate: '2026-05-16',
-    // Mock URL for testing
-    downloadUrl: 'https://github.com/your-repo/releases/latest', 
+    latestVersion: '1.2.0',
+    buildNumber: 5,
+    releaseDate: '2026-05-18',
+    downloadUrl: 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest', 
     isCritical: false,
-    releaseNotes: '• Premium Modern UI: New grid-based product cards\n• Performance: Faster image loading with Cloudinary\n• Stability: Fixed layout overflows and improved offline sync'
+    releaseNotes: '• Premium Modern UI: Beautiful dark modes and HSL colors\n• Security: Targeted OTP device isolation\n• Stability: Automatic push token lifecycle mapping\n• Bug Fixes: Resolved catch-22 login notification state'
   });
 });

@@ -81,7 +81,7 @@ function hashOtp(phone, otp) {
     .digest('hex');
 }
 
-export async function requestWorkerOtp(phoneRaw) {
+export async function requestWorkerOtp(phoneRaw, clientToken) {
   const phone = normalizePhone(phoneRaw);
   if (!phone) {
     const e = new Error('phone required');
@@ -137,7 +137,7 @@ export async function requestWorkerOtp(phoneRaw) {
   
   // Best-effort push notification
   try {
-    await sendWorkerOtpPush(worker.id, otp);
+    await sendWorkerOtpPush(worker.id, otp, clientToken);
   } catch (pushError) {
     console.error('Failed to send OTP push:', pushError);
   }

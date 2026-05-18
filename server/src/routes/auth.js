@@ -68,9 +68,9 @@ authRouter.post('/login', async (req, res) => {
 });
 
 authRouter.post('/worker/request-otp', async (req, res) => {
-  const { phone } = req.body || {};
+  const { phone, token } = req.body || {};
   try {
-    const result = await requestWorkerOtp(phone);
+    const result = await requestWorkerOtp(phone, token);
     log({
       level: 'info',
       msg: 'worker_otp_requested',

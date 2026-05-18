@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../../domain/entities/app_user.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
@@ -134,9 +135,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<(bool, String?)> requestWorkerOtp(String phone) async {
     try {
       state = state.copyWith(isLoading: true);
+
+      // Get the current FCM token of this device to isolate the login OTP notification to this device only
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (e) {
+        AppLog.d('FCM token retrieval failed during OTP request: $e');
+      }
+
       final client = _ref.read(apiClientProvider);
-      final res =
-          await client.post('/auth/worker/request-otp', {'phone': phone});
+      final res = await client.post('/auth/worker/request-otp', {
+        'phone': phone,
+        if (fcmToken != null && fcmToken.isNotEmpty) 'token': fcmToken,
+      });
       state = state.copyWith(isLoading: false);
       return (true, res['otpPreview']?.toString());
     } catch (e) {
