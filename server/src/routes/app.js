@@ -16,11 +16,30 @@ let cacheExpiry = 0; // Epoch ms
 
 async function fetchLatestGitHubRelease() {
   try {
+    const headers = {
+      'User-Agent': 'B2B-Stock-Server'
+    };
+    
+    // Support private repositories using a GitHub Personal Access Token (PAT)
+    if (process.env.GITHUB_TOKEN) {
+      headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
+    }
+
     const response = await fetch('https://api.github.com/repos/Ashishkumarpy/B2B-Stock-App/releases/latest', {
-      headers: {
-        'User-Agent': 'B2B-Stock-Server'
-      }
+      headers
     });
+    
+    if (response.status === 404) {
+      console.warn(
+        '⚠️ GitHub API returned status 404. This means either:\n' +
+        '1. You have not published any releases yet in the repository.\n' +
+        '2. The repository is private and requires authentication. Add GITHUB_TOKEN to your server environment variables.'
+      );
+      // Serve current cached fallback safely without throwing an exception, retry in 5 mins
+      cacheExpiry = Date.now() + 5 * 60 * 1000;
+      return;
+    }
+
     if (!response.ok) {
       throw new Error(`GitHub API returned status ${response.status}`);
     }
@@ -53,7 +72,8 @@ async function fetchLatestGitHubRelease() {
     console.log('Successfully refreshed latest app version from GitHub releases:', cachedVersion.latestVersion);
   } catch (error) {
     console.error('Failed to fetch latest version from GitHub:', error);
-    // Keep using the last cached version as fallback
+    // Keep using the last cached version as fallback, retry in 5 minutes
+    cacheExpiry = Date.now() + 5 * 60 * 1000;
   }
 }
 
