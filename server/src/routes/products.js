@@ -19,7 +19,7 @@ productsRouter.get('/', authRequired, async (req, res) => {
   return res.json({ data });
 });
 
-productsRouter.post('/', authRequired, requireRole(['admin']), async (req, res) => {
+productsRouter.post('/', authRequired, requireRole(['admin', 'manager']), async (req, res) => {
   const payload = req.body || {};
   const { data, error } = await supabaseAdmin.from('products').insert(payload).select('*').single();
   if (error) return res.status(400).json({ error: error.message });
@@ -58,7 +58,7 @@ productsRouter.put('/:id', authRequired, requireRole(['admin', 'manager', 'worke
   return res.json({ data });
 });
 
-productsRouter.delete('/:id', authRequired, requireRole(['admin']), async (req, res) => {
+productsRouter.delete('/:id', authRequired, requireRole(['admin', 'manager']), async (req, res) => {
   const id = req.params.id;
 
   try {
