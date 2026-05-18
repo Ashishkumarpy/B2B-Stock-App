@@ -195,7 +195,7 @@ transactionsRouter.post(
 
     if (!workerId && userId) {
       // Worker OTP sessions use workers.id as session.sub (not users.id).
-      if (sessionRole === 'worker' || sessionRole === 'manager') {
+      if (sessionRole === 'worker' || (sessionRole === 'manager' && !userEmail)) {
         const byWorkerId = await supabaseAdmin
           .from('workers')
           .select('id,name')
@@ -285,7 +285,7 @@ transactionsRouter.post(
       worker_id: workerId,
       worker_name: workerName,
       actor_user_id:
-        sessionRole === 'admin' || sessionRole === 'manager' ? userId || null : null,
+        sessionRole === 'admin' || (sessionRole === 'manager' && userEmail) ? userId || null : null,
       actor_role: sessionRole || null,
       notes
     };
