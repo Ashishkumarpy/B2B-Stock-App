@@ -11,6 +11,11 @@ class VersionCheckService {
   static const String _lastDismissedKey = 'last_dismissed_version';
   static bool _sessionChecked = false;
 
+  /// Resets the session check state (e.g. on logout/login)
+  static void resetSessionCheck() {
+    _sessionChecked = false;
+  }
+
   static Future<void> check(BuildContext context, WidgetRef ref,
       {bool force = false}) async {
     if (_sessionChecked && !force) return;
@@ -43,26 +48,57 @@ class VersionCheckService {
         } else if (force) {
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('App is up to date')),
+              const SnackBar(
+                content: Text('App is up to date 🎉'),
+                backgroundColor: AppTheme.success,
+              ),
             );
           }
+        }
+      } else if (force) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to check for updates: Invalid server response'),
+              backgroundColor: AppTheme.danger,
+            ),
+          );
         }
       }
     } catch (e) {
       debugPrint('Version check failed: $e');
+      if (force && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error checking for updates: $e'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+      }
     }
   }
 
+  /// Compares two version strings safely, ignoring suffixes (e.g. "+4", "-beta")
   static bool _isNewer(String latest, String current) {
-    List<int> latestParts = latest.split('.').map(int.parse).toList();
-    List<int> currentParts = current.split('.').map(int.parse).toList();
+    try {
+      final cleanLatest = latest.split('+').first.split('-').first.trim();
+      final cleanCurrent = current.split('+').first.split('-').first.trim();
 
-    for (var i = 0; i < latestParts.length; i++) {
-      if (i >= currentParts.length) return true;
-      if (latestParts[i] > currentParts[i]) return true;
-      if (latestParts[i] < currentParts[i]) return false;
+      List<int> latestParts = cleanLatest.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+      List<int> currentParts = cleanCurrent.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+
+      final maxLength = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
+      for (var i = 0; i < maxLength; i++) {
+        final latestVal = i < latestParts.length ? latestParts[i] : 0;
+        final currentVal = i < currentParts.length ? currentParts[i] : 0;
+        if (latestVal > currentVal) return true;
+        if (latestVal < currentVal) return false;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Error parsing versions: $e');
+      return false;
     }
-    return false;
   }
 
   static void _showUpdateDialog(

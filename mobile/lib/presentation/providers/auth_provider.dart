@@ -6,6 +6,7 @@ import '../../domain/entities/app_user.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
 import '../../core/services/mobile_push_notifications.dart';
+import '../../core/services/version_check_service.dart';
 import 'api_client_provider.dart';
 import 'server_session_provider.dart';
 
@@ -91,6 +92,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       _ref.read(serverSessionProvider.notifier).state = session;
       state = state.copyWith(user: user, isLoading: false);
 
+      // Reset version check state so it checks for updates for this user session
+      VersionCheckService.resetSessionCheck();
+
       // Register device token with server after login
       Future.microtask(() {
         final newClient = _ref.read(apiClientProvider);
@@ -118,6 +122,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveSession(session);
       _ref.read(serverSessionProvider.notifier).state = session;
       state = state.copyWith(user: user, isLoading: false);
+
+      // Reset version check state so it checks for updates for this user session
+      VersionCheckService.resetSessionCheck();
 
       // Register device token with server after worker OTP login
       Future.microtask(() {
@@ -169,6 +176,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       AppLog.d('Failed to unregister push token during logout: $e');
     }
+    
+    // Reset version check state on logout
+    VersionCheckService.resetSessionCheck();
+
     final box = await Hive.openBox(_authBox);
     await box.delete(_sessionKey);
     _ref.read(serverSessionProvider.notifier).state = null;
