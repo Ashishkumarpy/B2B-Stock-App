@@ -122,9 +122,14 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
             {authError && <p className="mt-3 text-sm text-red-300">{authError}</p>}
             <button
               type="button"
-              onClick={async () => {
+                onClick={async () => {
                 await unregisterAdminPushNotifications();
-                await serverPost('/auth/logout', {});
+                try {
+                  await serverPost('/auth/logout', {});
+                } catch {}
+                if (typeof window !== 'undefined') {
+                  window.localStorage.removeItem('b2b_stock_token');
+                }
                 router.replace('/login');
               }}
               className="mt-6 rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-300 transition hover:bg-white/5 hover:text-white"
@@ -156,8 +161,13 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
           {authError && <p className="mt-3 text-sm text-red-300">{authError}</p>}
           <button
             type="button"
-            onClick={async () => {
-              await serverPost('/auth/logout', {});
+              onClick={async () => {
+              try {
+                await serverPost('/auth/logout', {});
+              } catch {}
+              if (typeof window !== 'undefined') {
+                window.localStorage.removeItem('b2b_stock_token');
+              }
               router.replace('/login');
             }}
             className="mt-6 rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-300 transition hover:bg-white/5 hover:text-white"
@@ -184,7 +194,12 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
           initials={initials}
           onSignOut={async () => {
             await unregisterAdminPushNotifications();
-            await serverPost('/auth/logout', {});
+            try {
+              await serverPost('/auth/logout', {});
+            } catch {}
+            if (typeof window !== 'undefined') {
+              window.localStorage.removeItem('b2b_stock_token');
+            }
             router.replace('/login');
           }}
         />

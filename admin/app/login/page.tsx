@@ -17,7 +17,10 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      await serverPost('/auth/login', { email, password });
+      const res = await serverPost('/auth/login', { email, password }) as { token: string };
+      if (res && res.token) {
+        window.localStorage.setItem('b2b_stock_token', res.token);
+      }
       router.push('/products');
     } catch (e) {
       if (e instanceof ServerApiError) setError(e.message);

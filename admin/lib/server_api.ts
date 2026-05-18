@@ -20,6 +20,20 @@ export class ServerApiError extends Error {
 
 async function safeFetch(input: RequestInfo | URL, init?: RequestInit) {
   const SERVER_BASE_URL = getServerBaseUrl();
+
+  // Inject Authorization header if token exists in localStorage
+  if (typeof window !== 'undefined') {
+    const token = window.localStorage.getItem('b2b_stock_token');
+    if (token) {
+      const headers = new Headers(init?.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      init = {
+        ...init,
+        headers
+      };
+    }
+  }
+
   try {
     return await fetch(input, init);
   } catch (e) {
@@ -32,6 +46,11 @@ async function safeFetch(input: RequestInfo | URL, init?: RequestInit) {
 }
 
 async function decode(res: Response) {
+  if (res.status === 401) {
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem('b2b_stock_token');
+    }
+  }
   if (res.ok) {
     const text = await res.text();
     return text ? JSON.parse(text) : null;
