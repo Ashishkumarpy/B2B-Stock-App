@@ -15,7 +15,7 @@ class ServerBaseUrlNotifier extends StateNotifier<String> {
 
   void _init() {
     final box = Hive.box(AppConstants.settingsBox);
-    state = box.get(_urlKey, defaultValue: '') as String;
+    state = box.get(_urlKey, defaultValue: 'https://zentory-api.onrender.com') as String;
   }
 
   Future<void> setUrl(String url) async {
