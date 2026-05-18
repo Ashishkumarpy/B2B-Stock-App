@@ -29,11 +29,21 @@ async function fetchLatestGitHubRelease() {
     // Parse tag_name (e.g. "v1.2.0" -> "1.2.0")
     const tagName = String(data.tag_name || '1.2.0').replace(/^v/, '');
     
+    // Try to find direct APK download link in assets
+    let downloadUrl = data.html_url || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest';
+    if (data.assets && Array.isArray(data.assets)) {
+      const apkAsset = data.assets.find(asset => asset.name && asset.name.endsWith('.apk'));
+      if (apkAsset) {
+        downloadUrl = apkAsset.browser_download_url;
+        console.log('Found direct APK download URL on GitHub:', downloadUrl);
+      }
+    }
+
     cachedVersion = {
       latestVersion: tagName,
       buildNumber: 5, // Default/fallback build number
       releaseDate: data.published_at ? data.published_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-      downloadUrl: data.html_url || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest',
+      downloadUrl: downloadUrl,
       isCritical: false,
       releaseNotes: data.body || 'New features and bug fixes.'
     };
@@ -73,7 +83,17 @@ appRouter.post('/github-webhook', async (req, res) => {
 
   if (action === 'published' && release) {
     const tagName = String(release.tag_name || '').replace(/^v/, '');
-    const downloadUrl = release.html_url || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest';
+    
+    // Try to find direct APK download link in assets
+    let downloadUrl = release.html_url || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest';
+    if (release.assets && Array.isArray(release.assets)) {
+      const apkAsset = release.assets.find(asset => asset.name && asset.name.endsWith('.apk'));
+      if (apkAsset) {
+        downloadUrl = apkAsset.browser_download_url;
+        console.log('Webhook found direct APK download URL:', downloadUrl);
+      }
+    }
+
     const notes = release.body || 'New update is available.';
 
     if (tagName) {
