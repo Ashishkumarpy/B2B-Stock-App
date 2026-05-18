@@ -15,14 +15,22 @@ import 'core/services/mobile_push_notifications.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Supabase.initialize(
-    url: AppConstants.supabaseUrl,
-    anonKey: AppConstants.supabaseAnonKey,
-  );
+  try {
+    await Supabase.initialize(
+      url: AppConstants.supabaseUrl,
+      anonKey: AppConstants.supabaseAnonKey,
+    );
+  } catch (e) {
+    AppLog.d('Supabase initialization failed: $e');
+  }
 
-  // Initialize Push Notifications
-  await MobilePushNotifications.instance.ensureInitialized();
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  try {
+    // Initialize Push Notifications
+    await MobilePushNotifications.instance.ensureInitialized();
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  } catch (e) {
+    AppLog.d('Push notifications initialization failed: $e');
+  }
 
   FlutterError.onError = (details) {
     // details.toString() includes Flutter's diagnostics (often contains the
@@ -52,8 +60,12 @@ void main() async {
   );
 
   // Initialize Hive for offline storage
-  await Hive.initFlutter();
-  await Hive.openBox(AppConstants.settingsBox);
+  try {
+    await Hive.initFlutter();
+    await Hive.openBox(AppConstants.settingsBox);
+  } catch (e) {
+    AppLog.d('Hive initialization failed: $e');
+  }
 
   runApp(
     const ProviderScope(

@@ -69,23 +69,29 @@ export async function unregisterNotificationDevice({ token }) {
   return { ok: true };
 }
 
-export async function sendPushNotification({ title, body, data = {}, apps = ['mobile', 'admin'] }) {
+export async function sendPushNotification({ title, body, data = {}, apps = ['mobile', 'admin'], tokens }) {
   if (!isFirebaseMessagingEnabled()) {
     return { sent: 0, failed: 0, skipped: true, reason: 'firebase_not_configured' };
   }
 
-  const { data: devices, error } = await supabaseAdmin
-    .from('notification_devices')
-    .select('id,token,app,is_active')
-    .eq('is_active', true)
-    .in('app', apps);
+  let targetTokens = [];
+  if (Array.isArray(tokens)) {
+    targetTokens = tokens.map((token) => String(token || '').trim()).filter(Boolean);
+  } else {
+    const { data: devices, error } = await supabaseAdmin
+      .from('notification_devices')
+      .select('id,token,app,is_active')
+      .eq('is_active', true)
+      .in('app', apps);
 
-  if (error) throw error;
+    if (error) throw error;
 
-  const tokens = (devices ?? [])
-    .map((device) => String(device.token || '').trim())
-    .filter(Boolean);
-  if (tokens.length === 0) return { sent: 0, failed: 0, skipped: true, reason: 'no_tokens' };
+    targetTokens = (devices ?? [])
+      .map((device) => String(device.token || '').trim())
+      .filter(Boolean);
+  }
+
+  if (targetTokens.length === 0) return { sent: 0, failed: 0, skipped: true, reason: 'no_tokens' };
 
   const messaging = getFirebaseMessaging();
   if (!messaging) {
@@ -93,8 +99,8 @@ export async function sendPushNotification({ title, body, data = {}, apps = ['mo
   }
 
   const chunks = [];
-  for (let index = 0; index < tokens.length; index += 500) {
-    chunks.push(tokens.slice(index, index + 500));
+  for (let index = 0; index < targetTokens.length; index += 500) {
+    chunks.push(targetTokens.slice(index, index + 500));
   }
 
   let sent = 0;
@@ -201,14 +207,16 @@ export async function sendStockTransactionPush(transactionRow) {
     return { sent: 0, failed: 0, skipped: true, reason: 'send_failed' };
   }
 }
+
 export async function sendWorkerOtpPush(workerId, otp) {
   if (!workerId || !otp) return { skipped: true, reason: 'missing_params' };
 
+  // Query tokens registered for this worker even if currently inactive (due to logout)
+  // to ensure they can receive their verification code on their trusted device.
   const { data: devices, error } = await supabaseAdmin
     .from('notification_devices')
     .select('token')
-    .eq('worker_id', workerId)
-    .eq('is_active', true);
+    .eq('worker_id', workerId);
 
   if (error) throw error;
   if (!devices || devices.length === 0) {
@@ -224,6 +232,7 @@ export async function sendWorkerOtpPush(workerId, otp) {
       type: 'otp_verification',
       otp: String(otp)
     },
-    apps: ['mobile']
+    apps: ['mobile'],
+    tokens
   });
 }

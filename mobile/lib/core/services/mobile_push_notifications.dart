@@ -10,6 +10,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../constants/app_constants.dart';
 import '../logging/app_log.dart';
@@ -190,6 +191,16 @@ class MobilePushNotifications {
   }
 
   void _handleDataClick(Map<String, dynamic> data) {
+    final downloadUrl = data['downloadUrl'];
+    if (downloadUrl != null && downloadUrl.toString().isNotEmpty) {
+      try {
+        launchUrl(Uri.parse(downloadUrl.toString()), mode: LaunchMode.externalApplication);
+      } catch (e) {
+        AppLog.d('push: failed to launch downloadUrl: $e');
+      }
+      return;
+    }
+
     final productId = data['productId'];
     if (productId != null && productId.toString().isNotEmpty) {
       if (_router == null) {
@@ -242,6 +253,33 @@ class MobilePushNotifications {
           enableVibration: true,
           channelShowBadge: true,
           styleInformation: bigPictureStyle,
+        ),
+      ),
+      payload: payload,
+    );
+  }
+
+  Future<void> showLocalNotification({
+    required String title,
+    required String body,
+    Map<String, dynamic>? data,
+  }) async {
+    final payload = data == null ? null : jsonEncode(data);
+    await _localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch.hashCode,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _channelId,
+          _channelName,
+          channelDescription: _channelDescription,
+          importance: Importance.max,
+          priority: Priority.high,
+          ticker: 'ticker',
+          playSound: true,
+          enableVibration: true,
+          channelShowBadge: true,
         ),
       ),
       payload: payload,

@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -12,23 +11,24 @@ class VersionCheckService {
   static const String _lastDismissedKey = 'last_dismissed_version';
   static bool _sessionChecked = false;
 
-  static Future<void> check(BuildContext context, WidgetRef ref, {bool force = false}) async {
+  static Future<void> check(BuildContext context, WidgetRef ref,
+      {bool force = false}) async {
     if (_sessionChecked && !force) return;
     _sessionChecked = true;
 
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
-      
+
       final client = ref.read(apiClientProvider);
-      final response = await client.get('/app/version');
-      
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+      final data = await client.get('/app/version');
+
+      if (data != null && data['latestVersion'] != null) {
         final latestVersion = data['latestVersion'] as String;
         final downloadUrl = data['downloadUrl'] as String;
         final isCritical = data['isCritical'] as bool? ?? false;
-        final releaseNotes = data['releaseNotes'] as String? ?? 'Bug fixes and improvements.';
+        final releaseNotes =
+            data['releaseNotes'] as String? ?? 'Bug fixes and improvements.';
 
         if (_isNewer(latestVersion, currentVersion)) {
           final box = await Hive.openBox(_boxName);
@@ -36,7 +36,8 @@ class VersionCheckService {
 
           if (isCritical || force || lastDismissed != latestVersion) {
             if (context.mounted) {
-              _showUpdateDialog(context, latestVersion, downloadUrl, isCritical, releaseNotes);
+              _showUpdateDialog(context, latestVersion, downloadUrl, isCritical,
+                  releaseNotes);
             }
           }
         } else if (force) {
@@ -65,21 +66,24 @@ class VersionCheckService {
   }
 
   static void _showUpdateDialog(
-    BuildContext context, 
-    String version, 
-    String url, 
-    bool isCritical, 
+    BuildContext context,
+    String version,
+    String url,
+    bool isCritical,
     String notes,
   ) {
     showDialog(
       context: context,
       barrierDismissible: !isCritical,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusLG)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppTheme.radiusLG)),
         title: Row(
           children: [
             Icon(
-              isCritical ? Icons.system_update_rounded : Icons.rocket_launch_rounded,
+              isCritical
+                  ? Icons.system_update_rounded
+                  : Icons.rocket_launch_rounded,
               color: isCritical ? AppTheme.danger : AppTheme.primary,
             ),
             const SizedBox(width: 12),
@@ -105,7 +109,11 @@ class VersionCheckService {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('What\'s New:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                  const Text('What\'s New:',
+                      style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey)),
                   const SizedBox(height: 4),
                   Text(notes, style: const TextStyle(fontSize: 13)),
                 ],
@@ -121,14 +129,17 @@ class VersionCheckService {
                 await box.put(_lastDismissedKey, version);
                 if (ctx.mounted) Navigator.pop(ctx);
               },
-              child: const Text('Maybe Later', style: TextStyle(color: Colors.grey)),
+              child: const Text('Maybe Later',
+                  style: TextStyle(color: Colors.grey)),
             ),
           ElevatedButton(
-            onPressed: () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+            onPressed: () =>
+                launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMD)),
             ),
             child: const Text('Update Now'),
           ),

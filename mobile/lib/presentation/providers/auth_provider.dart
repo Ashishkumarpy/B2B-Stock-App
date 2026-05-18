@@ -4,6 +4,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import '../../domain/entities/app_user.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
+import '../../core/services/mobile_push_notifications.dart';
 import 'api_client_provider.dart';
 import 'server_session_provider.dart';
 
@@ -59,6 +60,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
         _ref.read(serverSessionProvider.notifier).state = session;
         state = state.copyWith(user: session.user, isInitialized: true);
         AppLog.d('Persistent session restored for: ${session.user.email}');
+
+        // Register push token with server on startup (best-effort)
+        Future.microtask(() {
+          final client = _ref.read(apiClientProvider);
+          MobilePushNotifications.instance.registerWithServer(client);
+        });
       } else {
         state = state.copyWith(isInitialized: true);
       }
@@ -82,6 +89,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveSession(session);
       _ref.read(serverSessionProvider.notifier).state = session;
       state = state.copyWith(user: user, isLoading: false);
+
+      // Register device token with server after login
+      Future.microtask(() {
+        final newClient = _ref.read(apiClientProvider);
+        MobilePushNotifications.instance.registerWithServer(newClient);
+      });
+
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -103,6 +117,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveSession(session);
       _ref.read(serverSessionProvider.notifier).state = session;
       state = state.copyWith(user: user, isLoading: false);
+
+      // Register device token with server after worker OTP login
+      Future.microtask(() {
+        final newClient = _ref.read(apiClientProvider);
+        MobilePushNotifications.instance.registerWithServer(newClient);
+      });
+
       return true;
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
@@ -130,6 +151,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    try {
+      final client = _ref.read(apiClientProvider);
+      await MobilePushNotifications.instance.unregisterFromServer(client);
+    } catch (e) {
+      AppLog.d('Failed to unregister push token during logout: $e');
+    }
     final box = await Hive.openBox(_authBox);
     await box.delete(_sessionKey);
     _ref.read(serverSessionProvider.notifier).state = null;
