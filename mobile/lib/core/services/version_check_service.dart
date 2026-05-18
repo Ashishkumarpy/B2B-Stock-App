@@ -227,12 +227,31 @@ class _ApkDownloadDialogState extends State<_ApkDownloadDialog> {
 
   Future<void> _startDownload() async {
     try {
+      var currentUrl = widget.url;
+      http.StreamedResponse? response;
       final client = http.Client();
-      final request = http.Request('GET', Uri.parse(widget.url));
-      final response = await client.send(request);
+      
+      // Manually follow redirects up to 5 times (important for GitHub -> S3 redirects)
+      var redirectCount = 0;
+      while (redirectCount < 5) {
+        final request = http.Request('GET', Uri.parse(currentUrl));
+        request.followRedirects = false; // Handle redirects manually for maximum control and security
+        
+        final res = await client.send(request);
+        if (res.statusCode >= 300 && res.statusCode < 400) {
+          final location = res.headers['location'];
+          if (location != null && location.isNotEmpty) {
+            currentUrl = Uri.parse(currentUrl).resolve(location).toString();
+            redirectCount++;
+            continue;
+          }
+        }
+        response = res;
+        break;
+      }
 
-      if (response.statusCode != 200) {
-        throw Exception('Server returned status code ${response.statusCode}');
+      if (response == null || response.statusCode != 200) {
+        throw Exception('Server returned status code ${response?.statusCode ?? "Unknown"}');
       }
 
       final totalBytes = response.contentLength ?? 0;
@@ -279,7 +298,10 @@ class _ApkDownloadDialogState extends State<_ApkDownloadDialog> {
       }
 
       // Open the APK file using open_filex to prompt package installer
-      final openResult = await OpenFilex.open(filePath);
+      final openResult = await OpenFilex.open(
+        filePath,
+        type: 'application/vnd.android.package-archive',
+      );
       if (openResult.type != ResultType.done) {
         throw Exception('Could not launch installation: ${openResult.message}');
       }
