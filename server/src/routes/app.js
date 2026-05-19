@@ -22,7 +22,7 @@ async function fetchLatestGitHubRelease() {
     
     // Support private repositories using a GitHub Personal Access Token (PAT)
     if (process.env.GITHUB_TOKEN) {
-      headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
+      headers['Authorization'] = `token ${process.env.GITHUB_TOKEN.trim()}`;
     }
 
     const response = await fetch('https://api.github.com/repos/Ashishkumarpy/B2B-Stock-App/releases/latest', {
@@ -96,7 +96,7 @@ appRouter.get('/download-update.apk', async (req, res) => {
       'Accept': 'application/octet-stream'
     };
     if (process.env.GITHUB_TOKEN) {
-      headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
+      headers['Authorization'] = `token ${process.env.GITHUB_TOKEN.trim()}`;
     }
 
     const response = await fetch(cachedVersion.assetUrl, { 
@@ -104,14 +104,19 @@ appRouter.get('/download-update.apk', async (req, res) => {
       redirect: 'manual' // We want to catch the 302 redirect from GitHub
     });
 
+    console.log('Proxy fetch response status:', response.status);
+    console.log('Proxy fetch response headers:', [...response.headers.entries()]);
+
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');
       if (location) {
+        console.log('Redirecting to:', location);
         // Redirect the mobile app to the AWS S3 pre-signed URL (which is public and temporary)
         return res.redirect(location);
       }
     }
 
+    console.error('Failed to proxy download. GitHub returned:', response.status);
     res.status(404).send('Update asset not found or inaccessible.');
   } catch (err) {
     console.error('Error proxying update download:', err);
