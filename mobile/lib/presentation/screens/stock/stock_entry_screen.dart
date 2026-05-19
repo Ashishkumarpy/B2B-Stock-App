@@ -141,13 +141,22 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           ? _recordedByController.text.trim()
           : 'Ashish';
 
+      final cartonsText = _cartonsController.text.trim();
+      final pcsText = _pcsPerCartonController.text.trim();
+      String finalNotes = _notesController.text.trim();
+
+      if (cartonsText.isNotEmpty && pcsText.isNotEmpty) {
+        final cartonInfo = '$cartonsText Cartons × $pcsText Pcs';
+        finalNotes = finalNotes.isNotEmpty ? '$cartonInfo | $finalNotes' : cartonInfo;
+      }
+
       await client.post('/transactions', {
         'product_id': _selectedProduct!.id,
         'product_name': _selectedProduct!.name,
         'type': _type == TransactionType.stockIn ? 'stock_in' : 'stock_out',
         'quantity': qty,
         'color_name': _selectedColor,
-        'notes': _notesController.text.trim(),
+        'notes': finalNotes,
         'warehouse_id':
             (_selectedWarehouseId == null || _selectedWarehouseId == 'default')
                 ? null

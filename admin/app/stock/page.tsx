@@ -236,6 +236,13 @@ export default function StockPage() {
       }
 
       // Write transaction (product quantity & status are updated automatically by Postgres triggers)
+      // Combine carton info into notes if provided
+      let finalNotes = form.notes.trim();
+      if (form.cartons && form.pcsPerCarton) {
+        const cartonInfo = `${form.cartons} Cartons × ${form.pcsPerCarton} Pcs`;
+        finalNotes = finalNotes ? `${cartonInfo} | ${finalNotes}` : cartonInfo;
+      }
+
       // Write transaction
       await serverPost('/transactions', {
         product_id: product.id,
@@ -246,7 +253,7 @@ export default function StockPage() {
         quantity: form.quantity,
         worker_id: form.worker_id || undefined,
         worker_name: form.worker_name.trim(),
-        notes: form.notes.trim(),
+        notes: finalNotes,
       });
 
       setForm({

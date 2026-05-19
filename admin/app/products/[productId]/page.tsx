@@ -349,6 +349,11 @@ export default function ProductDetailAdminPage() {
                         <span className="text-xs font-bold text-white truncate">{txn.color_name || 'Standard'}</span>
                       </div>
                       <p className="text-[10px] text-gray-500 truncate">By {txn.worker_name || 'Admin'} • {formatDateTime(txn.created_at)}</p>
+                      {txn.notes && (
+                        <p className="text-[10px] text-gray-400 mt-1 truncate bg-white/5 p-1 rounded inline-block">
+                          {txn.notes}
+                        </p>
+                      )}
                     </div>
                     <span className={`text-lg font-black ${isIn ? 'text-emerald-400' : 'text-rose-400'}`}>{isIn ? '+' : '-'}{txn.quantity}</span>
                   </div>
