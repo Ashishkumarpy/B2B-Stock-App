@@ -207,15 +207,7 @@ export default function ProductsPage() {
 
   const searchedProducts = query ? products.filter(p => p.name.toLowerCase().includes(query) || p.code.toLowerCase().includes(query)).sort(sortProductsByCode) : [];
 
-export function formatQuantity(totalPcs: number, pcsPerCarton?: number): string {
-  const size = pcsPerCarton || 1;
-  if (size <= 1) return `${totalPcs} pcs`;
-  const cartons = Math.floor(totalPcs / size);
-  const pcs = totalPcs % size;
-  if (cartons === 0) return `${pcs} pcs`;
-  if (pcs === 0) return `${cartons} ctn`;
-  return `${cartons} ctn, ${pcs} pcs`;
-}
+
 
   const renderProductCard = (product: Product, index: number) => {
     const status = (product.stock_status === 'in_stock') ? { label: 'In Stock', cls: 'badge-green' } :
@@ -369,4 +361,14 @@ export function formatQuantity(totalPcs: number, pcsPerCarton?: number): string 
       )}
     </div>
   );
+}
+
+export function formatQuantity(totalPcs: number, pcsPerCarton?: number): string {
+  const size = pcsPerCarton || 1;
+  if (size <= 1) return `${totalPcs} pcs`;
+  const cartons = Math.floor(totalPcs / size);
+  const pcs = totalPcs % size;
+  if (cartons === 0) return `${pcs} pcs`;
+  if (pcs === 0) return `${cartons} ctn`;
+  return `${cartons} ctn, ${pcs} pcs`;
 }

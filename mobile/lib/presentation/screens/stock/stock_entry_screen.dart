@@ -30,6 +30,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   final _pcsPerCartonController = TextEditingController();
   final _notesController = TextEditingController();
   final _recordedByController = TextEditingController();
+  final _customerController = TextEditingController();
 
   Product? _selectedProduct;
   String _selectedColor = 'Default';
@@ -88,6 +89,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     _pcsPerCartonController.dispose();
     _notesController.dispose();
     _recordedByController.dispose();
+    _customerController.dispose();
     super.dispose();
   }
 
@@ -151,6 +153,11 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       if (cartonsText.isNotEmpty && pcsText.isNotEmpty) {
         final cartonInfo = '$cartonsText Cartons × $pcsText Pcs';
         finalNotes = finalNotes.isNotEmpty ? '$cartonInfo | $finalNotes' : cartonInfo;
+      }
+
+      final customerText = _customerController.text.trim();
+      if (_type == TransactionType.stockOut && customerText.isNotEmpty) {
+        finalNotes = finalNotes.isNotEmpty ? 'Customer: $customerText | $finalNotes' : 'Customer: $customerText';
       }
 
       await client.post('/transactions', {
@@ -846,6 +853,42 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 ),
               ),
               const SizedBox(height: 20),
+
+              if (_type == TransactionType.stockOut) ...[
+                Text(
+                  'CUSTOMER NAME',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: AppTheme.mutedTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _customerController,
+                  style: TextStyle(
+                      fontSize: 14, color: AppTheme.primaryTextColor(context)),
+                  decoration: InputDecoration(
+                    hintText: 'Enter customer name (optional)',
+                    fillColor: AppTheme.inputFillColor(context),
+                    filled: true,
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                      borderSide:
+                          BorderSide(color: AppTheme.borderColor(context)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                      borderSide:
+                          const BorderSide(color: AppTheme.primary, width: 2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // ── NOTES ──
               Text(

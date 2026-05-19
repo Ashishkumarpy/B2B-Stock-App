@@ -30,6 +30,7 @@ interface Product {
   quantity: number;
   threshold: number;
   color_stocks?: Array<{ color: string; quantity: number }>;
+  pcs_per_carton?: number;
 }
 
 interface Warehouse {
@@ -50,6 +51,7 @@ const EMPTY_FORM = {
   worker_id: '',
   worker_name: '',
   notes: '',
+  customer_name: '',
 };
 
 export default function StockPage() {
@@ -239,6 +241,12 @@ export default function StockPage() {
         return;
       }
 
+      let finalNotes = form.notes.trim();
+      if (form.type === 'stock_out' && form.customer_name.trim()) {
+        const customer = form.customer_name.trim();
+        finalNotes = finalNotes ? `Customer: ${customer} | ${finalNotes}` : `Customer: ${customer}`;
+      }
+
       // Write transaction
       await serverPost('/transactions', {
         product_id: product.id,
@@ -251,7 +259,7 @@ export default function StockPage() {
         pcs_per_carton: form.pcsPerCarton ? Number(form.pcsPerCarton) : null,
         worker_id: form.worker_id || undefined,
         worker_name: form.worker_name.trim(),
-        notes: form.notes.trim() || null,
+        notes: finalNotes || null,
       });
 
       setForm({
@@ -519,6 +527,20 @@ export default function StockPage() {
                   </select>
                 </div>
               </div>
+
+              {/* Customer Name */}
+              {form.type === 'stock_out' && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Customer Name (optional)</label>
+                  <input
+                    type="text"
+                    value={form.customer_name}
+                    onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    placeholder="Enter customer name"
+                  />
+                </div>
+              )}
 
               {/* Notes */}
               <div>
