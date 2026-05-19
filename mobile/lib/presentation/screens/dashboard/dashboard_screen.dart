@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/skeleton_loading.dart';
 import '../../widgets/stock_chart_widget.dart';
 import '../../providers/settings_provider.dart';
+import '../../../core/utils/formatters.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
@@ -669,7 +670,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         Row(
                           children: [
                             Text(
-                              'Stock: ${product.quantity}',
+                              'Stock: ${AppFormatters.formatQuantity(product.quantity, product.pcsPerCarton)}',
                               style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -761,7 +762,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          '${isStockIn ? "Stocked In" : "Stocked Out"}: ${tx.quantity} units',
+                          '${isStockIn ? "Stocked In" : "Stocked Out"}: ${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
                           style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
@@ -1047,7 +1048,7 @@ class _ActivityRow extends StatelessWidget {
             ),
           ),
           Text(
-            '${isIn ? '+' : '-'}${txn.quantity}',
+            '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(txn.quantity as int, txn.pcsPerCarton as int?)}',
             style: TextStyle(
               color: color,
               fontWeight: FontWeight.w800,

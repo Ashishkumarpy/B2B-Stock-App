@@ -17,6 +17,8 @@ interface Transaction {
   product_code?: string;
   type: TransactionType;
   quantity: number;
+  cartons?: number | null;
+  pcs_per_carton?: number | null;
   color_name?: string | null;
   warehouse_name?: string | null;
   worker_name?: string | null;
@@ -279,7 +281,16 @@ export default function ProductDetailAdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="card border border-emerald-500/30 bg-emerald-500/10 p-4">
                   <p className="text-[10px] uppercase font-bold text-emerald-300">Stock</p>
-                  <p className="mt-1 text-2xl font-black text-emerald-100">{product.quantity}</p>
+                  <p className="mt-1 text-lg font-black text-emerald-100 truncate">{(() => {
+                    const size = product.pcs_per_carton || 1;
+                    if (size <= 1) return `${product.quantity} pcs`;
+                    const cartons = Math.floor(product.quantity / size);
+                    const pcs = product.quantity % size;
+                    if (cartons === 0) return `${pcs} pcs`;
+                    if (pcs === 0) return `${cartons} ctn`;
+                    return `${cartons} ctn, ${pcs} pcs`;
+                  })()}</p>
+                  <p className="text-[10px] text-emerald-400">({product.quantity} total pcs)</p>
                 </div>
                 <div className="card border border-amber-500/30 bg-amber-500/10 p-4">
                   <p className="text-[10px] uppercase font-bold text-amber-300">Threshold</p>
@@ -309,7 +320,20 @@ export default function ProductDetailAdminPage() {
                 {product.color_stocks.map((entry, index) => (
                   <div key={`${entry.color}-${index}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                     <span className="text-sm font-semibold text-white">{entry.color}</span>
-                    <span className="text-sm font-black text-indigo-300">{entry.quantity}</span>
+                    <div className="text-right">
+                      <span className="text-sm font-black text-indigo-300">{(() => {
+                        const size = product.pcs_per_carton || 1;
+                        if (size <= 1) return `${entry.quantity} pcs`;
+                        const cartons = Math.floor(entry.quantity / size);
+                        const pcs = entry.quantity % size;
+                        if (cartons === 0) return `${pcs} pcs`;
+                        if (pcs === 0) return `${cartons} ctn`;
+                        return `${cartons} ctn, ${pcs} pcs`;
+                      })()}</span>
+                      {product.pcs_per_carton && product.pcs_per_carton > 1 && (
+                        <p className="text-[9px] text-gray-500">({entry.quantity} pcs)</p>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -349,11 +373,18 @@ export default function ProductDetailAdminPage() {
                         <span className="text-xs font-bold text-white truncate">{txn.color_name || 'Standard'}</span>
                       </div>
                       <p className="text-[10px] text-gray-500 truncate">By {txn.worker_name || 'Admin'} • {formatDateTime(txn.created_at)}</p>
-                      {txn.notes && (
-                        <p className="text-[10px] text-gray-400 mt-1 truncate bg-white/5 p-1 rounded inline-block">
-                          {txn.notes}
-                        </p>
-                      )}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                        {txn.cartons !== undefined && txn.cartons !== null && (
+                          <span className="text-[9px] font-semibold text-indigo-300 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
+                            {txn.cartons} ctn × {txn.pcs_per_carton || 1} pcs
+                          </span>
+                        )}
+                        {txn.notes && (
+                          <span className="text-[9px] text-gray-400 truncate bg-white/5 px-1.5 py-0.5 rounded">
+                            {txn.notes}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <span className={`text-lg font-black ${isIn ? 'text-emerald-400' : 'text-rose-400'}`}>{isIn ? '+' : '-'}{txn.quantity}</span>
                   </div>

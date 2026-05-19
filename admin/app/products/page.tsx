@@ -207,6 +207,16 @@ export default function ProductsPage() {
 
   const searchedProducts = query ? products.filter(p => p.name.toLowerCase().includes(query) || p.code.toLowerCase().includes(query)).sort(sortProductsByCode) : [];
 
+export function formatQuantity(totalPcs: number, pcsPerCarton?: number): string {
+  const size = pcsPerCarton || 1;
+  if (size <= 1) return `${totalPcs} pcs`;
+  const cartons = Math.floor(totalPcs / size);
+  const pcs = totalPcs % size;
+  if (cartons === 0) return `${pcs} pcs`;
+  if (pcs === 0) return `${cartons} ctn`;
+  return `${cartons} ctn, ${pcs} pcs`;
+}
+
   const renderProductCard = (product: Product, index: number) => {
     const status = (product.stock_status === 'in_stock') ? { label: 'In Stock', cls: 'badge-green' } :
                    (product.stock_status === 'low_stock') ? { label: 'Low Stock', cls: 'badge-yellow' } :
@@ -229,7 +239,7 @@ export default function ProductsPage() {
           <p className="truncate text-sm font-semibold text-white">{product.name}</p>
           <p className="font-mono text-[11px] text-gray-200">{product.code}</p>
           <div className="mt-2 flex items-center justify-between text-[11px] text-gray-200">
-            <span>Qty: {product.quantity}</span>
+            <span>Qty: {formatQuantity(product.quantity, product.pcs_per_carton)}</span>
             <span>Rs {product.price.toLocaleString()}</span>
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">

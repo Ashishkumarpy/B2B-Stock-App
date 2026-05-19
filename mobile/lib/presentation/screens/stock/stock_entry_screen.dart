@@ -59,6 +59,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             if (match.colorStocks.isNotEmpty) {
               _selectedColor = match.colorStocks.first.color;
             }
+            if (match.pcsPerCarton != null) {
+              _pcsPerCartonController.text = match.pcsPerCarton.toString();
+            }
           });
         }
       }
@@ -162,6 +165,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 ? null
                 : _selectedWarehouseId,
         'worker_name': workerName,
+        if (cartonsText.isNotEmpty) 'cartons': int.tryParse(cartonsText),
+        if (pcsText.isNotEmpty) 'pcs_per_carton': int.tryParse(pcsText),
       });
 
       if (mounted) {
@@ -199,6 +204,11 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               _selectedColor = p.colorStocks.first.color;
             } else {
               _selectedColor = 'Default';
+            }
+            if (p.pcsPerCarton != null) {
+              _pcsPerCartonController.text = p.pcsPerCarton.toString();
+            } else {
+              _pcsPerCartonController.clear();
             }
           });
           Navigator.pop(context);

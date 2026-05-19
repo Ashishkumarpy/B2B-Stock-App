@@ -163,7 +163,11 @@ export default function StockPage() {
     const product = products.find((p) => p.id === form.product_id);
     if (!product) return;
     const firstColor = product.color_stocks?.[0]?.color || 'Default';
-    setForm((prev) => ({ ...prev, color_name: prev.color_name || firstColor }));
+    setForm((prev) => ({ 
+      ...prev, 
+      color_name: prev.color_name || firstColor,
+      pcsPerCarton: product.pcs_per_carton || prev.pcsPerCarton || 1
+    }));
   }, [form.product_id, products]);
 
   useEffect(() => {
@@ -235,14 +239,6 @@ export default function StockPage() {
         return;
       }
 
-      // Write transaction (product quantity & status are updated automatically by Postgres triggers)
-      // Combine carton info into notes if provided
-      let finalNotes = form.notes.trim();
-      if (form.cartons && form.pcsPerCarton) {
-        const cartonInfo = `${form.cartons} Cartons × ${form.pcsPerCarton} Pcs`;
-        finalNotes = finalNotes ? `${cartonInfo} | ${finalNotes}` : cartonInfo;
-      }
-
       // Write transaction
       await serverPost('/transactions', {
         product_id: product.id,
@@ -251,9 +247,11 @@ export default function StockPage() {
         warehouse_id: form.warehouse_id || undefined,
         type: form.type,
         quantity: form.quantity,
+        cartons: form.cartons ? Number(form.cartons) : null,
+        pcs_per_carton: form.pcsPerCarton ? Number(form.pcsPerCarton) : null,
         worker_id: form.worker_id || undefined,
         worker_name: form.worker_name.trim(),
-        notes: finalNotes,
+        notes: form.notes.trim() || null,
       });
 
       setForm({

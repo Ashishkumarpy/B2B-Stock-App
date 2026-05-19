@@ -4,6 +4,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/product.dart';
 
+import '../../core/utils/formatters.dart';
+
 class ProductCard extends StatelessWidget {
   final Product product;
   final VoidCallback onTap;
@@ -195,11 +197,11 @@ class ProductCard extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          '${product.quantity} ${product.unit ?? 'pcs'}',
+                          AppFormatters.formatQuantity(product.quantity, product.pcsPerCarton),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10,
                             color: product.quantity <= product.threshold
                                 ? AppTheme.danger
                                 : AppTheme.textSecondary,

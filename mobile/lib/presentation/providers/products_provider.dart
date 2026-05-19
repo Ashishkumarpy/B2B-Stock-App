@@ -106,6 +106,7 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
       supplierId: json['supplier_id']?.toString() ?? '',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       costPrice: (json['cost_price'] as num?)?.toDouble(),
+      pcsPerCarton: (json['pcs_per_carton'] as num?)?.toInt(),
       imageUrl: json['image_url'] ?? (imagesList.isNotEmpty ? imagesList.first.url : null),
       images: imagesList,
       unit: json['unit'],

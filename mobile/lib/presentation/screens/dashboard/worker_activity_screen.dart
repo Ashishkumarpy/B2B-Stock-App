@@ -6,6 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../widgets/skeleton_loading.dart';
+import '../../../core/utils/formatters.dart';
 
 class WorkerActivityScreen extends ConsumerWidget {
   const WorkerActivityScreen({super.key});
@@ -108,7 +109,7 @@ class _ActivityTile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '${isStockIn ? '+' : '-'}${transaction.quantity}',
+                '${isStockIn ? '+' : '-'}${AppFormatters.formatQuantity(transaction.quantity, transaction.pcsPerCarton)}',
                 style: TextStyle(
                   color: color,
                   fontWeight: FontWeight.w900,

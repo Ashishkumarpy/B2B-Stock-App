@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../widgets/skeleton_loading.dart';
+import '../../../core/utils/formatters.dart';
 
 enum DateFilterMode { today, all, custom }
 
@@ -578,7 +579,7 @@ class _StockActivityTile extends ConsumerWidget {
           ),
         ),
         trailing: Text(
-          '${isIn ? '+' : '-'}${txn.quantity}',
+          '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(txn.quantity, txn.pcsPerCarton)}',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: actionColor,
                 fontWeight: FontWeight.w900,

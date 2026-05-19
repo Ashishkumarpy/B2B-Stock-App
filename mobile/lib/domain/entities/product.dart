@@ -65,6 +65,7 @@ class Product extends Equatable {
   final String supplierId;
   final double price;
   final double? costPrice;
+  final int? pcsPerCarton;
   final String? imageUrl;
   final List<ProductImage> images;
   final List<ProductColorStock> colorStocks;
@@ -85,6 +86,7 @@ class Product extends Equatable {
     this.supplierId = '',
     this.price = 0.0,
     this.costPrice,
+    this.pcsPerCarton,
     this.imageUrl,
     this.images = const [],
     this.colorStocks = const [],
@@ -107,6 +109,7 @@ class Product extends Equatable {
     String? supplierId,
     double? price,
     double? costPrice,
+    int? pcsPerCarton,
     String? imageUrl,
     List<ProductImage>? images,
     List<ProductColorStock>? colorStocks,
@@ -126,6 +129,7 @@ class Product extends Equatable {
       supplierId: supplierId ?? this.supplierId,
       price: price ?? this.price,
       costPrice: costPrice ?? this.costPrice,
+      pcsPerCarton: pcsPerCarton ?? this.pcsPerCarton,
       imageUrl: imageUrl ?? this.imageUrl,
       images: images ?? this.images,
       colorStocks: colorStocks ?? this.colorStocks,
@@ -148,6 +152,7 @@ class Product extends Equatable {
         supplierId,
         price,
         costPrice,
+        pcsPerCarton,
         imageUrl,
         images,
         colorStocks,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../core/utils/formatters.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
@@ -236,7 +237,7 @@ class _WorkerTransactionTile extends StatelessWidget {
       ),
       subtitle: Text(DateFormat('MMM d, h:mm a').format(transaction.createdAt)),
       trailing: Text(
-        '${isIn ? '+' : '-'}${transaction.quantity}',
+        '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(transaction.quantity, transaction.pcsPerCarton)}',
         style: TextStyle(color: color, fontWeight: FontWeight.w900),
       ),
     );

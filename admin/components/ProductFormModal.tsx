@@ -24,6 +24,7 @@ export interface Product {
   quantity: number;
   threshold: number;
   price: number;
+  pcs_per_carton?: number;
   image_url?: string;
   images?: ImageAsset[];
   description?: string;
@@ -57,6 +58,7 @@ const EMPTY_FORM = {
   quantity: 0,
   threshold: 50,
   price: 0,
+  pcs_per_carton: 1,
   description: '',
 };
 
@@ -143,6 +145,7 @@ export default function ProductFormModal({
         quantity: editingProduct.quantity,
         threshold: editingProduct.threshold,
         price: editingProduct.price,
+        pcs_per_carton: editingProduct.pcs_per_carton || 1,
         description: editingProduct.description || '',
       });
       setImages(editingProduct.images ?? (editingProduct.image_url ? [{ url: editingProduct.image_url, publicId: '' }] : []));
@@ -253,6 +256,7 @@ export default function ProductFormModal({
         quantity: finalQuantity,
         threshold: Number(form.threshold),
         price: Number(form.price),
+        pcs_per_carton: Number(form.pcs_per_carton) || 1,
         description: form.description.trim(),
         images: finalImages,
         image_url: finalImages.length > 0 ? finalImages[0].url : null,
@@ -433,6 +437,17 @@ export default function ProductFormModal({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Pcs per Carton *</span>
+                  <input type="number" required min="1" value={form.pcs_per_carton} onChange={e => setForm({ ...form, pcs_per_carton: Number(e.target.value) })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">MOQ / Threshold *</span>
+                  <input type="number" required min="1" value={form.threshold} onChange={e => setForm({ ...form, threshold: Number(e.target.value) })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
                 <label className="block">
                   <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Stock Quantity *</span>
                   <input

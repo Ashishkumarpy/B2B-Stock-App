@@ -62,6 +62,8 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
       productName: json['product_name'] ?? 'Unknown Product',
       productCode: json['product_code'] ?? json['code'] ?? '',
       workerName: json['worker_name'] ?? 'Unknown Worker',
+      cartons: (json['cartons'] as num?)?.toInt(),
+      pcsPerCarton: (json['pcs_per_carton'] as num?)?.toInt(),
       colorName: json['color_name'],
       warehouseId: json['warehouse_id']?.toString(),
       warehouseName: json['warehouse_name'],

@@ -17,6 +17,7 @@ interface Product {
   quantity: number;
   threshold: number;
   price: number;
+  pcs_per_carton?: number;
   image_url?: string;
   images?: any[];
   description?: string;
@@ -283,7 +284,15 @@ export default function FolderExplorerPage() {
                     <p className="truncate text-sm font-semibold text-white">{product.name}</p>
                     <p className="font-mono text-[11px] text-gray-200">{product.code}</p>
                     <div className="mt-2 flex items-center justify-between text-[11px] text-gray-200">
-                      <span>Qty: {product.quantity}</span>
+                      <span>Qty: {(() => {
+                        const size = product.pcs_per_carton || 1;
+                        if (size <= 1) return `${product.quantity} pcs`;
+                        const cartons = Math.floor(product.quantity / size);
+                        const pcs = product.quantity % size;
+                        if (cartons === 0) return `${pcs} pcs`;
+                        if (pcs === 0) return `${cartons} ctn`;
+                        return `${cartons} ctn, ${pcs} pcs`;
+                      })()}</span>
                       <span>Rs {product.price.toLocaleString()}</span>
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-1.5">

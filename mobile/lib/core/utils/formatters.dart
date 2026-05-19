@@ -20,4 +20,14 @@ class AppFormatters {
   static String formatCompactNumber(int number) {
     return NumberFormat.compact().format(number);
   }
+
+  static String formatQuantity(int totalPcs, int? pcsPerCarton) {
+    final size = pcsPerCarton ?? 1;
+    if (size <= 1) return '$totalPcs pcs';
+    final cartons = totalPcs ~/ size;
+    final pcs = totalPcs % size;
+    if (cartons == 0) return '$pcs pcs';
+    if (pcs == 0) return '$cartons ctn';
+    return '$cartons ctn, $pcs pcs';
+  }
 }

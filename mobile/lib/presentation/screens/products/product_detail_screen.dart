@@ -15,6 +15,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../widgets/status_badge.dart';
+import '../../../core/utils/formatters.dart';
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -349,24 +350,30 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                FittedBox(
-                                  fit: BoxFit.scaleDown,
-                                  child: Text(
-                                    '${product.quantity}',
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 44,
-                                        fontWeight: FontWeight.w900,
-                                        height: 1),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: Text(
-                                    product.unit ?? 'Units',
-                                    style: TextStyle(
-                                        color: Colors.white60, fontSize: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          AppFormatters.formatQuantity(product.quantity, product.pcsPerCarton),
+                                          style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 36,
+                                              fontWeight: FontWeight.w900,
+                                              height: 1),
+                                        ),
+                                      ),
+                                      if (product.pcsPerCarton != null && product.pcsPerCarton! > 1) ...[
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '(${product.quantity} total pcs, ${product.pcsPerCarton} per ctn)',
+                                          style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
                               ],
@@ -505,7 +512,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                               BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          '${entry.quantity}',
+                                          AppFormatters.formatQuantity(entry.quantity, product.pcsPerCarton),
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 11,
@@ -891,7 +898,7 @@ class _ActivityTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '${isIn ? 'Stock In' : 'Stock Out'}: ${tx.quantity} units',
+                  '${isIn ? 'Stock In' : 'Stock Out'}: ${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 Text(
@@ -906,7 +913,7 @@ class _ActivityTile extends StatelessWidget {
             ),
           ),
           Text(
-            '${isIn ? '+' : '-'}${tx.quantity}',
+            '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
             style: TextStyle(
                 color: color, fontWeight: FontWeight.w800, fontSize: 14),
           ),

@@ -282,6 +282,8 @@ transactionsRouter.post(
       warehouse_name: warehouseName,
       type,
       quantity,
+      cartons: payload.cartons ? Number(payload.cartons) : null,
+      pcs_per_carton: payload.pcs_per_carton ? Number(payload.pcs_per_carton) : null,
       worker_id: workerId,
       worker_name: workerName,
       actor_user_id:
@@ -305,7 +307,19 @@ transactionsRouter.post(
         .toLowerCase()
         .includes("could not find the 'color_name' column")
     ) {
-      const { color_name: _ignored, warehouse_id: _warehouseIdIgnored, warehouse_name: _warehouseNameIgnored, ...legacyRow } = insertRow;
+      const { color_name: _ignored, warehouse_id: _warehouseIdIgnored, warehouse_name: _warehouseNameIgnored, cartons: _c, pcs_per_carton: _pc, ...legacyRow } = insertRow;
+      insertResult = await supabaseAdmin
+        .from('transactions')
+        .insert(legacyRow)
+        .select('*')
+        .single();
+    } else if (
+      insertResult.error &&
+      String(insertResult.error.message || '')
+        .toLowerCase()
+        .includes("could not find the 'cartons' column")
+    ) {
+      const { cartons: _c, pcs_per_carton: _pc, ...legacyRow } = insertRow;
       insertResult = await supabaseAdmin
         .from('transactions')
         .insert(legacyRow)

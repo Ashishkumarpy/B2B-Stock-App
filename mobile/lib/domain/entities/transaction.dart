@@ -9,6 +9,8 @@ class Transaction extends Equatable {
   final String productName;
   final String productCode;
   final String workerName;
+  final int? cartons;
+  final int? pcsPerCarton;
   final String? colorName;
   final String? warehouseId;
   final String? warehouseName;
@@ -25,6 +27,8 @@ class Transaction extends Equatable {
     this.productName = '',
     this.productCode = '',
     this.workerName = '',
+    this.cartons,
+    this.pcsPerCarton,
     this.colorName,
     this.warehouseId,
     this.warehouseName,
@@ -50,6 +54,8 @@ class Transaction extends Equatable {
         productName,
         productCode,
         workerName,
+        cartons,
+        pcsPerCarton,
         colorName,
         warehouseId,
         warehouseName,

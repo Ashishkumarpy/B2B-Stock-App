@@ -108,6 +108,7 @@ class ServerDataSource {
       supplierId: d['supplier_id'] as String? ?? '',
       price: (d['price'] as num?)?.toDouble() ?? 0.0,
       costPrice: (d['cost_price'] as num?)?.toDouble(),
+      pcsPerCarton: (d['pcs_per_carton'] as num?)?.toInt(),
       imageUrl: d['image_url'] as String?,
       images: images,
       unit: d['unit'] as String?,
@@ -128,6 +129,7 @@ class ServerDataSource {
         'supplier_id': p.supplierId.isEmpty ? null : p.supplierId,
         'price': p.price,
         if (p.costPrice != null) 'cost_price': p.costPrice,
+        if (p.pcsPerCarton != null) 'pcs_per_carton': p.pcsPerCarton,
         'image_url': p.imageUrl,
         'images': p.images
             .where((image) => image.url.trim().isNotEmpty)
@@ -201,6 +203,8 @@ class ServerDataSource {
       workerId: d['worker_id'] as String? ?? d['user_id'] as String? ?? '',
       productName: d['product_name'] as String? ?? '',
       workerName: d['worker_name'] as String? ?? '',
+      cartons: (d['cartons'] as num?)?.toInt(),
+      pcsPerCarton: (d['pcs_per_carton'] as num?)?.toInt(),
       colorName: d['color_name'] as String?,
       warehouseId: d['warehouse_id'] as String?,
       warehouseName: d['warehouse_name'] as String?,
@@ -216,6 +220,8 @@ class ServerDataSource {
         // Server resolves worker_id/worker_name/product_name.
         'type': t.type == TransactionType.stockIn ? 'stock_in' : 'stock_out',
         'quantity': t.quantity,
+        if (t.cartons != null) 'cartons': t.cartons,
+        if (t.pcsPerCarton != null) 'pcs_per_carton': t.pcsPerCarton,
         if (t.colorName != null && t.colorName!.trim().isNotEmpty)
           'color_name': t.colorName!.trim(),
         if (t.warehouseId != null && t.warehouseId!.trim().isNotEmpty)
