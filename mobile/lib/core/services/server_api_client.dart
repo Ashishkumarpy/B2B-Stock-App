@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../logging/app_log.dart';
 
@@ -22,6 +23,9 @@ class ServerApiClient {
       return _handleResponse(response);
     } catch (e) {
       AppLog.d('GET $path failed: $e');
+      if (e is http.ClientException || e is SocketException) {
+        throw ServerApiException('Network error: Please check your internet connection.', 0);
+      }
       rethrow;
     }
   }
@@ -38,6 +42,9 @@ class ServerApiClient {
       return _handleResponse(response);
     } catch (e) {
       AppLog.d('POST $path failed: $e');
+      if (e is http.ClientException || e is SocketException) {
+        throw ServerApiException('Network error: Please check your internet connection.', 0);
+      }
       rethrow;
     }
   }
@@ -57,6 +64,9 @@ class ServerApiClient {
       return _handleResponse(response);
     } catch (e) {
       AppLog.d('Multipart POST $path failed: $e');
+      if (e is http.ClientException || e is SocketException) {
+        throw ServerApiException('Network error: Please check your internet connection.', 0);
+      }
       rethrow;
     }
   }
@@ -71,6 +81,9 @@ class ServerApiClient {
       return _handleResponse(response);
     } catch (e) {
       AppLog.d('PATCH $path failed: $e');
+      if (e is http.ClientException || e is SocketException) {
+        throw ServerApiException('Network error: Please check your internet connection.', 0);
+      }
       rethrow;
     }
   }
@@ -85,6 +98,9 @@ class ServerApiClient {
       return _handleResponse(response);
     } catch (e) {
       AppLog.d('PUT $path failed: $e');
+      if (e is http.ClientException || e is SocketException) {
+        throw ServerApiException('Network error: Please check your internet connection.', 0);
+      }
       rethrow;
     }
   }
@@ -98,6 +114,9 @@ class ServerApiClient {
       return _handleResponse(response);
     } catch (e) {
       AppLog.d('DELETE $path failed: $e');
+      if (e is http.ClientException || e is SocketException) {
+        throw ServerApiException('Network error: Please check your internet connection.', 0);
+      }
       rethrow;
     }
   }
