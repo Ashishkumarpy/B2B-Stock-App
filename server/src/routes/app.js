@@ -50,11 +50,18 @@ async function fetchLatestGitHubRelease() {
     
     // Try to find direct APK download link in assets
     let downloadUrl = data.html_url || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest';
+    let assetUrl = null;
     if (data.assets && Array.isArray(data.assets)) {
       const apkAsset = data.assets.find(asset => asset.name && asset.name.endsWith('.apk'));
       if (apkAsset) {
-        downloadUrl = apkAsset.browser_download_url;
-        console.log('Found direct APK download URL on GitHub:', downloadUrl);
+        // If we have a GitHub token, proxy the download to handle private repos
+        if (process.env.GITHUB_TOKEN) {
+          assetUrl = apkAsset.url;
+          downloadUrl = '/app/download-update'; 
+        } else {
+          downloadUrl = apkAsset.browser_download_url;
+        }
+        console.log('Found APK on GitHub. Download route will be:', downloadUrl);
       }
     }
 
@@ -63,6 +70,7 @@ async function fetchLatestGitHubRelease() {
       buildNumber: 5, // Default/fallback build number
       releaseDate: data.published_at ? data.published_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
       downloadUrl: downloadUrl,
+      assetUrl: assetUrl,
       isCritical: false,
       releaseNotes: data.body || 'New features and bug fixes.'
     };
@@ -77,6 +85,40 @@ async function fetchLatestGitHubRelease() {
   }
 }
 
+appRouter.get('/download-update', async (req, res) => {
+  if (!cachedVersion.assetUrl) {
+    return res.redirect(cachedVersion.downloadUrl || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest');
+  }
+
+  try {
+    const headers = {
+      'User-Agent': 'B2B-Stock-Server',
+      'Accept': 'application/octet-stream'
+    };
+    if (process.env.GITHUB_TOKEN) {
+      headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
+    }
+
+    const response = await fetch(cachedVersion.assetUrl, { 
+      headers,
+      redirect: 'manual' // We want to catch the 302 redirect from GitHub
+    });
+
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('location');
+      if (location) {
+        // Redirect the mobile app to the AWS S3 pre-signed URL (which is public and temporary)
+        return res.redirect(location);
+      }
+    }
+
+    res.status(404).send('Update asset not found or inaccessible.');
+  } catch (err) {
+    console.error('Error proxying update download:', err);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
 /**
  * Endpoint for mobile app to check for updates.
  */
@@ -84,7 +126,13 @@ appRouter.get('/version', async (req, res) => {
   if (Date.now() > cacheExpiry) {
     await fetchLatestGitHubRelease();
   }
-  res.json(cachedVersion);
+  
+  const response = { ...cachedVersion };
+  if (response.downloadUrl && response.downloadUrl.startsWith('/')) {
+    response.downloadUrl = `${req.protocol}://${req.get('host')}${response.downloadUrl}`;
+  }
+  
+  res.json(response);
 });
 
 /**
@@ -106,11 +154,17 @@ appRouter.post('/github-webhook', async (req, res) => {
     
     // Try to find direct APK download link in assets
     let downloadUrl = release.html_url || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest';
+    let assetUrl = null;
     if (release.assets && Array.isArray(release.assets)) {
       const apkAsset = release.assets.find(asset => asset.name && asset.name.endsWith('.apk'));
       if (apkAsset) {
-        downloadUrl = apkAsset.browser_download_url;
-        console.log('Webhook found direct APK download URL:', downloadUrl);
+        if (process.env.GITHUB_TOKEN) {
+          assetUrl = apkAsset.url;
+          downloadUrl = '/app/download-update';
+        } else {
+          downloadUrl = apkAsset.browser_download_url;
+        }
+        console.log('Webhook found APK. Download route will be:', downloadUrl);
       }
     }
 
@@ -123,12 +177,17 @@ appRouter.post('/github-webhook', async (req, res) => {
         buildNumber: 5,
         releaseDate: release.published_at ? release.published_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
         downloadUrl: downloadUrl,
+        assetUrl: assetUrl,
         isCritical: false,
         releaseNotes: notes
       };
       cacheExpiry = Date.now() + 30 * 60 * 1000; // Reset expiry
 
       console.log('GitHub webhook updated server cache to latest version:', tagName);
+
+      const absoluteDownloadUrl = downloadUrl.startsWith('/') 
+        ? `${req.protocol}://${req.get('host')}${downloadUrl}` 
+        : downloadUrl;
 
       // 2. Broadcast push notification to all mobile devices
       try {
@@ -138,7 +197,7 @@ appRouter.post('/github-webhook', async (req, res) => {
           data: {
             type: 'app_update',
             latestVersion: tagName,
-            downloadUrl: downloadUrl,
+            downloadUrl: absoluteDownloadUrl,
             releaseNotes: notes
           },
           apps: ['mobile']
