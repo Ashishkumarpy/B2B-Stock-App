@@ -57,7 +57,7 @@ async function fetchLatestGitHubRelease() {
         // If we have a GitHub token, proxy the download to handle private repos
         if (process.env.GITHUB_TOKEN) {
           assetUrl = apkAsset.url;
-          downloadUrl = '/app/download-update'; 
+          downloadUrl = '/app/download-update.apk'; 
         } else {
           downloadUrl = apkAsset.browser_download_url;
         }
@@ -85,7 +85,7 @@ async function fetchLatestGitHubRelease() {
   }
 }
 
-appRouter.get('/download-update', async (req, res) => {
+appRouter.get('/download-update.apk', async (req, res) => {
   if (!cachedVersion.assetUrl) {
     return res.redirect(cachedVersion.downloadUrl || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest');
   }
@@ -160,7 +160,7 @@ appRouter.post('/github-webhook', async (req, res) => {
       if (apkAsset) {
         if (process.env.GITHUB_TOKEN) {
           assetUrl = apkAsset.url;
-          downloadUrl = '/app/download-update';
+          downloadUrl = '/app/download-update.apk';
         } else {
           downloadUrl = apkAsset.browser_download_url;
         }
