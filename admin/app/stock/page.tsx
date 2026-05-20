@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { serverGet, serverPost, ServerApiError } from '../../lib/server_api';
 import { useRequireAuth } from '../../lib/use_require_auth';
@@ -20,6 +20,22 @@ interface Transaction {
   worker_name: string;
   notes?: string;
   created_at: string;
+  cartons?: number | null;
+  pcs_per_carton?: number | null;
+}
+
+export function parseCartonFromNotes(notes?: string | null): { cartons: number; pcsPerCarton: number } | null {
+  if (!notes) return null;
+  const regex = /(\d+)\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*(\d+)/i;
+  const match = notes.match(regex);
+  if (match) {
+    const cartons = parseInt(match[1], 10);
+    const pcsPerCarton = parseInt(match[2], 10);
+    if (!isNaN(cartons) && !isNaN(pcsPerCarton) && pcsPerCarton > 0) {
+      return { cartons, pcsPerCarton };
+    }
+  }
+  return null;
 }
 
 interface Product {
@@ -73,6 +89,170 @@ export default function StockPage() {
   const prefetchedQueryRef = useRef<string | null>(null);
 
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportDate, setExportDate] = useState(() => {
+    const local = new Date();
+    const offset = local.getTimezoneOffset();
+    const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
+    return adjusted.toISOString().slice(0, 10);
+  });
+
+  const exportStats = useMemo(() => {
+    const targetDateStr = exportDate;
+    const dayTxns = transactions.filter((t) => {
+      const dateObj = new Date(t.created_at);
+      const local = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000));
+      return local.toISOString().slice(0, 10) === targetDateStr;
+    });
+
+    const stockInTxns = dayTxns.filter((t) => t.type === 'stock_in');
+    const stockOutTxns = dayTxns.filter((t) => t.type === 'stock_out');
+
+    const totalStockInQty = stockInTxns.reduce((sum, t) => sum + t.quantity, 0);
+    const totalStockOutQty = stockOutTxns.reduce((sum, t) => sum + t.quantity, 0);
+
+    return {
+      totalInCount: stockInTxns.length,
+      totalInQty: totalStockInQty,
+      totalOutCount: stockOutTxns.length,
+      totalOutQty: totalStockOutQty,
+      totalCount: dayTxns.length,
+    };
+  }, [exportDate, transactions]);
+
+  const handleExportExcel = () => {
+    try {
+      const targetDateStr = exportDate; // YYYY-MM-DD
+      
+      // Filter transactions that occurred on targetDate (local time zone)
+      const dayTransactions = transactions.filter((t) => {
+        const dateObj = new Date(t.created_at);
+        const local = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000));
+        return local.toISOString().slice(0, 10) === targetDateStr;
+      });
+
+      // Prepare In Stock (Incoming Stock In) data - only include active transactions
+      const stockInAOA = products
+        .map((p) => {
+          const productTxns = dayTransactions.filter(t => t.product_id === p.id && t.type === 'stock_in');
+          const totalQty = productTxns.reduce((sum, t) => sum + t.quantity, 0);
+          const colors = Array.from(new Set(productTxns.map(t => t.color_name || 'Default'))).join(', ');
+          const workers = Array.from(new Set(productTxns.map(t => t.worker_name))).join(', ');
+          const notes = productTxns.map(t => t.notes).filter(Boolean).join('; ');
+
+          return {
+            code: p.code,
+            name: p.name,
+            category: p.category || 'Uncategorized',
+            qty: totalQty,
+            colors: colors || '—',
+            workers: workers || '—',
+            notes: notes || '—'
+          };
+        })
+        .filter(row => row.qty > 0) // Only show products with actual stock-in movements
+        .sort((a, b) => b.qty - a.qty)
+        .map(row => [
+          row.code,
+          row.name,
+          row.category,
+          row.qty,
+          row.colors,
+          row.workers,
+          row.notes
+        ]);
+
+      // Prepare Stock Out (Outgoing Stock Out) data - only include active transactions
+      const stockOutAOA = products
+        .map((p) => {
+          const productTxns = dayTransactions.filter(t => t.product_id === p.id && t.type === 'stock_out');
+          const totalQty = productTxns.reduce((sum, t) => sum + t.quantity, 0);
+          const colors = Array.from(new Set(productTxns.map(t => t.color_name || 'Default'))).join(', ');
+          const workers = Array.from(new Set(productTxns.map(t => t.worker_name))).join(', ');
+          const notes = productTxns.map(t => t.notes).filter(Boolean).join('; ');
+
+          return {
+            code: p.code,
+            name: p.name,
+            category: p.category || 'Uncategorized',
+            qty: totalQty,
+            colors: colors || '—',
+            workers: workers || '—',
+            notes: notes || '—'
+          };
+        })
+        .filter(row => row.qty > 0) // Only show products with actual stock-out movements
+        .sort((a, b) => b.qty - a.qty)
+        .map(row => [
+          row.code,
+          row.name,
+          row.category,
+          row.qty,
+          row.colors,
+          row.workers,
+          row.notes
+        ]);
+
+      import('xlsx').then((XLSX) => {
+        const wb = XLSX.utils.book_new();
+        const wsIn = XLSX.utils.json_to_sheet([]);
+        const wsOut = XLSX.utils.json_to_sheet([]);
+
+        // Format metadata headers inside the sheet itself for professional look
+        XLSX.utils.sheet_add_aoa(wsIn, [
+          ["ZENTORY B2B STOCK REPORT - STOCK IN (INCOMING)"],
+          [`Report Date: ${targetDateStr}`],
+          [`Generated on: ${new Date().toLocaleString('en-IN')}`],
+          [`Total Quantity In: ${exportStats.totalInQty} pcs (${exportStats.totalInCount} transactions)`],
+          [],
+          ["PRODUCT CODE", "PRODUCT NAME", "CATEGORY", "QTY IN (PCS)", "COLORS", "RECORDED BY", "NOTES"]
+        ], { origin: "A1" });
+
+        XLSX.utils.sheet_add_aoa(wsIn, stockInAOA, { origin: "A7" });
+
+        XLSX.utils.sheet_add_aoa(wsOut, [
+          ["ZENTORY B2B STOCK REPORT - STOCK OUT (OUTGOING)"],
+          [`Report Date: ${targetDateStr}`],
+          [`Generated on: ${new Date().toLocaleString('en-IN')}`],
+          [`Total Quantity Out: ${exportStats.totalOutQty} pcs (${exportStats.totalOutCount} transactions)`],
+          [],
+          ["PRODUCT CODE", "PRODUCT NAME", "CATEGORY", "QTY OUT (PCS)", "COLORS", "RECORDED BY", "NOTES"]
+        ], { origin: "A1" });
+
+        XLSX.utils.sheet_add_aoa(wsOut, stockOutAOA, { origin: "A7" });
+
+        // Autofit columns helper for AOA data
+        const autofitColumns = (ws: any, rows: any[][], headers: string[]) => {
+          const colWidths = headers.map(col => ({ wch: col.length }));
+          
+          rows.forEach(row => {
+            row.forEach((val, idx) => {
+              const strVal = String(val ?? '');
+              if (strVal.length > (colWidths[idx]?.wch ?? 0)) {
+                colWidths[idx] = { wch: strVal.length };
+              }
+            });
+          });
+
+          ws['!cols'] = colWidths.map(w => ({ wch: Math.min(Math.max(w.wch + 3, 10), 60) }));
+        };
+
+        const sheetHeaders = ["PRODUCT CODE", "PRODUCT NAME", "CATEGORY", "QTY (PCS)", "COLORS", "RECORDED BY", "NOTES"];
+        autofitColumns(wsIn, stockInAOA, sheetHeaders);
+        autofitColumns(wsOut, stockOutAOA, sheetHeaders);
+
+        XLSX.utils.book_append_sheet(wb, wsIn, 'In stock');
+        XLSX.utils.book_append_sheet(wb, wsOut, 'Stock out');
+
+        XLSX.writeFile(wb, `zentory_stock_report_${targetDateStr}.xlsx`);
+      });
+
+      setShowExportModal(false);
+    } catch (e) {
+      console.error('Failed to export excel:', e);
+      alert('Failed to generate Excel file.');
+    }
+  };
 
   const fetchTransactions = useCallback(async () => {
     try {
@@ -242,6 +422,10 @@ export default function StockPage() {
       }
 
       let finalNotes = form.notes.trim();
+      if (form.cartons && form.pcsPerCarton) {
+        const cartonNote = `${form.cartons} ctn × ${form.pcsPerCarton} pcs`;
+        finalNotes = finalNotes ? `${cartonNote} | ${finalNotes}` : cartonNote;
+      }
       if (form.type === 'stock_out' && form.customer_name.trim()) {
         const customer = form.customer_name.trim();
         finalNotes = finalNotes ? `Customer: ${customer} | ${finalNotes}` : `Customer: ${customer}`;
@@ -293,12 +477,20 @@ export default function StockPage() {
           </div>
           <p className="text-gray-500 text-sm">{transactions.length} transactions recorded</p>
         </div>
-        <button
-          onClick={() => { setForm(EMPTY_FORM); setError(''); setShowModal(true); }}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-500/20 active:scale-95"
-        >
-          + Record Stock
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="border border-white/10 hover:bg-white/5 text-gray-200 text-sm font-semibold px-5 py-2.5 rounded-xl transition active:scale-95 flex items-center gap-2"
+          >
+            <span>📥</span> Export to Excel
+          </button>
+          <button
+            onClick={() => { setForm(EMPTY_FORM); setError(''); setShowModal(true); }}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-500/20 active:scale-95"
+          >
+            + Record Stock
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -346,8 +538,30 @@ export default function StockPage() {
                   </td>
                   <td className="text-gray-300">{t.color_name || 'Default'}</td>
                   <td className="text-gray-300 max-w-[180px] truncate">{t.warehouse_name || 'Main Warehouse'}</td>
-                  <td className={`text-right font-mono font-semibold ${t.type === 'stock_in' ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {t.type === 'stock_in' ? '+' : '-'}{t.quantity}
+                  <td className="text-right py-2">
+                    <div className="flex flex-col items-end justify-center">
+                      <span className={`font-mono font-bold text-sm ${t.type === 'stock_in' ? 'text-emerald-400' : 'text-red-400'}`}>
+                        {t.type === 'stock_in' ? '+' : '-'}{t.quantity}
+                      </span>
+                      {(() => {
+                        if (t.cartons && t.pcs_per_carton) {
+                          return (
+                            <span className="text-[10px] text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
+                              {t.cartons} ctn × {t.pcs_per_carton}
+                            </span>
+                          );
+                        }
+                        const parsed = parseCartonFromNotes(t.notes);
+                        if (parsed) {
+                          return (
+                            <span className="text-[10px] text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
+                              {parsed.cartons} ctn × {parsed.pcsPerCarton}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </td>
                   <td className="text-gray-500 text-xs max-w-[140px] truncate">{t.notes || '—'}</td>
                   <td className="text-gray-500 text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
@@ -680,6 +894,133 @@ export default function StockPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Export Excel Modal */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-[#0f1117] border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 px-8 py-6 border-b border-white/10 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <span>📥</span> Export Stock Report
+                </h2>
+                <p className="text-xs text-gray-400 mt-1">Download daily transactions by product in Excel format</p>
+              </div>
+              <button 
+                onClick={() => setShowExportModal(false)} 
+                className="text-gray-400 hover:text-white text-2xl leading-none w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center transition-all"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-8 space-y-6">
+              {/* Date Input & Quick Selectors */}
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Date</label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={exportDate}
+                    onChange={(e) => setExportDate(e.target.value)}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const local = new Date();
+                      const offset = local.getTimezoneOffset();
+                      const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
+                      setExportDate(adjusted.toISOString().slice(0, 10));
+                    }}
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 font-semibold active:scale-95 transition-all"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const local = new Date();
+                      local.setDate(local.getDate() - 1);
+                      const offset = local.getTimezoneOffset();
+                      const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
+                      setExportDate(adjusted.toISOString().slice(0, 10));
+                    }}
+                    className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 font-semibold active:scale-95 transition-all"
+                  >
+                    Yesterday
+                  </button>
+                </div>
+              </div>
+
+              {/* Live Preview Stats */}
+              <div className="space-y-3">
+                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Report Preview</label>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Stock In Preview Card */}
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded">
+                        Sheet 1: In stock
+                      </span>
+                      <p className="mt-3 text-2xl font-black text-emerald-100 font-mono">
+                        +{exportStats.totalInQty}
+                        <span className="text-xs font-normal text-gray-400 ml-1">pcs</span>
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-2 font-medium">
+                      {exportStats.totalInCount} entries recorded
+                    </p>
+                  </div>
+
+                  {/* Stock Out Preview Card */}
+                  <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider bg-rose-500/10 px-2 py-0.5 rounded">
+                        Sheet 2: Stock out
+                      </span>
+                      <p className="mt-3 text-2xl font-black text-rose-100 font-mono">
+                        -{exportStats.totalOutQty}
+                        <span className="text-xs font-normal text-gray-400 ml-1">pcs</span>
+                      </p>
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-2 font-medium">
+                      {exportStats.totalOutCount} entries recorded
+                    </p>
+                  </div>
+                </div>
+
+                {exportStats.totalCount === 0 && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2.5 text-xs text-amber-300 leading-normal animate-pulse">
+                    <span className="text-sm">⚠️</span>
+                    <p>No transactions found on this date. The report will generate empty tables for all products.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2 border-t border-white/5">
+                <button
+                  onClick={handleExportExcel}
+                  className="flex-1 font-semibold py-3 rounded-xl transition text-white bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 duration-150"
+                >
+                  📥 Download Excel Report
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowExportModal(false)}
+                  className="px-6 py-3 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/5 hover:text-white transition active:scale-95 duration-150"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

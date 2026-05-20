@@ -24,14 +24,29 @@ class TransactionsNotifier extends StateNotifier<AsyncValue<List<Transaction>>> 
   Future<void> fetchTransactions() async {
     try {
       state = const AsyncValue.loading();
-      
-      final data = await _supabase
-          .from('transactions')
-          .select()
-          .order('created_at', ascending: false)
-          .limit(100);
-      
-      final transactions = (data as List).map((json) => _mapToTransaction(json)).toList();
+
+      const pageSize = 1000;
+      const maxRows = 5000;
+      final allRows = <dynamic>[];
+      var from = 0;
+
+      while (allRows.length < maxRows) {
+        final to = from + pageSize - 1;
+        final batch = await _supabase
+            .from('transactions')
+            .select()
+            .order('created_at', ascending: false)
+            .range(from, to);
+
+        final rows = (batch as List);
+        if (rows.isEmpty) break;
+        allRows.addAll(rows);
+        if (rows.length < pageSize) break;
+        from += pageSize;
+      }
+
+      final transactions =
+          allRows.map((json) => _mapToTransaction(json)).toList();
       state = AsyncValue.data(transactions);
     } catch (e, st) {
       AppLog.d('Error fetching transactions: $e');

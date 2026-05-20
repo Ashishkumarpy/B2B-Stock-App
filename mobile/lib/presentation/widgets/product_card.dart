@@ -4,7 +4,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/constants/app_constants.dart';
 import '../../domain/entities/product.dart';
 
-import '../../core/utils/formatters.dart';
 
 class ProductCard extends StatelessWidget {
   final Product product;
@@ -22,6 +21,12 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final perCarton =
+        (product.pcsPerCarton != null && product.pcsPerCarton! > 0)
+            ? product.pcsPerCarton!
+            : 1;
+    final cartons = product.quantity ~/ perCarton;
+
     return Card(
       elevation: 0,
       clipBehavior: Clip.antiAlias,
@@ -35,10 +40,8 @@ class ProductCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Fixed height image (no AspectRatio — avoids overflow)
-            SizedBox(
-              height: 120,
-              width: double.infinity,
+            AspectRatio(
+              aspectRatio: 1,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -65,7 +68,6 @@ class ProductCard extends StatelessWidget {
                           child: const Icon(Icons.inventory_2_outlined,
                               color: Colors.grey, size: 32),
                         ),
-                  // Stock Status Badge
                   if (product.stockStatus != StockStatus.inStock)
                     Positioned(
                       top: 6,
@@ -93,8 +95,6 @@ class ProductCard extends StatelessWidget {
                         ),
                       ),
                     ),
-
-                  // Three-dots menu (Top Left)
                   if (onEdit != null || onDelete != null)
                     Positioned(
                       top: 6,
@@ -158,14 +158,11 @@ class ProductCard extends StatelessWidget {
                 ],
               ),
             ),
-
-            // Details — fixed, not expanded
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppTheme.sp8, vertical: 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Code (BIG & Prominent)
                   Text(
                     product.code,
                     maxLines: 1,
@@ -178,7 +175,6 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 2),
-                  // Product Name (SMALL)
                   Text(
                     product.name,
                     maxLines: 1,
@@ -191,28 +187,45 @@ class ProductCard extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  // Quantity & Price Row
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Flexible(
-                        child: Text(
-                          AppFormatters.formatQuantity(product.quantity, product.pcsPerCarton),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: product.quantity <= product.threshold
-                                ? AppTheme.danger
-                                : AppTheme.textSecondary,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${product.quantity} pcs',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: product.quantity <= product.threshold
+                                    ? AppTheme.danger
+                                    : AppTheme.success,
+                                fontWeight: FontWeight.w900,
+                                height: 1.1,
+                              ),
+                            ),
+                            Text(
+                              '$cartons ctn${perCarton > 1 ? ' • $perCarton/ctn' : ''}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 9.5,
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(width: 6),
                       Text(
                         '₹${product.price % 1 == 0 ? product.price.toInt() : product.price}',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 12.5,
                           color: AppTheme.primary,
                           fontWeight: FontWeight.w900,
                         ),

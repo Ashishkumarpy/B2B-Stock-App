@@ -13,9 +13,52 @@ import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/products_provider.dart';
+import '../../providers/api_client_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../widgets/status_badge.dart';
 import '../../../core/utils/formatters.dart';
+
+final productTransactionsProvider =
+    FutureProvider.family<List<Transaction>, String>((ref, productId) async {
+  final client = ref.watch(apiClientProvider);
+  final json = await client.get('/transactions?product_id=$productId&limit=1000&page=1');
+  final rows = (json is Map ? json['data'] : null) as List? ?? const [];
+
+  DateTime parseDate(dynamic value) {
+    if (value is String) {
+      final parsed = DateTime.tryParse(value);
+      if (parsed != null) return parsed.toLocal();
+    }
+    return DateTime.now();
+  }
+
+  int? toInt(dynamic value) {
+    if (value is num) return value.toInt();
+    if (value is String) return int.tryParse(value.trim());
+    return null;
+  }
+
+  return rows.map((entry) {
+    final row = Map<String, dynamic>.from(entry as Map);
+    return Transaction(
+      id: row['id']?.toString() ?? '',
+      productId: row['product_id']?.toString() ?? '',
+      workerId: row['worker_id']?.toString() ?? row['user_id']?.toString() ?? '',
+      productName: row['product_name']?.toString() ?? '',
+      productCode: row['product_code']?.toString() ?? row['code']?.toString() ?? '',
+      workerName: row['worker_name']?.toString() ?? '',
+      cartons: toInt(row['cartons']),
+      pcsPerCarton: toInt(row['pcs_per_carton']),
+      colorName: row['color_name']?.toString(),
+      warehouseId: row['warehouse_id']?.toString(),
+      warehouseName: row['warehouse_name']?.toString(),
+      type: TransactionType.fromString(row['type']?.toString() ?? 'OUT'),
+      quantity: toInt(row['quantity']) ?? 0,
+      notes: row['notes']?.toString(),
+      createdAt: parseDate(row['created_at']),
+    );
+  }).toList();
+});
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -62,8 +105,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<List<Transaction>>>(transactionsProvider, (_, __) {
+      ref.invalidate(productTransactionsProvider(widget.productId));
+    });
     final productsAsync = ref.watch(productsProvider);
-    final transactionsAsync = ref.watch(transactionsProvider);
+    final productTxsAsync = ref.watch(productTransactionsProvider(widget.productId));
     final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
 
     return productsAsync.when(
@@ -78,17 +124,62 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         }
 
         final allImages = _getAllImages(product);
-        final productTransactions = transactionsAsync.maybeWhen(
-          data: (txs) =>
-              txs.where((t) => t.productId == widget.productId).toList(),
+        final productTransactions = productTxsAsync.maybeWhen(
+          data: (txs) => txs,
           orElse: () => <Transaction>[],
         );
+        int? inferredPcsPerCarton;
+        final inferredFrequency = <int, int>{};
+        final cartonNotesPattern =
+            RegExp(r'(\d+)\s*cartons?\s*[xÃ—]\s*(\d+)\s*pcs', caseSensitive: false);
+        for (final tx in productTransactions) {
+          final pcs = tx.pcsPerCarton;
+          if (pcs != null && pcs > 1) {
+            inferredFrequency[pcs] = (inferredFrequency[pcs] ?? 0) + 1;
+          }
+
+          final cartons = tx.cartons;
+          final qty = tx.quantity;
+          if (cartons != null && cartons > 0 && qty > 0 && qty % cartons == 0) {
+            final derived = qty ~/ cartons;
+            if (derived > 1) {
+              inferredFrequency[derived] = (inferredFrequency[derived] ?? 0) + 1;
+            }
+          }
+
+          final notes = tx.notes ?? '';
+          final match = cartonNotesPattern.firstMatch(notes);
+          if (match != null) {
+            final notesPcs = int.tryParse(match.group(2) ?? '');
+            if (notesPcs != null && notesPcs > 1) {
+              inferredFrequency[notesPcs] =
+                  (inferredFrequency[notesPcs] ?? 0) + 1;
+            }
+          }
+        }
+        if (inferredFrequency.isNotEmpty) {
+          inferredPcsPerCarton = inferredFrequency.entries
+              .reduce((a, b) => a.value >= b.value ? a : b)
+              .key;
+        }
+        final productPcsPerCarton = product.pcsPerCarton;
+        final effectivePcsPerCarton = (productPcsPerCarton != null &&
+                productPcsPerCarton > 1)
+            ? productPcsPerCarton
+            : ((inferredPcsPerCarton != null && inferredPcsPerCarton > 0)
+                ? inferredPcsPerCarton
+                : ((productPcsPerCarton != null && productPcsPerCarton > 0)
+                    ? productPcsPerCarton
+                    : 1));
+        final isPcsPerCartonInferred =
+            (product.pcsPerCarton == null || product.pcsPerCarton! <= 1) &&
+                inferredPcsPerCarton != null;
 
         return Scaffold(
           backgroundColor: AppTheme.backgroundColor(context),
           body: CustomScrollView(
             slivers: [
-              // ── Simple Elegant App Bar with Edit Feature ──
+              // â”€â”€ Simple Elegant App Bar with Edit Feature â”€â”€
               SliverAppBar(
                 pinned: true,
                 backgroundColor: AppTheme.surfaceColor(context),
@@ -115,14 +206,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ],
               ),
 
-              // ── Content ──
+              // â”€â”€ Content â”€â”€
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ── TAPPABLE IMAGE HERO SECTION ──
+                      // â”€â”€ TAPPABLE IMAGE HERO SECTION â”€â”€
                       if (allImages.isNotEmpty) ...[
                         GestureDetector(
                           onTap: () => _openFullScreenViewer(
@@ -206,7 +297,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                           ),
                         ),
-                        // ── Image Thumbnails Row (Tied to Hero) ──
+                        // â”€â”€ Image Thumbnails Row (Tied to Hero) â”€â”€
                         if (allImages.length > 1) ...[
                           const SizedBox(height: 8),
                           SizedBox(
@@ -314,7 +405,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 16),
 
-                      // ── Stock Card ──
+                      // â”€â”€ Stock Card â”€â”€
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -358,7 +449,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                         fit: BoxFit.scaleDown,
                                         alignment: Alignment.centerLeft,
                                         child: Text(
-                                          AppFormatters.formatQuantity(product.quantity, product.pcsPerCarton),
+                                          '${product.quantity} pcs',
                                           style: const TextStyle(
                                               color: Colors.white,
                                               fontSize: 36,
@@ -366,13 +457,11 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                               height: 1),
                                         ),
                                       ),
-                                      if (product.pcsPerCarton != null && product.pcsPerCarton! > 1) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '(${product.quantity} total pcs, ${product.pcsPerCarton} per ctn)',
-                                          style: const TextStyle(color: Colors.white70, fontSize: 11),
-                                        ),
-                                      ],
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Primary unit: pcs',
+                                        style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                      ),
                                     ],
                                   ),
                                 ),
@@ -382,11 +471,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                _miniStat('Threshold', '${product.threshold}'),
-                                _miniStat('Cost',
-                                    '₹${product.costPrice?.toStringAsFixed(0) ?? '0'}'),
-                                _miniStat('Price',
-                                    '₹${product.price.toStringAsFixed(0)}'),
+                                _miniStat('Threshold', '${product.threshold} pcs'),
+                                _miniStat('Cartons', '${product.quantity ~/ effectivePcsPerCarton} ctn'),
+                                _miniStat('Per Ctn', '$effectivePcsPerCarton pcs${isPcsPerCartonInferred ? '*' : ''}'),
                               ],
                             ),
                           ],
@@ -395,7 +482,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 16),
 
-                      // ── Stock Action Buttons ──
+                      // â”€â”€ Stock Action Buttons â”€â”€
                       if (role.canRecordStock) ...[
                         Row(
                           children: [
@@ -439,7 +526,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 24),
 
-                      // ── Color Stock Section (Color Stock matching Admin) ──
+                      // â”€â”€ Color Stock Section (Color Stock matching Admin) â”€â”€
                       Text(
                         'Color Stock',
                         style: TextStyle(
@@ -528,7 +615,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 24),
 
-                      // ── Recent Activity ──
+                      // â”€â”€ Recent Activity â”€â”€
                       Text('Recent History',
                           style: TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 16)),
@@ -551,7 +638,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       else
                         ...productTransactions
                             .take(8)
-                            .map((tx) => _ActivityTile(tx: tx)),
+                            .map((tx) => _DetailedActivityTile(tx: tx)),
 
                       const SizedBox(height: 80),
                     ],
@@ -560,7 +647,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
             ],
           ),
-          // ── FAB: Quick Stock Entry ──
+          // â”€â”€ FAB: Quick Stock Entry â”€â”€
           floatingActionButton: role.canRecordStock
               ? FloatingActionButton.extended(
                   onPressed: () => _showStockEntrySheet(context, product),
@@ -635,7 +722,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Stock Entry – ${product.name}',
+            Text('Stock Entry â€“ ${product.name}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -684,7 +771,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 }
 
-// ─── Full Screen Image Viewer with Zoom, Download & Share ───
+// â”€â”€â”€ Full Screen Image Viewer with Zoom, Download & Share â”€â”€â”€
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> images;
   final int initialIndex;
@@ -859,7 +946,8 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
   }
 }
 
-// ─── Activity Tile ───────────────────────────────────────────
+// â”€â”€â”€ Activity Tile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ignore: unused_element
 class _ActivityTile extends StatelessWidget {
   final Transaction tx;
   const _ActivityTile({required this.tx});
@@ -902,13 +990,31 @@ class _ActivityTile extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 Text(
-                  '${tx.workerName.isEmpty ? 'Worker' : tx.workerName} • ${DateFormat('MMM d, h:mm a').format(tx.createdAt)}',
+                  '${tx.workerName.isEmpty ? 'Worker' : tx.workerName} â€¢ ${DateFormat('MMM d, h:mm a').format(tx.createdAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                       color: AppTheme.secondaryTextColor(context),
                       fontSize: 11),
                 ),
+                if (tx.cartons != null && tx.pcsPerCarton != null)
+                  Text(
+                    '${tx.cartons} ctn Ã— ${tx.pcsPerCarton} pcs',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: AppTheme.secondaryTextColor(context),
+                        fontSize: 11),
+                  ),
+                if ((tx.notes ?? '').trim().isNotEmpty)
+                  Text(
+                    tx.notes!.trim(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: AppTheme.secondaryTextColor(context),
+                        fontSize: 11),
+                  ),
               ],
             ),
           ),
@@ -918,6 +1024,157 @@ class _ActivityTile extends StatelessWidget {
                 color: color, fontWeight: FontWeight.w800, fontSize: 14),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _DetailedActivityTile extends StatelessWidget {
+  final Transaction tx;
+  const _DetailedActivityTile({required this.tx});
+
+  @override
+  Widget build(BuildContext context) {
+    final isIn = tx.isStockIn;
+    final actionColor = isIn ? AppTheme.success : AppTheme.danger;
+    final iconBg = isIn ? AppTheme.successLight : AppTheme.dangerLight;
+    final workerName = tx.workerName.isEmpty ? 'Unknown Worker' : tx.workerName;
+    final warehouseName = tx.warehouseName ?? 'Main Warehouse';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppTheme.sp8),
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: ListTile(
+        leading: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
+          ),
+          child: Icon(
+            isIn ? Icons.south_west_rounded : Icons.north_east_rounded,
+            color: actionColor,
+            size: 18,
+          ),
+        ),
+        title: Text(
+          '${isIn ? "Stock In" : "Stock Out"}: ${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.person_rounded, size: 11, color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      workerName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  Icon(Icons.storefront_rounded, size: 11, color: Colors.grey[500]),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      warehouseName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ),
+                  if (tx.colorName != null && tx.colorName!.trim().isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      'â€¢ ${tx.colorName!.trim()}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 3),
+              Row(
+                children: [
+                  Icon(Icons.access_time_filled_rounded, size: 11, color: Colors.grey[400]),
+                  const SizedBox(width: 4),
+                  Text(
+                    DateFormat('dd MMM, hh:mm a').format(tx.createdAt),
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+              if (tx.cartons != null && tx.pcsPerCarton != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  '${tx.cartons} ctn Ã— ${tx.pcsPerCarton} pcs',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+              if ((tx.notes ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(
+                  tx.notes!.trim(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        trailing: Text(
+          '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: actionColor,
+                fontWeight: FontWeight.w900,
+              ),
+        ),
       ),
     );
   }

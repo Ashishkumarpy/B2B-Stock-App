@@ -364,7 +364,7 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
             typeText = "All Activities";
           }
 
-          final headerText = "Showing: $typeText • $dateText";
+          final headerText = "Showing: $typeText - $dateText";
 
           return Column(
             children: [
@@ -517,46 +517,14 @@ class _StockActivityTile extends ConsumerWidget {
                   color: AppTheme.textSecondary,
                 ),
               ),
-              const SizedBox(height: 4),
-              Row(
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
                 children: [
-                  Icon(Icons.person_rounded, size: 11, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Text(
-                    workerName,
-                    style: TextStyle(
-                      fontSize: 9.5,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  if (txn.colorName != null && txn.colorName!.isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    Text(
-                      '•  ${txn.colorName}',
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                  const SizedBox(width: 8),
-                  Icon(Icons.storefront_rounded,
-                      size: 11, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      warehouseName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ),
+                  _InfoChip(icon: Icons.person_rounded, text: workerName),
+                  if (txn.colorName != null && txn.colorName!.trim().isNotEmpty)
+                    _InfoChip(icon: Icons.palette_rounded, text: txn.colorName!.trim()),
+                  _InfoChip(icon: Icons.storefront_rounded, text: warehouseName),
                 ],
               ),
               const SizedBox(height: 3),
@@ -585,6 +553,44 @@ class _StockActivityTile extends ConsumerWidget {
                 fontWeight: FontWeight.w900,
               ),
         ),
+      ),
+    );
+  }
+}
+
+class _InfoChip extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _InfoChip({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppTheme.textSecondary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: Colors.grey[500]),
+          const SizedBox(width: 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 120),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 9.5,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

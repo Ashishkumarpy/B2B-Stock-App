@@ -26,6 +26,20 @@ interface Transaction {
   created_at: string;
 }
 
+export function parseCartonFromNotes(notes?: string | null): { cartons: number; pcsPerCarton: number } | null {
+  if (!notes) return null;
+  const regex = /(\d+)\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*(\d+)/i;
+  const match = notes.match(regex);
+  if (match) {
+    const cartons = parseInt(match[1], 10);
+    const pcsPerCarton = parseInt(match[2], 10);
+    if (!isNaN(cartons) && !isNaN(pcsPerCarton) && pcsPerCarton > 0) {
+      return { cartons, pcsPerCarton };
+    }
+  }
+  return null;
+}
+
 const statusMap: Record<StockStatus, { label: string; cls: string }> = {
   in_stock: { label: 'In Stock', cls: 'badge-green' },
   low_stock: { label: 'Low Stock', cls: 'badge-yellow' },
@@ -124,12 +138,40 @@ export default function ProductDetailAdminPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    setSelectedImageIndex(0);
+  }, [load, productId]);
 
   const product = useMemo(
     () => products.find((item) => item.id === productId) ?? null,
     [productId, products]
   );
+
+  const sortedProducts = useMemo(() => {
+    return [...products].sort((left, right) => {
+      const catCompare = (left.category || '').localeCompare(right.category || '', undefined, { sensitivity: 'base' });
+      if (catCompare !== 0) return catCompare;
+      const codeCompare = left.code.localeCompare(right.code, undefined, {
+        sensitivity: 'base',
+        numeric: true,
+      });
+      if (codeCompare !== 0) return codeCompare;
+      return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' });
+    });
+  }, [products]);
+
+  const currentIndex = useMemo(() => {
+    return sortedProducts.findIndex((item) => item.id === productId);
+  }, [sortedProducts, productId]);
+
+  const prevProduct = useMemo(() => {
+    return currentIndex > 0 ? sortedProducts[currentIndex - 1] : null;
+  }, [sortedProducts, currentIndex]);
+
+  const nextProduct = useMemo(() => {
+    return currentIndex >= 0 && currentIndex < sortedProducts.length - 1
+      ? sortedProducts[currentIndex + 1]
+      : null;
+  }, [sortedProducts, currentIndex]);
 
   const images = useMemo(() => productImageUrls(product), [product]);
   const activeImageIndex = Math.max(0, Math.min(selectedImageIndex, Math.max(images.length - 1, 0)));
@@ -205,7 +247,30 @@ export default function ProductDetailAdminPage() {
           <h1 className="text-2xl font-bold">Product Details</h1>
           <p className="mt-1 text-sm text-gray-500">History and stock movement</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {prevProduct && (
+            <button
+              type="button"
+              onClick={() => router.push(`/products/${encodeURIComponent(prevProduct.id)}`)}
+              className="rounded-xl border border-white/10 px-3.5 py-2 text-sm text-gray-200 hover:bg-white/5 transition-all flex items-center gap-1.5"
+              title={`Previous: ${prevProduct.name}`}
+            >
+              <span className="text-xs">←</span> <span>Prev</span>
+            </button>
+          )}
+          {nextProduct && (
+            <button
+              type="button"
+              onClick={() => router.push(`/products/${encodeURIComponent(nextProduct.id)}`)}
+              className="rounded-xl border border-white/10 px-3.5 py-2 text-sm text-gray-200 hover:bg-white/5 transition-all flex items-center gap-1.5"
+              title={`Next: ${nextProduct.name}`}
+            >
+              <span>Next</span> <span className="text-xs">→</span>
+            </button>
+          )}
+          {(prevProduct || nextProduct) && (
+            <div className="h-6 w-px bg-white/10 mx-1" />
+          )}
           <button type="button" onClick={goBackToFolder} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-white/5">Back to Folder</button>
           {product && (
             <>
@@ -263,6 +328,14 @@ export default function ProductDetailAdminPage() {
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <p className="text-xs text-gray-500">Price</p>
                     <p className="mt-1 font-semibold text-white">Rs {formatMoney(product.price)}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-xs text-gray-500">Pcs per Carton</p>
+                    <p className="mt-1 font-semibold text-white">{product.pcs_per_carton || 1} pcs/ctn</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-xs text-gray-500">MOQ / Threshold</p>
+                    <p className="mt-1 font-semibold text-white">{product.threshold || 50} pcs</p>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                     <p className="text-xs text-gray-500">Created</p>
@@ -373,20 +446,37 @@ export default function ProductDetailAdminPage() {
                         <span className="text-xs font-bold text-white truncate">{txn.color_name || 'Standard'}</span>
                       </div>
                       <p className="text-[10px] text-gray-500 truncate">By {txn.worker_name || 'Admin'} • {formatDateTime(txn.created_at)}</p>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                        {txn.cartons !== undefined && txn.cartons !== null && (
-                          <span className="text-[9px] font-semibold text-indigo-300 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
-                            {txn.cartons} ctn × {txn.pcs_per_carton || 1} pcs
-                          </span>
-                        )}
-                        {txn.notes && (
-                          <span className="text-[9px] text-gray-400 truncate bg-white/5 px-1.5 py-0.5 rounded">
+                      {txn.notes && (
+                        <div className="mt-1">
+                          <span className="text-[9px] text-gray-400 truncate bg-white/5 px-1.5 py-0.5 rounded inline-block max-w-full">
                             {txn.notes}
                           </span>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
-                    <span className={`text-lg font-black ${isIn ? 'text-emerald-400' : 'text-rose-400'}`}>{isIn ? '+' : '-'}{txn.quantity}</span>
+                    <div className="flex flex-col items-end justify-center">
+                      <span className={`text-lg font-black leading-none ${isIn ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isIn ? '+' : '-'}{txn.quantity}
+                      </span>
+                      {(() => {
+                        if (txn.cartons !== undefined && txn.cartons !== null) {
+                          return (
+                            <span className="text-[10px] text-gray-400 leading-tight mt-1 whitespace-nowrap">
+                              {txn.cartons} ctn × {txn.pcs_per_carton || 1}
+                            </span>
+                          );
+                        }
+                        const parsed = parseCartonFromNotes(txn.notes);
+                        if (parsed) {
+                          return (
+                            <span className="text-[10px] text-gray-400 leading-tight mt-1 whitespace-nowrap">
+                              {parsed.cartons} ctn × {parsed.pcsPerCarton}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
                   </div>
                 );
               })}

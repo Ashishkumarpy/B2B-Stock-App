@@ -150,11 +150,6 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       final pcsText = _pcsPerCartonController.text.trim();
       String finalNotes = _notesController.text.trim();
 
-      if (cartonsText.isNotEmpty && pcsText.isNotEmpty) {
-        final cartonInfo = '$cartonsText Cartons × $pcsText Pcs';
-        finalNotes = finalNotes.isNotEmpty ? '$cartonInfo | $finalNotes' : cartonInfo;
-      }
-
       final customerText = _customerController.text.trim();
       if (_type == TransactionType.stockOut && customerText.isNotEmpty) {
         finalNotes = finalNotes.isNotEmpty ? 'Customer: $customerText | $finalNotes' : 'Customer: $customerText';

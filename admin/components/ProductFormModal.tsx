@@ -460,10 +460,6 @@ export default function ProductFormModal({
                     className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
                   />
                 </label>
-                <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">MOQ / Threshold *</span>
-                  <input type="number" required min="1" value={form.threshold} onChange={e => setForm({ ...form, threshold: Number(e.target.value) })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
-                </label>
               </div>
 
               <label className="block">

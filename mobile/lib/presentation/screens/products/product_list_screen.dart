@@ -363,7 +363,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         padding: const EdgeInsets.all(12),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 2,
-          childAspectRatio: 0.70,
+          childAspectRatio: 0.62,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
@@ -618,10 +618,11 @@ class _FolderCard extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 4,
                       children: [
                         _MiniStat(label: 'Qty', value: '${folder.totalQty}'),
-                        const SizedBox(width: 8),
                         if (folder.alerts > 0)
                           _MiniStat(
                             label: 'Alerts',
