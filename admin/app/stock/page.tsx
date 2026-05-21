@@ -345,10 +345,11 @@ export default function StockPage() {
     const product = products.find((p) => p.id === form.product_id);
     if (!product) return;
     const firstColor = product.color_stocks?.[0]?.color || 'Default';
+    const productPcs = Number(product.pcs_per_carton);
     setForm((prev) => ({ 
       ...prev, 
       color_name: prev.color_name || firstColor,
-      pcsPerCarton: product.pcs_per_carton || prev.pcsPerCarton || 1
+      pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1
     }));
   }, [form.product_id, products]);
 
@@ -832,7 +833,15 @@ export default function StockPage() {
                       key={p.id}
                       type="button"
                       onClick={() => {
-                        setForm({ ...form, product_id: p.id, color_name: p.color_stocks?.[0]?.color || 'Default' });
+                        const productPcs = Number(p.pcs_per_carton);
+                        setForm({
+                          ...form,
+                          product_id: p.id,
+                          color_name: p.color_stocks?.[0]?.color || 'Default',
+                          pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1,
+                          cartons: '',
+                          quantity: 0,
+                        });
                         setShowProductPicker(false);
                         setPickerSearch('');
                         setPickerCategory(null);
@@ -855,7 +864,15 @@ export default function StockPage() {
                       key={p.id}
                       type="button"
                       onClick={() => {
-                        setForm({ ...form, product_id: p.id, color_name: p.color_stocks?.[0]?.color || 'Default' });
+                        const productPcs = Number(p.pcs_per_carton);
+                        setForm({
+                          ...form,
+                          product_id: p.id,
+                          color_name: p.color_stocks?.[0]?.color || 'Default',
+                          pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1,
+                          cartons: '',
+                          quantity: 0,
+                        });
                         setShowProductPicker(false);
                         setPickerSearch('');
                         setPickerCategory(null);

@@ -55,14 +55,16 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         final match =
             products.where((p) => p.id == widget.productId).firstOrNull;
         if (match != null) {
+          final defaultPcsPerCarton =
+              (match.pcsPerCarton != null && match.pcsPerCarton! > 0)
+                  ? match.pcsPerCarton!
+                  : 1;
           setState(() {
             _selectedProduct = match;
             if (match.colorStocks.isNotEmpty) {
               _selectedColor = match.colorStocks.first.color;
             }
-            if (match.pcsPerCarton != null) {
-              _pcsPerCartonController.text = match.pcsPerCarton.toString();
-            }
+            _pcsPerCartonController.text = defaultPcsPerCarton.toString();
           });
         }
       }
@@ -148,6 +150,16 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
       final cartonsText = _cartonsController.text.trim();
       final pcsText = _pcsPerCartonController.text.trim();
+      final fallbackPcsPerCarton =
+          (_selectedProduct?.pcsPerCarton != null &&
+                  _selectedProduct!.pcsPerCarton! > 0)
+              ? _selectedProduct!.pcsPerCarton!
+              : 1;
+      final parsedPcsPerCarton = int.tryParse(pcsText);
+      final resolvedPcsPerCarton =
+          (parsedPcsPerCarton != null && parsedPcsPerCarton > 0)
+              ? parsedPcsPerCarton
+              : fallbackPcsPerCarton;
       String finalNotes = _notesController.text.trim();
 
       final customerText = _customerController.text.trim();
@@ -168,7 +180,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 : _selectedWarehouseId,
         'worker_name': workerName,
         if (cartonsText.isNotEmpty) 'cartons': int.tryParse(cartonsText),
-        if (pcsText.isNotEmpty) 'pcs_per_carton': int.tryParse(pcsText),
+        'pcs_per_carton': resolvedPcsPerCarton,
       });
 
       if (mounted) {
@@ -200,6 +212,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       builder: (context) => ProductPickerModal(
         products: products,
         onSelected: (p) {
+          final defaultPcsPerCarton =
+              (p.pcsPerCarton != null && p.pcsPerCarton! > 0)
+                  ? p.pcsPerCarton!
+                  : 1;
           setState(() {
             _selectedProduct = p;
             if (p.colorStocks.isNotEmpty) {
@@ -207,11 +223,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             } else {
               _selectedColor = 'Default';
             }
-            if (p.pcsPerCarton != null) {
-              _pcsPerCartonController.text = p.pcsPerCarton.toString();
-            } else {
-              _pcsPerCartonController.clear();
-            }
+            _pcsPerCartonController.text = defaultPcsPerCarton.toString();
           });
           Navigator.pop(context);
         },

@@ -73,7 +73,7 @@ transactionsRouter.post(
 
     let productQuery = await supabaseAdmin
       .from('products')
-      .select('id,name,code,color_stocks')
+      .select('id,name,code,color_stocks,pcs_per_carton')
       .eq('id', productId)
       .maybeSingle();
     if (
@@ -92,6 +92,16 @@ transactionsRouter.post(
     const productError = productQuery.error;
     if (productError) return res.status(400).json({ error: productError.message });
     if (!product) return res.status(400).json({ error: 'Invalid product_id' });
+    const parsedProductPcs = Number(product?.pcs_per_carton);
+    const defaultPcsPerCarton =
+      Number.isFinite(parsedProductPcs) && parsedProductPcs > 0
+        ? Math.trunc(parsedProductPcs)
+        : 1;
+    const parsedPayloadPcs = Number(payload.pcs_per_carton);
+    const resolvedPcsPerCarton =
+      Number.isFinite(parsedPayloadPcs) && parsedPayloadPcs > 0
+        ? Math.trunc(parsedPayloadPcs)
+        : defaultPcsPerCarton;
 
     const colorStocksRaw = Array.isArray(product.color_stocks)
       ? product.color_stocks
@@ -283,7 +293,7 @@ transactionsRouter.post(
       type,
       quantity,
       cartons: payload.cartons ? Number(payload.cartons) : null,
-      pcs_per_carton: payload.pcs_per_carton ? Number(payload.pcs_per_carton) : null,
+      pcs_per_carton: resolvedPcsPerCarton,
       worker_id: workerId,
       worker_name: workerName,
       actor_user_id:
@@ -329,6 +339,17 @@ transactionsRouter.post(
 
     if (insertResult.error) {
       return res.status(400).json({ error: insertResult.error.message });
+    }
+
+    if (
+      Number.isFinite(parsedPayloadPcs) &&
+      parsedPayloadPcs > 0 &&
+      Math.trunc(parsedPayloadPcs) !== defaultPcsPerCarton
+    ) {
+      await supabaseAdmin
+        .from('products')
+        .update({ pcs_per_carton: Math.trunc(parsedPayloadPcs) })
+        .eq('id', productId);
     }
 
     // Fire-and-forget push notifications for stock activity.
