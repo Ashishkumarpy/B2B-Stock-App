@@ -313,8 +313,8 @@ export default function ProductDetailAdminPage() {
               <div className="card p-5">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate text-xl font-bold text-white">{product.name}</p>
-                    <p className="mt-1 font-mono text-sm text-indigo-300">{product.code}</p>
+                    <p className="truncate font-mono text-2xl font-black text-indigo-200">{product.code}</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-white/90">{product.name}</p>
                   </div>
                   <span className={`inline-flex badge ${statusMap[product.stock_status]?.cls ?? 'badge-gray'}`}>
                     {statusMap[product.stock_status]?.label ?? 'Unknown'}

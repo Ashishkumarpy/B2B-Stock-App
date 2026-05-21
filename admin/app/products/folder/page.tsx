@@ -281,8 +281,8 @@ export default function FolderExplorerPage() {
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
                   <div className={`absolute rounded-2xl border border-white/20 bg-black/40 backdrop-blur-md ${overlayPadClass}`}>
-                    <p className="truncate text-sm font-semibold text-white">{product.name}</p>
-                    <p className="font-mono text-[11px] text-gray-200">{product.code}</p>
+                    <p className="font-mono text-sm font-semibold text-gray-100">{product.code}</p>
+                    <p className="truncate text-xs font-medium text-gray-100">{product.name}</p>
                     <div className="mt-2 flex items-center justify-between text-[11px] text-gray-200">
                       <span>Qty: {(() => {
                         const size = product.pcs_per_carton || 1;

@@ -228,8 +228,8 @@ export default function ProductsPage() {
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
         <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/20 bg-black/40 p-3 backdrop-blur-md">
-          <p className="truncate text-sm font-semibold text-white">{product.name}</p>
-          <p className="font-mono text-[11px] text-gray-200">{product.code}</p>
+          <p className="font-mono text-sm font-semibold text-gray-100">{product.code}</p>
+          <p className="truncate text-xs font-medium text-gray-100">{product.name}</p>
           <div className="mt-2 flex items-center justify-between text-[11px] text-gray-200">
             <span>Qty: {formatQuantity(product.quantity, product.pcs_per_carton)}</span>
             <span>Rs {product.price.toLocaleString()}</span>
