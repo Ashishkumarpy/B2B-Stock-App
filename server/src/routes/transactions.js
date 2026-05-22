@@ -208,8 +208,96 @@ transactionsRouter.post(
         .eq('product_id', productId)
         .eq('color_name', colorName)
         .maybeSingle();
-      if (!stockRow.error && stockRow.data) {
-        const available = Number(stockRow.data.quantity ?? 0);
+      if (stockRow.error) {
+        return res.status(400).json({ error: stockRow.error.message });
+      }
+      if (!stockRow.data) {
+        // Attempt a safe warehouse fallback when there is exactly one active warehouse
+        // with sufficient stock for this product/color.
+        const allColorStocksRes = await supabaseAdmin
+          .from('warehouse_product_stocks')
+          .select('warehouse_id,color_name,quantity')
+          .eq('product_id', productId)
+          .limit(1000);
+        if (allColorStocksRes.error) {
+          return res.status(400).json({ error: allColorStocksRes.error.message });
+        }
+        const sameColorRows = (allColorStocksRes.data || []).filter((row) => {
+          const rowColor = String(row?.color_name || '').trim().toLowerCase();
+          return rowColor === colorName.trim().toLowerCase();
+        });
+        const candidateWarehouseIds = [...new Set(sameColorRows
+          .map((row) => String(row?.warehouse_id || '').trim())
+          .filter(Boolean))];
+        if (candidateWarehouseIds.length > 0) {
+          const activeWarehousesRes = await supabaseAdmin
+            .from('warehouses')
+            .select('id,name,is_active')
+            .in('id', candidateWarehouseIds);
+          if (activeWarehousesRes.error) {
+            return res.status(400).json({ error: activeWarehousesRes.error.message });
+          }
+          const activeById = new Map(
+            (activeWarehousesRes.data || [])
+              .filter((w) => w.is_active === true)
+              .map((w) => [String(w.id), String(w.name || 'Warehouse')]),
+          );
+          const viable = sameColorRows.filter((row) => {
+            const wid = String(row?.warehouse_id || '').trim();
+            const qty = Number(row?.quantity ?? 0);
+            return activeById.has(wid) && Number.isFinite(qty) && qty >= quantity;
+          });
+          const viableWarehouseIds = [...new Set(viable.map((row) => String(row.warehouse_id)))];
+          if (viableWarehouseIds.length === 1) {
+            const selectedWarehouseId = viableWarehouseIds[0];
+            warehouseId = selectedWarehouseId;
+            warehouseName = activeById.get(selectedWarehouseId) || warehouseName;
+            const canonical = viable.find((row) => String(row.warehouse_id) === selectedWarehouseId);
+            if (canonical?.color_name) {
+              colorName = String(canonical.color_name).trim() || colorName;
+            }
+          } else if (viableWarehouseIds.length > 1) {
+            const options = viableWarehouseIds
+              .map((wid) => activeById.get(wid) || wid)
+              .join(', ');
+            return res.status(400).json({
+              error: `Stock for ${colorName} is available in multiple warehouses (${options}). Please choose a warehouse explicitly.`,
+            });
+          } else {
+            const options = candidateWarehouseIds
+              .map((wid) => activeById.get(wid))
+              .filter(Boolean)
+              .join(', ');
+            return res.status(400).json({
+              error: options
+                ? `No sufficient stock in selected warehouse for ${colorName}. Available warehouse(s): ${options}.`
+                : `No stock found in selected warehouse for ${colorName}.`,
+            });
+          }
+        } else {
+          return res.status(400).json({
+            error: `No stock found in selected warehouse for ${colorName}.`,
+          });
+        }
+      }
+
+      const resolvedStockRow = await supabaseAdmin
+        .from('warehouse_product_stocks')
+        .select('quantity')
+        .eq('warehouse_id', warehouseId)
+        .eq('product_id', productId)
+        .eq('color_name', colorName)
+        .maybeSingle();
+      if (resolvedStockRow.error) {
+        return res.status(400).json({ error: resolvedStockRow.error.message });
+      }
+      if (!resolvedStockRow.data) {
+        return res.status(400).json({
+          error: `No stock found in warehouse ${warehouseName} for color ${colorName}.`,
+        });
+      }
+      if (!stockRow.error && resolvedStockRow.data) {
+        const available = Number(resolvedStockRow.data.quantity ?? 0);
         if (!Number.isFinite(available) || available < quantity) {
           return res.status(400).json({
             error: `Insufficient stock in ${warehouseName} for ${colorName}. Available: ${Math.max(
