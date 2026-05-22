@@ -54,6 +54,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   String? _selectedWarehouseId;
   Set<String> _stockOutWarehouseIdsWithStock = <String>{};
   List<Map<String, dynamic>> _stockOutWarehouseStockRows = const [];
+  List<Map<String, dynamic>> _stockOutColorRows = const [];
+  bool _isLoadingStockOutColors = false;
   bool _isLoadingStockOutWarehouses = false;
   bool _isSubmitting = false;
 
@@ -138,6 +140,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       setState(() {
         _stockOutWarehouseIdsWithStock = <String>{};
         _stockOutWarehouseStockRows = const [];
+        _stockOutColorRows = const [];
         _isLoadingStockOutWarehouses = false;
       });
       return;
@@ -190,6 +193,60 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       if (!mounted) return;
       setState(() {
         _isLoadingStockOutWarehouses = false;
+      });
+    }
+  }
+
+  Future<void> _refreshStockOutColors() async {
+    if (_type != TransactionType.stockOut ||
+        _selectedProduct == null ||
+        _selectedWarehouseId == null ||
+        _selectedWarehouseId!.trim().isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _stockOutColorRows = const [];
+        _isLoadingStockOutColors = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingStockOutColors = true;
+    });
+    try {
+      final client = ref.read(apiClientProvider);
+      final productId = Uri.encodeQueryComponent(_selectedProduct!.id);
+      final warehouseId = Uri.encodeQueryComponent(_selectedWarehouseId!.trim());
+      final response = await client.get(
+        '/warehouses/$warehouseId/colors?product_id=$productId',
+      );
+      final list = (response is Map ? response['data'] : null) as List? ?? const [];
+      final rows = list
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _stockOutColorRows = rows;
+        final availableColorNames = rows
+            .map((x) => (x['color_name']?.toString() ?? '').trim().toLowerCase())
+            .where((x) => x.isNotEmpty)
+            .toSet();
+        if (!availableColorNames.contains(_selectedColor.trim().toLowerCase())) {
+          _selectedColor = rows.isNotEmpty
+              ? (rows.first['color_name']?.toString() ?? 'Default')
+              : 'Default';
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _stockOutColorRows = const [];
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingStockOutColors = false;
       });
     }
   }
@@ -347,6 +404,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             _pcsPerCartonController.text = defaultPcsPerCarton.toString();
           });
           _refreshStockOutWarehouses();
+          _refreshStockOutColors();
           Navigator.pop(context);
         },
       ),
@@ -433,6 +491,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                       onTap: () {
                         setState(() => _type = TransactionType.stockIn);
                         _refreshStockOutWarehouses();
+                        _refreshStockOutColors();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -488,6 +547,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           }
                         });
                         _refreshStockOutWarehouses();
+                        _refreshStockOutColors();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -729,6 +789,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 setState(() {
                                   _selectedWarehouseId = val;
                                 });
+                                _refreshStockOutColors();
                               },
                             ),
                           ),
@@ -870,8 +931,26 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                               icon: Icon(Icons.keyboard_arrow_down_rounded,
                                   color: AppTheme.mutedTextColor(context)),
                               items: _selectedProduct != null &&
-                                      _selectedProduct!.colorStocks.isNotEmpty
-                                  ? _selectedProduct!.colorStocks.map((c) {
+                                      (_type != TransactionType.stockOut
+                                          ? _selectedProduct!.colorStocks.isNotEmpty
+                                          : _stockOutColorRows.isNotEmpty)
+                                  ? (_type == TransactionType.stockOut
+                                          ? _stockOutColorRows.map((c) {
+                                              final cName = c['color_name']?.toString() ?? 'Default';
+                                              final cQty = c['available_quantity'] ?? 0;
+                                              return DropdownMenuItem(
+                                                value: cName,
+                                                child: Text(
+                                                  '$cName ($cQty)',
+                                                  style: TextStyle(
+                                                      fontSize: 13,
+                                                      color: AppTheme.primaryTextColor(
+                                                          context)),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              );
+                                            }).toList()
+                                          : _selectedProduct!.colorStocks.map((c) {
                                       return DropdownMenuItem(
                                         value: c.color,
                                         child: Text(
@@ -883,7 +962,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       );
-                                    }).toList()
+                                    }).toList())
                                   : [
                                       DropdownMenuItem(
                                         value: 'Default',

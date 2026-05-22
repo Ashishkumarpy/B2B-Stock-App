@@ -178,6 +178,48 @@ warehousesRouter.get('/:id/products', authRequired, async (req, res) => {
   return res.json({ data });
 });
 
+warehousesRouter.get('/:id/colors', authRequired, async (req, res) => {
+  const warehouseId = String(req.params.id || '').trim();
+  const productId = String(req.query?.product_id || '').trim();
+  if (!warehouseId) {
+    return res.status(400).json({ error: 'warehouse id is required' });
+  }
+  if (!productId) {
+    return res.status(400).json({ error: 'product_id is required' });
+  }
+
+  const rowsRes = await supabaseAdmin
+    .from('warehouse_product_stocks')
+    .select('color_name,quantity')
+    .eq('warehouse_id', warehouseId)
+    .eq('product_id', productId)
+    .gt('quantity', 0)
+    .limit(2000);
+  if (rowsRes.error) {
+    return res.status(400).json({ error: rowsRes.error.message });
+  }
+
+  const byColor = new Map();
+  for (const row of rowsRes.data || []) {
+    const rawColor = String(row?.color_name || '').trim();
+    if (!rawColor) continue;
+    const key = rawColor.toLowerCase();
+    const qty = Number(row?.quantity ?? 0);
+    const safeQty = Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0;
+    const prev = byColor.get(key);
+    if (!prev) {
+      byColor.set(key, { color_name: rawColor, available_quantity: safeQty });
+    } else {
+      prev.available_quantity += safeQty;
+    }
+  }
+
+  const data = [...byColor.values()].sort((a, b) =>
+    String(a.color_name).localeCompare(String(b.color_name)),
+  );
+  return res.json({ data });
+});
+
 warehousesRouter.post(
   '/',
   authRequired,
