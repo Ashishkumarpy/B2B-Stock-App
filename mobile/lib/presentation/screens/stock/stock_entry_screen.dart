@@ -152,7 +152,14 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       final response = await client.get(
         '/warehouses/stock-options?product_id=$productId&color_name=$colorName',
       );
-      final list = (response is Map ? response['data'] : null) as List? ?? const [];
+      List list = (response is Map ? response['data'] : null) as List? ?? const [];
+      if (list.isEmpty) {
+        // Fallback: show warehouses that have stock for this product in any color.
+        final fallbackResponse = await client.get(
+          '/warehouses/stock-options?product_id=$productId',
+        );
+        list = (fallbackResponse is Map ? fallbackResponse['data'] : null) as List? ?? const [];
+      }
       final ids = list
           .map((row) => (row as Map?)?['warehouse_id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)

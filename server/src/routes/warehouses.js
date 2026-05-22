@@ -21,7 +21,9 @@ warehousesRouter.get('/', authRequired, async (_req, res) => {
 
 warehousesRouter.get('/stock-options', authRequired, async (req, res) => {
   const productId = String(req.query?.product_id || '').trim();
-  const colorName = String(req.query?.color_name || '').trim() || 'Default';
+  const colorNameRaw = String(req.query?.color_name || '').trim();
+  const hasColorFilter = colorNameRaw.length > 0;
+  const colorName = colorNameRaw.toLowerCase();
   if (!productId) {
     return res.status(400).json({ error: 'product_id is required' });
   }
@@ -35,11 +37,10 @@ warehousesRouter.get('/stock-options', authRequired, async (req, res) => {
     return res.status(400).json({ error: rowsRes.error.message });
   }
 
-  const targetColor = colorName.toLowerCase();
   const byWarehouseQty = new Map();
   for (const row of rowsRes.data || []) {
     const rowColor = String(row?.color_name || '').trim().toLowerCase();
-    if (rowColor !== targetColor) continue;
+    if (hasColorFilter && rowColor !== colorName) continue;
     const wid = String(row?.warehouse_id || '').trim();
     if (!wid) continue;
     const qty = Number(row?.quantity ?? 0);
