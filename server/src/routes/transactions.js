@@ -234,6 +234,59 @@ transactionsRouter.post(
     }
 
     if (type === 'stock_out') {
+      const tryResolveSingleWarehouseWithStock = async () => {
+        const allColorStocksRes = await supabaseAdmin
+          .from('warehouse_product_stocks')
+          .select('warehouse_id,color_name,quantity')
+          .eq('product_id', productId)
+          .limit(1000);
+        if (allColorStocksRes.error) {
+          return { error: allColorStocksRes.error.message };
+        }
+        const sameColorRows = (allColorStocksRes.data || []).filter((row) => {
+          const rowColor = String(row?.color_name || '').trim().toLowerCase();
+          return rowColor === colorName.trim().toLowerCase();
+        });
+        const candidateWarehouseIds = [...new Set(
+          sameColorRows
+            .map((row) => String(row?.warehouse_id || '').trim())
+            .filter(Boolean),
+        )];
+        if (candidateWarehouseIds.length === 0) {
+          return { data: null };
+        }
+        const activeWarehousesRes = await supabaseAdmin
+          .from('warehouses')
+          .select('id,name,is_active')
+          .in('id', candidateWarehouseIds);
+        if (activeWarehousesRes.error) {
+          return { error: activeWarehousesRes.error.message };
+        }
+        const activeById = new Map(
+          (activeWarehousesRes.data || [])
+            .filter((w) => w.is_active === true)
+            .map((w) => [String(w.id), String(w.name || 'Warehouse')]),
+        );
+        const viable = sameColorRows.filter((row) => {
+          const wid = String(row?.warehouse_id || '').trim();
+          const qty = Number(row?.quantity ?? 0);
+          return activeById.has(wid) && Number.isFinite(qty) && qty >= quantity;
+        });
+        const viableWarehouseIds = [...new Set(viable.map((row) => String(row?.warehouse_id || '').trim()))];
+        if (viableWarehouseIds.length !== 1) {
+          return { data: null };
+        }
+        const selectedWarehouseId = viableWarehouseIds[0];
+        const canonical = viable.find((row) => String(row?.warehouse_id || '').trim() === selectedWarehouseId);
+        return {
+          data: {
+            warehouseId: selectedWarehouseId,
+            warehouseName: activeById.get(selectedWarehouseId) || 'Warehouse',
+            colorName: String(canonical?.color_name || '').trim() || colorName,
+          },
+        };
+      };
+
       const canonicalWarehouseColorRes = await supabaseAdmin
         .from('warehouse_product_stocks')
         .select('color_name,quantity')
@@ -254,12 +307,22 @@ transactionsRouter.post(
         }
         const available = Number(stockMatch?.quantity ?? 0);
         if (!Number.isFinite(available) || available < quantity) {
+          const fallback = await tryResolveSingleWarehouseWithStock();
+          if (fallback.error) {
+            return res.status(400).json({ error: fallback.error });
+          }
+          if (fallback.data) {
+            warehouseId = fallback.data.warehouseId;
+            warehouseName = fallback.data.warehouseName;
+            colorName = fallback.data.colorName;
+          } else {
           return res.status(400).json({
             error: `Insufficient stock in ${warehouseName} for ${colorName}. Available: ${Math.max(
               0,
               Math.trunc(available),
             )}`,
           });
+          }
         }
         }
       }
@@ -362,12 +425,22 @@ transactionsRouter.post(
       if (!stockRow.error && resolvedStockRow.data) {
         const available = Number(resolvedStockRow.data.quantity ?? 0);
         if (!Number.isFinite(available) || available < quantity) {
+          const fallback = await tryResolveSingleWarehouseWithStock();
+          if (fallback.error) {
+            return res.status(400).json({ error: fallback.error });
+          }
+          if (fallback.data) {
+            warehouseId = fallback.data.warehouseId;
+            warehouseName = fallback.data.warehouseName;
+            colorName = fallback.data.colorName;
+          } else {
           return res.status(400).json({
             error: `Insufficient stock in ${warehouseName} for ${colorName}. Available: ${Math.max(
               0,
               Math.trunc(available),
             )}`,
           });
+          }
         }
       }
     }
