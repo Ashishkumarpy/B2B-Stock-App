@@ -29,6 +29,7 @@ productsRouter.post('/', authRequired, requireRole(['admin', 'manager']), async 
 productsRouter.put('/:id', authRequired, requireRole(['admin', 'manager', 'worker']), async (req, res) => {
   const id = req.params.id;
   const payload = req.body || {};
+  const hasColorStocksUpdate = Object.prototype.hasOwnProperty.call(payload, 'color_stocks');
   const { data, error } = await supabaseAdmin
     .from('products')
     .update(payload)
@@ -37,6 +38,101 @@ productsRouter.put('/:id', authRequired, requireRole(['admin', 'manager', 'worke
     .single();
     
   if (error) return res.status(400).json({ error: error.message });
+
+  // Auto-sync renamed colors across warehouse rows + transactions.
+  if (hasColorStocksUpdate) {
+    const canonicalColors = Array.isArray(data?.color_stocks)
+      ? data.color_stocks
+          .map((entry) => String(entry?.color || '').trim())
+          .filter(Boolean)
+      : [];
+    const canonicalByLower = new Map(
+      canonicalColors.map((name) => [name.toLowerCase(), name]),
+    );
+
+    const resolveCanonicalColor = (rawColor) => {
+      const current = String(rawColor || '').trim() || 'Default';
+      const currentLc = current.toLowerCase();
+      if (canonicalByLower.has(currentLc)) {
+        return canonicalByLower.get(currentLc);
+      }
+      if (canonicalColors.length === 1) {
+        return canonicalColors[0];
+      }
+      if (current.length === 1) {
+        const shortLc = currentLc;
+        const matches = canonicalColors.filter(
+          (c) => c.toLowerCase().startsWith(shortLc),
+        );
+        if (matches.length === 1) {
+          return matches[0];
+        }
+      }
+      return current;
+    };
+
+    const existingWarehouseRows = await supabaseAdmin
+      .from('warehouse_product_stocks')
+      .select('id,warehouse_id,product_id,color_name,quantity')
+      .eq('product_id', id)
+      .limit(10000);
+    if (!existingWarehouseRows.error && Array.isArray(existingWarehouseRows.data)) {
+      const aggregated = new Map();
+      for (const row of existingWarehouseRows.data) {
+        const warehouseId = String(row?.warehouse_id || '').trim();
+        const productId = String(row?.product_id || '').trim();
+        if (!warehouseId || !productId) continue;
+        const canonicalColor = resolveCanonicalColor(row?.color_name);
+        const key = `${warehouseId}::${productId}::${canonicalColor}`;
+        const qty = Number(row?.quantity ?? 0);
+        const safeQty = Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0;
+        aggregated.set(key, (aggregated.get(key) || 0) + safeQty);
+      }
+
+      // Replace per-product warehouse rows with canonical merged rows.
+      await supabaseAdmin
+        .from('warehouse_product_stocks')
+        .delete()
+        .eq('product_id', id);
+
+      const upsertRows = [...aggregated.entries()].map(([key, quantity]) => {
+        const [warehouse_id, product_id, color_name] = key.split('::');
+        return {
+          warehouse_id,
+          product_id,
+          color_name,
+          quantity,
+          updated_at: new Date().toISOString(),
+        };
+      });
+
+      if (upsertRows.length > 0) {
+        await supabaseAdmin
+          .from('warehouse_product_stocks')
+          .upsert(upsertRows, { onConflict: 'warehouse_id,product_id,color_name' });
+      }
+    }
+
+    // Best-effort color canonicalization for product transaction history.
+    const txRes = await supabaseAdmin
+      .from('transactions')
+      .select('id,color_name')
+      .eq('product_id', id)
+      .limit(10000);
+    if (!txRes.error && Array.isArray(txRes.data) && txRes.data.length > 0) {
+      const updates = txRes.data
+        .map((tx) => {
+          const nextColor = resolveCanonicalColor(tx?.color_name);
+          const currentColor = String(tx?.color_name || '').trim() || 'Default';
+          if (nextColor === currentColor) return null;
+          return { id: tx.id, color_name: nextColor };
+        })
+        .filter(Boolean);
+      if (updates.length > 0) {
+        await supabaseAdmin.from('transactions').upsert(updates, { onConflict: 'id' });
+      }
+    }
+  }
 
   // Cascade name/code changes to transactions history if they were updated
   if (payload.name !== undefined || payload.code !== undefined) {
