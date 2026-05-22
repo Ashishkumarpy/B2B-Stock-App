@@ -19,6 +19,62 @@ warehousesRouter.get('/', authRequired, async (_req, res) => {
   return res.json({ data });
 });
 
+warehousesRouter.get('/stock-options', authRequired, async (req, res) => {
+  const productId = String(req.query?.product_id || '').trim();
+  const colorName = String(req.query?.color_name || '').trim() || 'Default';
+  if (!productId) {
+    return res.status(400).json({ error: 'product_id is required' });
+  }
+
+  const rowsRes = await supabaseAdmin
+    .from('warehouse_product_stocks')
+    .select('warehouse_id,color_name,quantity')
+    .eq('product_id', productId)
+    .limit(2000);
+  if (rowsRes.error) {
+    return res.status(400).json({ error: rowsRes.error.message });
+  }
+
+  const targetColor = colorName.toLowerCase();
+  const byWarehouseQty = new Map();
+  for (const row of rowsRes.data || []) {
+    const rowColor = String(row?.color_name || '').trim().toLowerCase();
+    if (rowColor !== targetColor) continue;
+    const wid = String(row?.warehouse_id || '').trim();
+    if (!wid) continue;
+    const qty = Number(row?.quantity ?? 0);
+    const safeQty = Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0;
+    byWarehouseQty.set(wid, (byWarehouseQty.get(wid) || 0) + safeQty);
+  }
+
+  const warehouseIds = [...byWarehouseQty.keys()];
+  if (warehouseIds.length === 0) {
+    return res.json({ data: [] });
+  }
+
+  const activeWarehousesRes = await supabaseAdmin
+    .from('warehouses')
+    .select('id,name,location,is_active')
+    .in('id', warehouseIds)
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+  if (activeWarehousesRes.error) {
+    return res.status(400).json({ error: activeWarehousesRes.error.message });
+  }
+
+  const data = (activeWarehousesRes.data || []).map((w) => {
+    const id = String(w.id);
+    return {
+      warehouse_id: id,
+      warehouse_name: String(w.name || 'Warehouse'),
+      location: w.location || null,
+      available_quantity: byWarehouseQty.get(id) || 0,
+    };
+  }).filter((row) => Number(row.available_quantity) > 0);
+
+  return res.json({ data });
+});
+
 warehousesRouter.post(
   '/',
   authRequired,

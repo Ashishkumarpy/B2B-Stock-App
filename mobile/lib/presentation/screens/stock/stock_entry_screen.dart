@@ -52,6 +52,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   String _selectedColor = 'Default';
   TransactionType _type = TransactionType.stockIn;
   String? _selectedWarehouseId;
+  Set<String> _stockOutWarehouseIdsWithStock = <String>{};
+  bool _isLoadingStockOutWarehouses = false;
   bool _isSubmitting = false;
 
   @override
@@ -110,6 +112,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               _pcsPerCartonController.text = defaultPcsPerCarton.toString();
             }
           });
+          _refreshStockOutWarehouses();
         }
       }
     });
@@ -124,6 +127,54 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     if (cartons > 0 && pcs > 0) {
       setState(() {
         _qtyController.text = (cartons * pcs).toString();
+      });
+    }
+  }
+
+  Future<void> _refreshStockOutWarehouses() async {
+    if (_type != TransactionType.stockOut || _selectedProduct == null) {
+      if (!mounted) return;
+      setState(() {
+        _stockOutWarehouseIdsWithStock = <String>{};
+        _isLoadingStockOutWarehouses = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingStockOutWarehouses = true;
+    });
+
+    try {
+      final client = ref.read(apiClientProvider);
+      final productId = Uri.encodeQueryComponent(_selectedProduct!.id);
+      final colorName = Uri.encodeQueryComponent(_selectedColor.trim());
+      final response = await client.get(
+        '/warehouses/stock-options?product_id=$productId&color_name=$colorName',
+      );
+      final list = (response is Map ? response['data'] : null) as List? ?? const [];
+      final ids = list
+          .map((row) => (row as Map?)?['warehouse_id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      if (!mounted) return;
+      setState(() {
+        _stockOutWarehouseIdsWithStock = ids;
+        if (_selectedWarehouseId != null &&
+            !_stockOutWarehouseIdsWithStock.contains(_selectedWarehouseId)) {
+          _selectedWarehouseId = null;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _stockOutWarehouseIdsWithStock = <String>{};
+        _selectedWarehouseId = null;
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingStockOutWarehouses = false;
       });
     }
   }
@@ -280,6 +331,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             }
             _pcsPerCartonController.text = defaultPcsPerCarton.toString();
           });
+          _refreshStockOutWarehouses();
           Navigator.pop(context);
         },
       ),
@@ -291,6 +343,13 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     final products = ref.watch(productsProvider).value ?? [];
     final warehousesAsync = ref.watch(warehousesProvider);
     final warehouses = warehousesAsync.value ?? [];
+    final warehouseOptions =
+        (_type == TransactionType.stockOut && _selectedProduct != null && !_isLoadingStockOutWarehouses)
+            ? warehouses
+                .where((w) => _stockOutWarehouseIdsWithStock
+                    .contains(w['id']?.toString() ?? ''))
+                .toList()
+            : warehouses;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor(context),
@@ -341,8 +400,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () =>
-                          setState(() => _type = TransactionType.stockIn),
+                      onTap: () {
+                        setState(() => _type = TransactionType.stockIn);
+                        _refreshStockOutWarehouses();
+                      },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         decoration: BoxDecoration(
@@ -396,6 +457,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                             _selectedColor = 'Default';
                           }
                         });
+                        _refreshStockOutWarehouses();
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 14),
@@ -581,7 +643,24 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                               ),
                               icon: Icon(Icons.keyboard_arrow_down_rounded,
                                   color: AppTheme.mutedTextColor(context)),
-                              items: warehouses.isEmpty
+                              items: (_type == TransactionType.stockOut &&
+                                      _selectedProduct != null &&
+                                      !_isLoadingStockOutWarehouses &&
+                                      warehouseOptions.isEmpty)
+                                  ? [
+                                      DropdownMenuItem(
+                                        value: 'default',
+                                        child: Text(
+                                          'No warehouse has stock for this color',
+                                          style: TextStyle(
+                                              fontSize: 13,
+                                              color: AppTheme.primaryTextColor(
+                                                  context)),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ]
+                                  : warehouses.isEmpty
                                   ? [
                                       DropdownMenuItem(
                                         value: 'default',
@@ -595,7 +674,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                         ),
                                       ),
                                     ]
-                                  : warehouses.map((w) {
+                                  : warehouseOptions.map((w) {
                                       final name = w['name']?.toString() ??
                                           'Main Warehouse';
                                       final loc =
@@ -616,6 +695,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                       );
                                     }).toList(),
                               onChanged: (val) {
+                                if (val == 'default') return;
                                 setState(() {
                                   _selectedWarehouseId = val;
                                 });
@@ -623,6 +703,18 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                             ),
                           ),
                         ),
+                        if (_type == TransactionType.stockOut) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            _isLoadingStockOutWarehouses
+                                ? 'Checking stock availability...'
+                                : 'Only warehouses with available stock are shown.',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.mutedTextColor(context),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -697,6 +789,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   setState(() {
                                     _selectedColor = val;
                                   });
+                                  _refreshStockOutWarehouses();
                                 }
                               },
                             ),
