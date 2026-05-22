@@ -1693,32 +1693,16 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            p.code,
-                                            style: TextStyle(
-                                              fontFamily: 'monospace',
-                                              fontWeight: FontWeight.w900,
-                                              fontSize: 13,
-                                              color: AppTheme.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            p.name,
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color:
-                                                  AppTheme.secondaryTextColor(
-                                                      context),
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
+                                      child: Text(
+                                        p.code,
+                                        style: TextStyle(
+                                          fontFamily: 'monospace',
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 13,
+                                          color: AppTheme.primary,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     const SizedBox(width: 12),
