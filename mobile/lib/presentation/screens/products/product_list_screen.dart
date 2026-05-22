@@ -314,6 +314,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         .where((p) => _warehouseProductIds.contains(p.id))
                         .toList()
                     : allProducts;
+                final isWarehouseMode =
+                    widget.warehouseId != null && widget.warehouseId!.trim().isNotEmpty;
 
                 // ── Search mode (cross-folder) ──
                 if (_searchQuery.isNotEmpty) {
@@ -327,6 +329,25 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               .contains(_searchQuery.toLowerCase()))
                       .toList();
                   return _buildProductGrid(results, 'Search Results', role);
+                }
+
+                // ── Warehouse mode should always show products directly ──
+                if (isWarehouseMode) {
+                  var warehouseProducts = sourceProducts;
+                  if (widget.initialFilter == 'in_stock') {
+                    warehouseProducts =
+                        warehouseProducts.where((p) => p.quantity > 0).toList();
+                  } else if (widget.initialFilter == 'low') {
+                    warehouseProducts = warehouseProducts
+                        .where((p) => p.quantity <= p.threshold)
+                        .toList();
+                  }
+                  return _buildProductGrid(
+                      warehouseProducts,
+                      widget.warehouseName?.trim().isNotEmpty == true
+                          ? '${widget.warehouseName} Products'
+                          : 'Warehouse Products',
+                      role);
                 }
 
                 // ── Inside a folder ──
