@@ -153,21 +153,84 @@ transactionsRouter.post(
       }
       warehouseName = String(byId.data.name || 'Warehouse');
     } else {
-      const firstWarehouse = await supabaseAdmin
-        .from('warehouses')
-        .select('id,name')
-        .eq('is_active', true)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      if (firstWarehouse.error) {
-        return res.status(400).json({ error: firstWarehouse.error.message });
+      // For stock-out without explicit warehouse, prefer auto-resolving warehouse that has stock.
+      if (type === 'stock_out') {
+        const allColorStocksRes = await supabaseAdmin
+          .from('warehouse_product_stocks')
+          .select('warehouse_id,color_name,quantity')
+          .eq('product_id', productId)
+          .limit(1000);
+        if (allColorStocksRes.error) {
+          return res.status(400).json({ error: allColorStocksRes.error.message });
+        }
+
+        const sameColorRows = (allColorStocksRes.data || []).filter((row) => {
+          const rowColor = String(row?.color_name || '').trim().toLowerCase();
+          const qty = Number(row?.quantity ?? 0);
+          return rowColor === colorName.trim().toLowerCase() && Number.isFinite(qty) && qty >= quantity;
+        });
+
+        const candidateWarehouseIds = [
+          ...new Set(
+            sameColorRows
+              .map((row) => String(row?.warehouse_id || '').trim())
+              .filter(Boolean),
+          ),
+        ];
+
+        if (candidateWarehouseIds.length > 0) {
+          const activeWarehousesRes = await supabaseAdmin
+            .from('warehouses')
+            .select('id,name,is_active')
+            .in('id', candidateWarehouseIds);
+          if (activeWarehousesRes.error) {
+            return res.status(400).json({ error: activeWarehousesRes.error.message });
+          }
+          const activeById = new Map(
+            (activeWarehousesRes.data || [])
+              .filter((w) => w.is_active === true)
+              .map((w) => [String(w.id), String(w.name || 'Warehouse')]),
+          );
+
+          const viableWarehouseIds = candidateWarehouseIds.filter((wid) => activeById.has(wid));
+          if (viableWarehouseIds.length === 1) {
+            warehouseId = viableWarehouseIds[0];
+            warehouseName = activeById.get(viableWarehouseIds[0]) || 'Warehouse';
+            const canonical = sameColorRows.find(
+              (row) => String(row?.warehouse_id || '').trim() === viableWarehouseIds[0],
+            );
+            if (canonical?.color_name) {
+              colorName = String(canonical.color_name).trim() || colorName;
+            }
+          } else if (viableWarehouseIds.length > 1) {
+            const options = viableWarehouseIds
+              .map((wid) => activeById.get(wid) || wid)
+              .join(', ');
+            return res.status(400).json({
+              error: `Stock for ${colorName} is available in multiple warehouses (${options}). Please choose a warehouse explicitly.`,
+            });
+          }
+        }
       }
-      if (!firstWarehouse.data) {
-        return res.status(400).json({ error: 'No warehouse configured. Please add a warehouse first.' });
+
+      // If not auto-resolved above, fall back to first active warehouse.
+      if (!warehouseId) {
+        const firstWarehouse = await supabaseAdmin
+          .from('warehouses')
+          .select('id,name')
+          .eq('is_active', true)
+          .order('created_at', { ascending: true })
+          .limit(1)
+          .maybeSingle();
+        if (firstWarehouse.error) {
+          return res.status(400).json({ error: firstWarehouse.error.message });
+        }
+        if (!firstWarehouse.data) {
+          return res.status(400).json({ error: 'No warehouse configured. Please add a warehouse first.' });
+        }
+        warehouseId = String(firstWarehouse.data.id);
+        warehouseName = String(firstWarehouse.data.name || 'Warehouse');
       }
-      warehouseId = String(firstWarehouse.data.id);
-      warehouseName = String(firstWarehouse.data.name || 'Warehouse');
     }
 
     if (type === 'stock_out') {

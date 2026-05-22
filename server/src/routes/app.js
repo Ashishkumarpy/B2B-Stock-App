@@ -5,12 +5,12 @@ export const appRouter = express.Router();
 
 // Memory cache for GitHub release info
 let cachedVersion = {
-  latestVersion: '1.2.0',
-  buildNumber: 5,
-  releaseDate: '2026-05-18',
+  latestVersion: '1.2.1',
+  buildNumber: 6,
+  releaseDate: '2026-05-22',
   downloadUrl: 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest', 
   isCritical: false,
-  releaseNotes: '• Premium Modern UI: Beautiful dark modes and HSL colors\n• Security: Targeted OTP device isolation\n• Stability: Automatic push token lifecycle mapping\n• Bug Fixes: Resolved catch-22 login notification state'
+  releaseNotes: '• Stock fix: Resolved false "No stock" errors when warehouse is not explicitly selected\n• Stability: Improved stock-out warehouse resolution logic\n• General bug fixes and reliability improvements'
 };
 let cacheExpiry = 0; // Epoch ms
 
@@ -67,7 +67,7 @@ async function fetchLatestGitHubRelease() {
 
     cachedVersion = {
       latestVersion: tagName,
-      buildNumber: 5, // Default/fallback build number
+      buildNumber: 6, // Default/fallback build number
       releaseDate: data.published_at ? data.published_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
       downloadUrl: downloadUrl,
       assetUrl: assetUrl,
@@ -179,7 +179,7 @@ appRouter.post('/github-webhook', async (req, res) => {
       // 1. Instantly update server cache with the new release info
       cachedVersion = {
         latestVersion: tagName,
-        buildNumber: 5,
+        buildNumber: 6,
         releaseDate: release.published_at ? release.published_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
         downloadUrl: downloadUrl,
         assetUrl: assetUrl,
