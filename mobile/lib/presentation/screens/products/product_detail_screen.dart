@@ -722,7 +722,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Stock Entry Ã¢â‚¬â€œ ${product.name}',
+            Text('Stock Entry - ${product.code}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
