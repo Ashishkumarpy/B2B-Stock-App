@@ -477,6 +477,8 @@ class _StockActivityTile extends ConsumerWidget {
     final workerName =
         txn.workerName.isEmpty ? 'Unknown Worker' : txn.workerName;
     final warehouseName = txn.warehouseName ?? 'Main Warehouse';
+    final qtyCompact = '${txn.quantity} pcs';
+    final qtyDetailed = AppFormatters.formatQuantity(txn.quantity, txn.pcsPerCarton);
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppTheme.sp8),
@@ -555,6 +557,17 @@ class _StockActivityTile extends ConsumerWidget {
                   ),
                 ],
               ),
+              const SizedBox(height: 2),
+              Text(
+                qtyDetailed,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: actionColor.withValues(alpha: 0.9),
+                ),
+              ),
             ],
           ),
         ),
@@ -564,7 +577,7 @@ class _StockActivityTile extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             Text(
-              '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(txn.quantity, txn.pcsPerCarton)}',
+              '${isIn ? '+' : '-'}$qtyCompact',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     color: actionColor,
                     fontWeight: FontWeight.w900,
