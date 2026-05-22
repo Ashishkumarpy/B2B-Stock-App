@@ -1113,12 +1113,17 @@ class _DetailedActivityTile extends StatelessWidget {
                   ),
                   if (tx.colorName != null && tx.colorName!.trim().isNotEmpty) ...[
                     const SizedBox(width: 6),
-                    Text(
-                      'Ã¢â‚¬Â¢ ${tx.colorName!.trim()}',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[600],
+                    Flexible(
+                      child: Text(
+                        '• ${tx.colorName!.trim()}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                        ),
                       ),
                     ),
                   ],
