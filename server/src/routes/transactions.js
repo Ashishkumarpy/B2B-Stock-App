@@ -481,3 +481,142 @@ transactionsRouter.post(
     return res.json({ data: insertResult.data });
   }
 );
+
+transactionsRouter.patch(
+  '/:id',
+  authRequired,
+  requireRole(['admin', 'manager']),
+  async (req, res) => {
+    const txId = String(req.params.id || '').trim();
+    if (!txId) return res.status(400).json({ error: 'transaction id is required' });
+
+    const payload = req.body || {};
+    const type = String(payload.type || '').trim();
+    const quantity = Number(payload.quantity);
+    const notes =
+      typeof payload.notes === 'string' && payload.notes.trim().length > 0
+        ? payload.notes.trim()
+        : null;
+    const workerName = String(payload.worker_name || '').trim();
+
+    if (!['stock_in', 'stock_out'].includes(type)) {
+      return res.status(400).json({ error: 'type must be stock_in or stock_out' });
+    }
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      return res.status(400).json({ error: 'quantity must be a positive integer' });
+    }
+    if (!workerName) {
+      return res.status(400).json({ error: 'worker_name is required' });
+    }
+
+    const oldRes = await supabaseAdmin
+      .from('transactions')
+      .select('*')
+      .eq('id', txId)
+      .maybeSingle();
+    if (oldRes.error) return res.status(400).json({ error: oldRes.error.message });
+    if (!oldRes.data) return res.status(404).json({ error: 'Transaction not found' });
+    const oldTx = oldRes.data;
+
+    const productId = String(oldTx.product_id || '').trim();
+    const warehouseId = String(oldTx.warehouse_id || '').trim();
+    const colorName = String(oldTx.color_name || 'Default').trim() || 'Default';
+    if (!productId || !warehouseId) {
+      return res.status(400).json({ error: 'Existing transaction is missing product/warehouse' });
+    }
+
+    const oldQty = Number(oldTx.quantity || 0);
+    const oldSigned = String(oldTx.type) === 'stock_in' ? oldQty : -oldQty;
+    const newSigned = type === 'stock_in' ? quantity : -quantity;
+    const delta = newSigned - oldSigned;
+
+    const productRes = await supabaseAdmin
+      .from('products')
+      .select('id,quantity,color_stocks')
+      .eq('id', productId)
+      .maybeSingle();
+    if (productRes.error) return res.status(400).json({ error: productRes.error.message });
+    if (!productRes.data) return res.status(400).json({ error: 'Product not found for transaction' });
+
+    const currentProductQty = Number(productRes.data.quantity || 0);
+    const nextProductQty = currentProductQty + delta;
+    if (!Number.isFinite(nextProductQty) || nextProductQty < 0) {
+      return res.status(400).json({ error: 'Edit would make product stock negative.' });
+    }
+
+    const colorStocks = Array.isArray(productRes.data.color_stocks)
+      ? productRes.data.color_stocks.map((x) => ({ ...x }))
+      : [];
+    const normalizedTargetColor = colorName.toLowerCase();
+    let colorIdx = colorStocks.findIndex((entry) =>
+      String(entry?.color || '').trim().toLowerCase() === normalizedTargetColor,
+    );
+    if (colorIdx === -1 && normalizedTargetColor !== 'default') {
+      colorStocks.push({ color: colorName, quantity: 0 });
+      colorIdx = colorStocks.length - 1;
+    }
+    if (colorIdx !== -1) {
+      const currentColorQty = Number(colorStocks[colorIdx]?.quantity || 0);
+      const nextColorQty = currentColorQty + delta;
+      if (!Number.isFinite(nextColorQty) || nextColorQty < 0) {
+        return res.status(400).json({ error: `Edit would make color stock negative for ${colorName}.` });
+      }
+      colorStocks[colorIdx].quantity = Math.trunc(nextColorQty);
+    }
+
+    const warehouseStockRes = await supabaseAdmin
+      .from('warehouse_product_stocks')
+      .select('quantity')
+      .eq('warehouse_id', warehouseId)
+      .eq('product_id', productId)
+      .eq('color_name', colorName)
+      .maybeSingle();
+    if (warehouseStockRes.error) return res.status(400).json({ error: warehouseStockRes.error.message });
+    if (!warehouseStockRes.data) {
+      return res.status(400).json({ error: `No stock row found in warehouse for color ${colorName}.` });
+    }
+    const currentWarehouseQty = Number(warehouseStockRes.data.quantity || 0);
+    const nextWarehouseQty = currentWarehouseQty + delta;
+    if (!Number.isFinite(nextWarehouseQty) || nextWarehouseQty < 0) {
+      return res.status(400).json({ error: `Edit would make warehouse stock negative for ${colorName}.` });
+    }
+
+    const updatedProductRes = await supabaseAdmin
+      .from('products')
+      .update({
+        quantity: Math.trunc(nextProductQty),
+        color_stocks: colorStocks,
+      })
+      .eq('id', productId)
+      .select('id')
+      .maybeSingle();
+    if (updatedProductRes.error) return res.status(400).json({ error: updatedProductRes.error.message });
+
+    const updatedWarehouseRes = await supabaseAdmin
+      .from('warehouse_product_stocks')
+      .update({ quantity: Math.trunc(nextWarehouseQty), updated_at: new Date().toISOString() })
+      .eq('warehouse_id', warehouseId)
+      .eq('product_id', productId)
+      .eq('color_name', colorName)
+      .select('warehouse_id')
+      .maybeSingle();
+    if (updatedWarehouseRes.error) return res.status(400).json({ error: updatedWarehouseRes.error.message });
+
+    const updatedTxRes = await supabaseAdmin
+      .from('transactions')
+      .update({
+        type,
+        quantity,
+        notes,
+        worker_name: workerName,
+        cartons: payload.cartons ? Number(payload.cartons) : null,
+        pcs_per_carton: payload.pcs_per_carton ? Number(payload.pcs_per_carton) : oldTx.pcs_per_carton ?? null,
+      })
+      .eq('id', txId)
+      .select('*')
+      .maybeSingle();
+    if (updatedTxRes.error) return res.status(400).json({ error: updatedTxRes.error.message });
+
+    return res.json({ data: updatedTxRes.data });
+  },
+);

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { serverGet, serverPost, ServerApiError } from '../../lib/server_api';
+import { serverGet, serverPost, serverPatch, ServerApiError } from '../../lib/server_api';
 import { useRequireAuth } from '../../lib/use_require_auth';
 import { supabase } from '../../lib/supabase';
 
@@ -81,6 +81,7 @@ export default function StockPage() {
   const [workers, setWorkers] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -372,7 +373,8 @@ export default function StockPage() {
     const cartonsParam = Number(searchParams.get('cartons') ?? '');
     const pcsPerCartonParam = Number(searchParams.get('pcsPerCarton') ?? '');
     const customerParam = (searchParams.get('customer') ?? '').trim();
-    const queryKey = `${productId}|${typeParam}|${colorParam}|${warehouseIdParam}|${searchParams.get('quantity') ?? ''}|${notesParam}|${workerIdParam}|${workerNameParam}|${searchParams.get('cartons') ?? ''}|${searchParams.get('pcsPerCarton') ?? ''}|${customerParam}`;
+    const transactionIdParam = (searchParams.get('transactionId') ?? '').trim();
+    const queryKey = `${productId}|${typeParam}|${colorParam}|${warehouseIdParam}|${searchParams.get('quantity') ?? ''}|${notesParam}|${workerIdParam}|${workerNameParam}|${searchParams.get('cartons') ?? ''}|${searchParams.get('pcsPerCarton') ?? ''}|${customerParam}|${transactionIdParam}`;
     if (!productId) {
       prefetchedQueryRef.current = null;
       return;
@@ -405,6 +407,7 @@ export default function StockPage() {
         pcsPerCarton: safePcs,
         customer_name: resolvedCustomer,
       }));
+      setEditingTransactionId(transactionIdParam || null);
       setShowModal(true);
       prefetchedQueryRef.current = queryKey;
     }, 0);
@@ -459,25 +462,37 @@ export default function StockPage() {
         finalNotes = finalNotes ? `Customer: ${customer} | ${finalNotes}` : `Customer: ${customer}`;
       }
 
-      // Write transaction
-      await serverPost('/transactions', {
-        product_id: product.id,
-        product_name: product.name,
-        color_name: form.color_name.trim(),
-        warehouse_id: form.warehouse_id || undefined,
-        type: form.type,
-        quantity: form.quantity,
-        cartons: form.cartons ? Number(form.cartons) : null,
-        pcs_per_carton: form.pcsPerCarton ? Number(form.pcsPerCarton) : null,
-        worker_id: form.worker_id || undefined,
-        worker_name: form.worker_name.trim(),
-        notes: finalNotes || null,
-      });
+      if (editingTransactionId) {
+        await serverPatch(`/transactions/${encodeURIComponent(editingTransactionId)}`, {
+          type: form.type,
+          quantity: form.quantity,
+          cartons: form.cartons ? Number(form.cartons) : null,
+          pcs_per_carton: form.pcsPerCarton ? Number(form.pcsPerCarton) : null,
+          worker_name: form.worker_name.trim(),
+          notes: finalNotes || null,
+        });
+      } else {
+        // Write transaction
+        await serverPost('/transactions', {
+          product_id: product.id,
+          product_name: product.name,
+          color_name: form.color_name.trim(),
+          warehouse_id: form.warehouse_id || undefined,
+          type: form.type,
+          quantity: form.quantity,
+          cartons: form.cartons ? Number(form.cartons) : null,
+          pcs_per_carton: form.pcsPerCarton ? Number(form.pcsPerCarton) : null,
+          worker_id: form.worker_id || undefined,
+          worker_name: form.worker_name.trim(),
+          notes: finalNotes || null,
+        });
+      }
 
       setForm({
         ...EMPTY_FORM,
         warehouse_id: warehouses[0]?.id ?? '',
       });
+      setEditingTransactionId(null);
       setShowModal(false);
     } catch (err) {
       setError('Failed to save. Please try again.');
@@ -513,7 +528,7 @@ export default function StockPage() {
             <span>📥</span> Export to Excel
           </button>
           <button
-            onClick={() => { setForm(EMPTY_FORM); setError(''); setShowModal(true); }}
+            onClick={() => { setEditingTransactionId(null); setForm(EMPTY_FORM); setError(''); setShowModal(true); }}
             className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-500/20 active:scale-95"
           >
             + Record Stock
@@ -599,6 +614,7 @@ export default function StockPage() {
                       type="button"
                       onClick={() => {
                         const params = new URLSearchParams({
+                          transactionId: t.id,
                           productId: t.product_id,
                           type: t.type,
                           color: t.color_name || 'Default',
@@ -635,7 +651,7 @@ export default function StockPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#0f1117] border border-white/10 rounded-2xl p-8 w-full max-w-lg">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold">Record Stock Movement</h2>
+              <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
 
@@ -837,7 +853,7 @@ export default function StockPage() {
                   className={`flex-1 font-semibold py-3 rounded-xl transition text-white disabled:opacity-50 ${form.type === 'stock_in' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'
                     }`}
                 >
-                  {saving ? 'Saving…' : form.type === 'stock_in' ? '↑ Record Stock In' : '↓ Record Stock Out'}
+                  {saving ? 'Saving…' : editingTransactionId ? 'Save Changes' : form.type === 'stock_in' ? '↑ Record Stock In' : '↓ Record Stock Out'}
                 </button>
                 <button
                   type="button"
