@@ -170,8 +170,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             path: '/products',
             pageBuilder: (context, state) {
               final filter = state.uri.queryParameters['filter'];
+              final warehouseId = state.uri.queryParameters['warehouseId'];
+              final warehouseName = state.uri.queryParameters['warehouseName'];
               return _buildPage(
-                  state, ProductListScreen(initialFilter: filter));
+                  state,
+                  ProductListScreen(
+                    initialFilter: filter,
+                    warehouseId: warehouseId,
+                    warehouseName: warehouseName,
+                  ));
             },
             routes: [
               GoRoute(

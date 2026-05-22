@@ -14,8 +14,15 @@ import '../../../domain/entities/product.dart';
 
 class ProductListScreen extends ConsumerStatefulWidget {
   final String? initialFilter;
+  final String? warehouseId;
+  final String? warehouseName;
 
-  const ProductListScreen({super.key, this.initialFilter});
+  const ProductListScreen({
+    super.key,
+    this.initialFilter,
+    this.warehouseId,
+    this.warehouseName,
+  });
 
   @override
   ConsumerState<ProductListScreen> createState() => _ProductListScreenState();
@@ -25,6 +32,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String? _openFolder; // null = folder view, string = inside a folder
   String _searchQuery = '';
+  Set<String> _warehouseProductIds = <String>{};
+  bool _isLoadingWarehouseProducts = false;
+  String? _warehouseProductsError;
 
   @override
   void initState() {
@@ -34,6 +44,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         widget.initialFilter != 'in_stock') {
       _openFolder = widget.initialFilter;
     }
+    _loadWarehouseProductsIfNeeded();
   }
 
   @override
@@ -45,6 +56,51 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         widget.initialFilter != 'in_stock') {
       setState(() {
         _openFolder = widget.initialFilter;
+      });
+    }
+    if (widget.warehouseId != oldWidget.warehouseId) {
+      _loadWarehouseProductsIfNeeded();
+    }
+  }
+
+  Future<void> _loadWarehouseProductsIfNeeded() async {
+    final wid = widget.warehouseId?.trim();
+    if (wid == null || wid.isEmpty) {
+      if (!mounted) return;
+      setState(() {
+        _warehouseProductIds = <String>{};
+        _isLoadingWarehouseProducts = false;
+        _warehouseProductsError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingWarehouseProducts = true;
+      _warehouseProductsError = null;
+    });
+    try {
+      final client = ref.read(apiClientProvider);
+      final json = await client.get('/warehouses/$wid/products');
+      final list = (json is Map ? json['data'] : null) as List? ?? const [];
+      final ids = list
+          .map((row) => (row as Map?)?['product_id']?.toString() ?? '')
+          .where((id) => id.isNotEmpty)
+          .toSet();
+      if (!mounted) return;
+      setState(() {
+        _warehouseProductIds = ids;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _warehouseProductsError = '$e';
+        _warehouseProductIds = <String>{};
+      });
+    } finally {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingWarehouseProducts = false;
       });
     }
   }
@@ -172,6 +228,40 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 ],
               ),
             ),
+          if (widget.warehouseId != null && widget.warehouseId!.trim().isNotEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppTheme.primary.withValues(alpha: 0.08),
+              child: Row(
+                children: [
+                  Icon(Icons.warehouse_rounded,
+                      size: 14, color: AppTheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Warehouse: ${widget.warehouseName?.trim().isNotEmpty == true ? widget.warehouseName : 'Selected'}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.primary,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go('/products'),
+                    child: const Text(
+                      'Clear',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.danger,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // Search bar
           Container(
             color: AppTheme.surfaceColor(context),
@@ -203,9 +293,31 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
           Expanded(
             child: productsAsync.when(
               data: (allProducts) {
+                if (_isLoadingWarehouseProducts) {
+                  return const Padding(
+                    padding: EdgeInsets.all(12),
+                    child: SkeletonList(count: 4, height: 160),
+                  );
+                }
+                if (_warehouseProductsError != null) {
+                  return Center(
+                    child: Text(
+                      _warehouseProductsError!,
+                      style: TextStyle(color: AppTheme.danger),
+                      textAlign: TextAlign.center,
+                    ),
+                  );
+                }
+                final sourceProducts = (widget.warehouseId != null &&
+                        widget.warehouseId!.trim().isNotEmpty)
+                    ? allProducts
+                        .where((p) => _warehouseProductIds.contains(p.id))
+                        .toList()
+                    : allProducts;
+
                 // ── Search mode (cross-folder) ──
                 if (_searchQuery.isNotEmpty) {
-                  final results = allProducts
+                  final results = sourceProducts
                       .where((p) =>
                           p.name
                               .toLowerCase()
@@ -219,7 +331,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
                 // ── Inside a folder ──
                 if (_openFolder != null) {
-                  var folderProducts = allProducts
+                  var folderProducts = sourceProducts
                       .where((p) => p.category == _openFolder)
                       .toList();
 
@@ -244,8 +356,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
 
                     // Build folder summaries
                     final folders = categories.map((cat) {
-                      final catProds =
-                          allProducts.where((p) => p.category == cat).toList();
+                      final catProds = sourceProducts
+                          .where((p) => p.category == cat)
+                          .toList();
                       final sampleImg = catProds
                           .where((p) =>
                               p.imageUrl != null && p.imageUrl!.isNotEmpty)

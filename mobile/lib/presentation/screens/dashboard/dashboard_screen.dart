@@ -436,49 +436,59 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             final products = row['product_count'] ?? 0;
             final colors = row['color_count'] ?? 0;
 
-            return Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppTheme.inputFillColor(context),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          location.isNotEmpty ? '$name • $location' : name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.primaryTextColor(context),
+            return InkWell(
+              borderRadius: BorderRadius.circular(10),
+              onTap: () {
+                final wid = row['warehouse_id']?.toString() ?? '';
+                if (wid.isEmpty) return;
+                context.go(
+                  '/products?warehouseId=${Uri.encodeQueryComponent(wid)}&warehouseName=${Uri.encodeQueryComponent(name)}',
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppTheme.inputFillColor(context),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            location.isNotEmpty ? '$name • $location' : name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primaryTextColor(context),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Products: $products • Colors: $colors',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppTheme.secondaryTextColor(context),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Products: $products • Colors: $colors',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: AppTheme.secondaryTextColor(context),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Qty: $qty',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppTheme.success,
+                    const SizedBox(width: 10),
+                    Text(
+                      'Qty: $qty',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.success,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },

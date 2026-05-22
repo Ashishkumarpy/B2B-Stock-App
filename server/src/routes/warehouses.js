@@ -134,6 +134,50 @@ warehousesRouter.get('/stock-summary', authRequired, async (_req, res) => {
   return res.json({ data });
 });
 
+warehousesRouter.get('/:id/products', authRequired, async (req, res) => {
+  const warehouseId = String(req.params.id || '').trim();
+  if (!warehouseId) {
+    return res.status(400).json({ error: 'warehouse id is required' });
+  }
+
+  const warehouseRes = await supabaseAdmin
+    .from('warehouses')
+    .select('id,name,is_active')
+    .eq('id', warehouseId)
+    .maybeSingle();
+  if (warehouseRes.error) {
+    return res.status(400).json({ error: warehouseRes.error.message });
+  }
+  if (!warehouseRes.data || warehouseRes.data.is_active !== true) {
+    return res.status(404).json({ error: 'Warehouse not found or inactive' });
+  }
+
+  const stocksRes = await supabaseAdmin
+    .from('warehouse_product_stocks')
+    .select('product_id,quantity')
+    .eq('warehouse_id', warehouseId)
+    .gt('quantity', 0)
+    .limit(10000);
+  if (stocksRes.error) {
+    return res.status(400).json({ error: stocksRes.error.message });
+  }
+
+  const qtyByProduct = new Map();
+  for (const row of stocksRes.data || []) {
+    const pid = String(row?.product_id || '').trim();
+    if (!pid) continue;
+    const qty = Number(row?.quantity ?? 0);
+    const safeQty = Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0;
+    qtyByProduct.set(pid, (qtyByProduct.get(pid) || 0) + safeQty);
+  }
+
+  const data = [...qtyByProduct.entries()].map(([productId, quantity]) => ({
+    product_id: productId,
+    available_quantity: quantity,
+  }));
+  return res.json({ data });
+});
+
 warehousesRouter.post(
   '/',
   authRequired,
