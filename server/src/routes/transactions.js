@@ -171,6 +171,36 @@ transactionsRouter.post(
     }
 
     if (type === 'stock_out') {
+      const canonicalWarehouseColorRes = await supabaseAdmin
+        .from('warehouse_product_stocks')
+        .select('color_name,quantity')
+        .eq('warehouse_id', warehouseId)
+        .eq('product_id', productId)
+        .limit(200);
+      if (!canonicalWarehouseColorRes.error && Array.isArray(canonicalWarehouseColorRes.data) && canonicalWarehouseColorRes.data.length > 0) {
+        const stockMatch = canonicalWarehouseColorRes.data.find((row) => {
+          const rowColor = String(row?.color_name || '').trim().toLowerCase();
+          return rowColor === colorName.trim().toLowerCase();
+        });
+        if (!stockMatch) {
+          // Continue with existing exact query + DB trigger validation below.
+        } else {
+        const matchedColorName = String(stockMatch?.color_name || '').trim();
+        if (matchedColorName) {
+          colorName = matchedColorName;
+        }
+        const available = Number(stockMatch?.quantity ?? 0);
+        if (!Number.isFinite(available) || available < quantity) {
+          return res.status(400).json({
+            error: `Insufficient stock in ${warehouseName} for ${colorName}. Available: ${Math.max(
+              0,
+              Math.trunc(available),
+            )}`,
+          });
+        }
+        }
+      }
+
       const stockRow = await supabaseAdmin
         .from('warehouse_product_stocks')
         .select('quantity')
