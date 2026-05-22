@@ -1134,12 +1134,16 @@ class _DetailedActivityTile extends StatelessWidget {
                 children: [
                   Icon(Icons.access_time_filled_rounded, size: 11, color: Colors.grey[400]),
                   const SizedBox(width: 4),
-                  Text(
-                    DateFormat('dd MMM, hh:mm a').format(tx.createdAt),
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey[500],
+                  Expanded(
+                    child: Text(
+                      DateFormat('dd MMM, hh:mm a').format(tx.createdAt),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.grey[500],
+                      ),
                     ),
                   ),
                 ],
