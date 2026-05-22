@@ -241,13 +241,22 @@ transactionsRouter.post(
         .eq('product_id', productId)
         .limit(200);
       if (!canonicalWarehouseColorRes.error && Array.isArray(canonicalWarehouseColorRes.data) && canonicalWarehouseColorRes.data.length > 0) {
-        const stockMatch = canonicalWarehouseColorRes.data.find((row) => {
+        const sameColorMatches = canonicalWarehouseColorRes.data.filter((row) => {
           const rowColor = String(row?.color_name || '').trim().toLowerCase();
           return rowColor === colorName.trim().toLowerCase();
         });
-        if (!stockMatch) {
+        if (sameColorMatches.length === 0) {
           // Continue with existing exact query + DB trigger validation below.
         } else {
+        // Prefer the highest-quantity canonical row when duplicate color variants exist
+        // (e.g., "Black" and "black").
+        const stockMatch = sameColorMatches.reduce((best, row) => {
+          const bestQty = Number(best?.quantity ?? 0);
+          const rowQty = Number(row?.quantity ?? 0);
+          if (!Number.isFinite(bestQty)) return row;
+          if (!Number.isFinite(rowQty)) return best;
+          return rowQty > bestQty ? row : best;
+        }, sameColorMatches[0]);
         const matchedColorName = String(stockMatch?.color_name || '').trim();
         if (matchedColorName) {
           colorName = matchedColorName;
