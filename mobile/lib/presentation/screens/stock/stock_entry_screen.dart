@@ -12,11 +12,27 @@ import '../../../domain/entities/product.dart';
 class StockEntryScreen extends ConsumerStatefulWidget {
   final String? productId;
   final TransactionType? initialType;
+  final String? initialColorName;
+  final String? initialWarehouseId;
+  final int? initialQuantity;
+  final int? initialCartons;
+  final int? initialPcsPerCarton;
+  final String? initialNotes;
+  final String? initialRecordedBy;
+  final String? initialCustomerName;
 
   const StockEntryScreen({
     super.key,
     this.productId,
     this.initialType,
+    this.initialColorName,
+    this.initialWarehouseId,
+    this.initialQuantity,
+    this.initialCartons,
+    this.initialPcsPerCarton,
+    this.initialNotes,
+    this.initialRecordedBy,
+    this.initialCustomerName,
   });
 
   @override
@@ -47,7 +63,28 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final currentUser = ref.read(currentUserProvider);
       setState(() {
-        _recordedByController.text = currentUser?.name ?? 'Ashish';
+        _recordedByController.text =
+            widget.initialRecordedBy ?? currentUser?.name ?? 'Ashish';
+        if (widget.initialNotes != null) {
+          _notesController.text = widget.initialNotes!;
+        }
+        if (widget.initialCustomerName != null) {
+          _customerController.text = widget.initialCustomerName!;
+        }
+        if (widget.initialQuantity != null && widget.initialQuantity! > 0) {
+          _qtyController.text = widget.initialQuantity.toString();
+        }
+        if (widget.initialCartons != null && widget.initialCartons! > 0) {
+          _cartonsController.text = widget.initialCartons.toString();
+        }
+        if (widget.initialPcsPerCarton != null &&
+            widget.initialPcsPerCarton! > 0) {
+          _pcsPerCartonController.text = widget.initialPcsPerCarton.toString();
+        }
+        if (widget.initialWarehouseId != null &&
+            widget.initialWarehouseId!.isNotEmpty) {
+          _selectedWarehouseId = widget.initialWarehouseId;
+        }
       });
 
       if (widget.productId != null) {
@@ -62,9 +99,16 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           setState(() {
             _selectedProduct = match;
             if (match.colorStocks.isNotEmpty) {
-              _selectedColor = match.colorStocks.first.color;
+              final preferredColor = widget.initialColorName?.trim();
+              final hasPreferredColor = preferredColor != null &&
+                  match.colorStocks.any((c) => c.color == preferredColor);
+              _selectedColor = hasPreferredColor
+                  ? preferredColor
+                  : match.colorStocks.first.color;
             }
-            _pcsPerCartonController.text = defaultPcsPerCarton.toString();
+            if (_pcsPerCartonController.text.trim().isEmpty) {
+              _pcsPerCartonController.text = defaultPcsPerCarton.toString();
+            }
           });
         }
       }
@@ -150,11 +194,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
       final cartonsText = _cartonsController.text.trim();
       final pcsText = _pcsPerCartonController.text.trim();
-      final fallbackPcsPerCarton =
-          (_selectedProduct?.pcsPerCarton != null &&
-                  _selectedProduct!.pcsPerCarton! > 0)
-              ? _selectedProduct!.pcsPerCarton!
-              : 1;
+      final fallbackPcsPerCarton = (_selectedProduct?.pcsPerCarton != null &&
+              _selectedProduct!.pcsPerCarton! > 0)
+          ? _selectedProduct!.pcsPerCarton!
+          : 1;
       final parsedPcsPerCarton = int.tryParse(pcsText);
       final resolvedPcsPerCarton =
           (parsedPcsPerCarton != null && parsedPcsPerCarton > 0)
@@ -164,7 +207,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
       final customerText = _customerController.text.trim();
       if (_type == TransactionType.stockOut && customerText.isNotEmpty) {
-        finalNotes = finalNotes.isNotEmpty ? 'Customer: $customerText | $finalNotes' : 'Customer: $customerText';
+        finalNotes = finalNotes.isNotEmpty
+            ? 'Customer: $customerText | $finalNotes'
+            : 'Customer: $customerText';
       }
 
       await client.post('/transactions', {
@@ -880,8 +925,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                     hintText: 'Enter customer name (optional)',
                     fillColor: AppTheme.inputFillColor(context),
                     filled: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                       borderSide:

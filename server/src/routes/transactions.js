@@ -36,7 +36,7 @@ transactionsRouter.post(
     const type = String(payload.type || '').trim();
     const quantity = Number(payload.quantity);
     const colorNameInput = String(payload.color_name || '').trim();
-    const colorName = colorNameInput || 'Default';
+    let colorName = colorNameInput || 'Default';
     const warehouseIdInput = String(payload.warehouse_id || '').trim();
     const createdAtRaw = payload.created_at;
     const notes =
@@ -110,6 +110,12 @@ transactionsRouter.post(
       const entryColor = String(entry?.color || '').trim();
       return entryColor.toLowerCase() === colorName.toLowerCase();
     });
+    if (matchingColor) {
+      // Canonicalize casing so DB trigger and warehouse stock lookup match exact color_name.
+      colorName = String(matchingColor.color || colorName).trim() || colorName;
+    } else if (colorName.toLowerCase() === 'default') {
+      colorName = 'Default';
+    }
     const matchingColorQty = Number(matchingColor?.quantity ?? 0);
     if (type === 'stock_out' && colorName.toLowerCase() !== 'default') {
       if (!matchingColor) {

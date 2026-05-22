@@ -14,6 +14,7 @@ interface Transaction {
   product_name: string;
   product_code: string;
   color_name?: string;
+  warehouse_id?: string;
   warehouse_name?: string;
   type: TransactionType;
   quantity: number;
@@ -254,6 +255,12 @@ export default function StockPage() {
     }
   };
 
+  const parseCustomerFromNotes = (notes?: string | null): string => {
+    if (!notes) return '';
+    const match = notes.match(/Customer:\s*([^|]+)/i);
+    return match?.[1]?.trim() ?? '';
+  };
+
   const fetchTransactions = useCallback(async () => {
     try {
       const res = await serverGet('/transactions');
@@ -356,7 +363,16 @@ export default function StockPage() {
   useEffect(() => {
     const productId = (searchParams.get('productId') ?? '').trim();
     const typeParam = (searchParams.get('type') ?? '').trim();
-    const queryKey = `${productId}|${typeParam}`;
+    const colorParam = (searchParams.get('color') ?? '').trim();
+    const warehouseIdParam = (searchParams.get('warehouseId') ?? '').trim();
+    const quantityParam = Number(searchParams.get('quantity') ?? '');
+    const notesParam = (searchParams.get('notes') ?? '').trim();
+    const workerIdParam = (searchParams.get('workerId') ?? '').trim();
+    const workerNameParam = (searchParams.get('workerName') ?? '').trim();
+    const cartonsParam = Number(searchParams.get('cartons') ?? '');
+    const pcsPerCartonParam = Number(searchParams.get('pcsPerCarton') ?? '');
+    const customerParam = (searchParams.get('customer') ?? '').trim();
+    const queryKey = `${productId}|${typeParam}|${colorParam}|${warehouseIdParam}|${searchParams.get('quantity') ?? ''}|${notesParam}|${workerIdParam}|${workerNameParam}|${searchParams.get('cartons') ?? ''}|${searchParams.get('pcsPerCarton') ?? ''}|${customerParam}`;
     if (!productId) {
       prefetchedQueryRef.current = null;
       return;
@@ -370,13 +386,24 @@ export default function StockPage() {
     const defaultWarehouse = warehouses[0]?.id ?? '';
     const nextProduct = products.find((p) => p.id === productId);
     const firstColor = nextProduct?.color_stocks?.[0]?.color || 'Default';
+    const safeQuantity = Number.isFinite(quantityParam) && quantityParam > 0 ? quantityParam : 0;
+    const safeCartons = Number.isFinite(cartonsParam) && cartonsParam > 0 ? cartonsParam : '';
+    const safePcs = Number.isFinite(pcsPerCartonParam) && pcsPerCartonParam > 0 ? pcsPerCartonParam : '';
+    const resolvedCustomer = customerParam || parseCustomerFromNotes(notesParam);
     const timer = window.setTimeout(() => {
       setForm((prev) => ({
         ...prev,
         product_id: productId,
         type: safeType,
-        color_name: firstColor,
-        warehouse_id: prev.warehouse_id || defaultWarehouse,
+        color_name: colorParam || firstColor,
+        warehouse_id: warehouseIdParam || prev.warehouse_id || defaultWarehouse,
+        quantity: safeQuantity,
+        notes: notesParam,
+        worker_id: workerIdParam || prev.worker_id,
+        worker_name: workerNameParam || prev.worker_name,
+        cartons: safeCartons,
+        pcsPerCarton: safePcs,
+        customer_name: resolvedCustomer,
       }));
       setShowModal(true);
       prefetchedQueryRef.current = queryKey;
@@ -512,6 +539,7 @@ export default function StockPage() {
                 <th className="text-right">Qty</th>
                 <th className="text-left">Notes</th>
                 <th className="text-left">Date / Time</th>
+                <th className="text-left">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -566,6 +594,35 @@ export default function StockPage() {
                   </td>
                   <td className="text-gray-500 text-xs max-w-[140px] truncate">{t.notes || '—'}</td>
                   <td className="text-gray-500 text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                  <td>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const params = new URLSearchParams({
+                          productId: t.product_id,
+                          type: t.type,
+                          color: t.color_name || 'Default',
+                          quantity: String(t.quantity),
+                          notes: t.notes || '',
+                          workerName: t.worker_name || '',
+                        });
+                        if (t.warehouse_id) {
+                          params.set('warehouseId', t.warehouse_id);
+                        } else if (t.warehouse_name) {
+                          const matchedWarehouse = warehouses.find((w) => w.name === t.warehouse_name);
+                          if (matchedWarehouse?.id) params.set('warehouseId', matchedWarehouse.id);
+                        }
+                        if (t.cartons != null) params.set('cartons', String(t.cartons));
+                        if (t.pcs_per_carton != null) params.set('pcsPerCarton', String(t.pcs_per_carton));
+                        const customer = parseCustomerFromNotes(t.notes);
+                        if (customer) params.set('customer', customer);
+                        router.push(`/stock?${params.toString()}`);
+                      }}
+                      className="rounded-md border border-indigo-400/40 bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20"
+                    >
+                      Edit
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

@@ -188,6 +188,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
             pageBuilder: (context, state) {
               final productId = state.uri.queryParameters['productId'];
               final typeRaw = state.uri.queryParameters['type'];
+              final colorName = state.uri.queryParameters['colorName'];
+              final warehouseId = state.uri.queryParameters['warehouseId'];
+              final quantity =
+                  int.tryParse(state.uri.queryParameters['quantity'] ?? '');
+              final cartons =
+                  int.tryParse(state.uri.queryParameters['cartons'] ?? '');
+              final pcsPerCarton =
+                  int.tryParse(state.uri.queryParameters['pcsPerCarton'] ?? '');
+              final notes = state.uri.queryParameters['notes'];
+              final recordedBy = state.uri.queryParameters['recordedBy'];
+              final customerName = state.uri.queryParameters['customerName'];
               final initialType = switch (typeRaw) {
                 'in' => TransactionType.stockIn,
                 'out' => TransactionType.stockOut,
@@ -196,7 +207,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               return _buildPage(
                 state,
                 StockEntryScreen(
-                    productId: productId, initialType: initialType),
+                  productId: productId,
+                  initialType: initialType,
+                  initialColorName: colorName,
+                  initialWarehouseId: warehouseId,
+                  initialQuantity: quantity,
+                  initialCartons: cartons,
+                  initialPcsPerCarton: pcsPerCarton,
+                  initialNotes: notes,
+                  initialRecordedBy: recordedBy,
+                  initialCustomerName: customerName,
+                ),
               );
             },
           ),

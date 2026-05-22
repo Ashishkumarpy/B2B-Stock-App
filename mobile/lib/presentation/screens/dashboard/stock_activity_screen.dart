@@ -458,6 +458,13 @@ class _StockActivityTile extends ConsumerWidget {
 
   final Transaction txn;
 
+  String _extractCustomerName(String? notes) {
+    if (notes == null || notes.trim().isEmpty) return '';
+    final match =
+        RegExp(r'Customer:\s*([^|]+)', caseSensitive: false).firstMatch(notes);
+    return match?.group(1)?.trim() ?? '';
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isIn = txn.isStockIn;
@@ -523,8 +530,11 @@ class _StockActivityTile extends ConsumerWidget {
                 children: [
                   _InfoChip(icon: Icons.person_rounded, text: workerName),
                   if (txn.colorName != null && txn.colorName!.trim().isNotEmpty)
-                    _InfoChip(icon: Icons.palette_rounded, text: txn.colorName!.trim()),
-                  _InfoChip(icon: Icons.storefront_rounded, text: warehouseName),
+                    _InfoChip(
+                        icon: Icons.palette_rounded,
+                        text: txn.colorName!.trim()),
+                  _InfoChip(
+                      icon: Icons.storefront_rounded, text: warehouseName),
                 ],
               ),
               const SizedBox(height: 3),
@@ -546,12 +556,66 @@ class _StockActivityTile extends ConsumerWidget {
             ],
           ),
         ),
-        trailing: Text(
-          '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(txn.quantity, txn.pcsPerCarton)}',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: actionColor,
-                fontWeight: FontWeight.w900,
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(txn.quantity, txn.pcsPerCarton)}',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: actionColor,
+                    fontWeight: FontWeight.w900,
+                  ),
+            ),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: () {
+                final customerName = _extractCustomerName(txn.notes);
+                final query = <String, String>{
+                  'productId': txn.productId,
+                  'type': isIn ? 'in' : 'out',
+                  'colorName': txn.colorName?.trim().isNotEmpty == true
+                      ? txn.colorName!.trim()
+                      : 'Default',
+                  'quantity': txn.quantity.toString(),
+                  'notes': txn.notes ?? '',
+                  'recordedBy': workerName,
+                };
+                if (txn.warehouseId?.trim().isNotEmpty == true) {
+                  query['warehouseId'] = txn.warehouseId!.trim();
+                }
+                if (txn.cartons != null && txn.cartons! > 0) {
+                  query['cartons'] = txn.cartons.toString();
+                }
+                if (txn.pcsPerCarton != null && txn.pcsPerCarton! > 0) {
+                  query['pcsPerCarton'] = txn.pcsPerCarton.toString();
+                }
+                if (customerName.isNotEmpty) {
+                  query['customerName'] = customerName;
+                }
+                context.push(Uri(path: '/stock-entry', queryParameters: query)
+                    .toString());
+              },
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                      color: AppTheme.primary.withValues(alpha: 0.35)),
+                ),
+                child: const Text(
+                  'Edit',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primary,
+                  ),
+                ),
               ),
+            ),
+          ],
         ),
       ),
     );
