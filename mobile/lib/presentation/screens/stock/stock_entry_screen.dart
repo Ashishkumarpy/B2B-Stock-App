@@ -164,6 +164,16 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
     // Validation for Stock Out
     if (_type == TransactionType.stockOut) {
+      if (_selectedWarehouseId == null || _selectedWarehouseId!.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please select a warehouse for Stock Out.'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+        return;
+      }
+
       final availableQty = _selectedProduct!.colorStocks.isNotEmpty
           ? (_selectedProduct!.colorStocks
                   .where((c) => c.color == _selectedColor)
@@ -281,11 +291,6 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     final products = ref.watch(productsProvider).value ?? [];
     final warehousesAsync = ref.watch(warehousesProvider);
     final warehouses = warehousesAsync.value ?? [];
-
-    // Ensure _selectedWarehouseId is initialized
-    if (_selectedWarehouseId == null && warehouses.isNotEmpty) {
-      _selectedWarehouseId = warehouses.first['id']?.toString();
-    }
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor(context),
@@ -567,6 +572,13 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                             child: DropdownButton<String>(
                               value: _selectedWarehouseId,
                               isExpanded: true,
+                              hint: Text(
+                                'Select warehouse',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: AppTheme.mutedTextColor(context),
+                                ),
+                              ),
                               icon: Icon(Icons.keyboard_arrow_down_rounded,
                                   color: AppTheme.mutedTextColor(context)),
                               items: warehouses.isEmpty
