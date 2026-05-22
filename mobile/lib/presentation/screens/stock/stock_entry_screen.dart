@@ -438,6 +438,53 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             warehouseOptionIds.contains(_selectedWarehouseId))
         ? _selectedWarehouseId
         : null;
+    final stockOutColorRowsDeduped = (() {
+      final byLower = <String, Map<String, dynamic>>{};
+      for (final row in _stockOutColorRows) {
+        final name = (row['color_name']?.toString() ?? '').trim();
+        if (name.isEmpty) continue;
+        final key = name.toLowerCase();
+        final qty = int.tryParse('${row['available_quantity'] ?? 0}') ?? 0;
+        if (!byLower.containsKey(key)) {
+          byLower[key] = {
+            'color_name': name,
+            'available_quantity': qty,
+          };
+        } else {
+          final prevQty =
+              int.tryParse('${byLower[key]!['available_quantity'] ?? 0}') ?? 0;
+          byLower[key]!['available_quantity'] = prevQty + qty;
+        }
+      }
+      final list = byLower.values.toList();
+      list.sort((a, b) => String(a['color_name'])
+          .toLowerCase()
+          .compareTo(String(b['color_name']).toLowerCase()));
+      return list;
+    })();
+    final stockOutColorNames = stockOutColorRowsDeduped
+        .map((c) => (c['color_name']?.toString() ?? '').trim())
+        .where((x) => x.isNotEmpty)
+        .toSet();
+    final selectedColorValue = (() {
+      if (_type == TransactionType.stockOut) {
+        if (stockOutColorNames.contains(_selectedColor)) return _selectedColor;
+        if (stockOutColorRowsDeduped.isNotEmpty) {
+          return stockOutColorRowsDeduped.first['color_name']?.toString() ??
+              'Default';
+        }
+        return 'Default';
+      }
+      final productColorNames = (_selectedProduct?.colorStocks ?? const [])
+          .map((c) => c.color)
+          .where((x) => x.trim().isNotEmpty)
+          .toSet();
+      if (productColorNames.contains(_selectedColor)) return _selectedColor;
+      if ((_selectedProduct?.colorStocks ?? const []).isNotEmpty) {
+        return _selectedProduct!.colorStocks.first.color;
+      }
+      return 'Default';
+    })();
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor(context),
@@ -919,23 +966,16 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: _selectedProduct != null &&
-                                      _selectedProduct!.colorStocks.isNotEmpty
-                                  ? (_selectedProduct!.colorStocks
-                                          .any((c) => c.color == _selectedColor)
-                                      ? _selectedColor
-                                      : _selectedProduct!
-                                          .colorStocks.first.color)
-                                  : 'Default',
+                              value: selectedColorValue,
                               isExpanded: true,
                               icon: Icon(Icons.keyboard_arrow_down_rounded,
                                   color: AppTheme.mutedTextColor(context)),
                               items: _selectedProduct != null &&
                                       (_type != TransactionType.stockOut
                                           ? _selectedProduct!.colorStocks.isNotEmpty
-                                          : _stockOutColorRows.isNotEmpty)
+                                          : stockOutColorRowsDeduped.isNotEmpty)
                                   ? (_type == TransactionType.stockOut
-                                          ? _stockOutColorRows.map((c) {
+                                          ? stockOutColorRowsDeduped.map((c) {
                                               final cName = c['color_name']?.toString() ?? 'Default';
                                               final cQty = c['available_quantity'] ?? 0;
                                               return DropdownMenuItem(
