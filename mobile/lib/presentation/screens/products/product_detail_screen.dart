@@ -1063,7 +1063,7 @@ class _DetailedActivityTile extends StatelessWidget {
           ),
         ),
         title: Text(
-          '${isIn ? "Stock In" : "Stock Out"}: ${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
+          isIn ? 'Stock In' : 'Stock Out',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
