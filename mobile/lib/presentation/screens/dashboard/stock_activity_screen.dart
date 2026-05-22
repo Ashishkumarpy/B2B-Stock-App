@@ -486,6 +486,7 @@ class _StockActivityTile extends ConsumerWidget {
         border: Border.all(color: AppTheme.borderColor(context)),
       ),
       child: ListTile(
+        isThreeLine: true,
         onTap: () => context.push('/products/${txn.productId}'),
         leading: Container(
           width: 40,
@@ -558,6 +559,7 @@ class _StockActivityTile extends ConsumerWidget {
           ),
         ),
         trailing: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -568,118 +570,96 @@ class _StockActivityTile extends ConsumerWidget {
                     fontWeight: FontWeight.w900,
                   ),
             ),
-            const SizedBox(height: 6),
-            InkWell(
-              onTap: () {
-                final customerName = _extractCustomerName(txn.notes);
-                final query = <String, String>{
-                  'productId': txn.productId,
-                  'type': isIn ? 'in' : 'out',
-                  'colorName': txn.colorName?.trim().isNotEmpty == true
-                      ? txn.colorName!.trim()
-                      : 'Default',
-                  'quantity': txn.quantity.toString(),
-                  'notes': txn.notes ?? '',
-                  'recordedBy': workerName,
-                };
-                if (txn.warehouseId?.trim().isNotEmpty == true) {
-                  query['warehouseId'] = txn.warehouseId!.trim();
+            PopupMenuButton<String>(
+              padding: EdgeInsets.zero,
+              onSelected: (value) async {
+                if (value == 'edit') {
+                  final customerName = _extractCustomerName(txn.notes);
+                  final query = <String, String>{
+                    'productId': txn.productId,
+                    'type': isIn ? 'in' : 'out',
+                    'colorName': txn.colorName?.trim().isNotEmpty == true
+                        ? txn.colorName!.trim()
+                        : 'Default',
+                    'quantity': txn.quantity.toString(),
+                    'notes': txn.notes ?? '',
+                    'recordedBy': workerName,
+                  };
+                  if (txn.warehouseId?.trim().isNotEmpty == true) {
+                    query['warehouseId'] = txn.warehouseId!.trim();
+                  }
+                  if (txn.cartons != null && txn.cartons! > 0) {
+                    query['cartons'] = txn.cartons.toString();
+                  }
+                  if (txn.pcsPerCarton != null && txn.pcsPerCarton! > 0) {
+                    query['pcsPerCarton'] = txn.pcsPerCarton.toString();
+                  }
+                  if (customerName.isNotEmpty) {
+                    query['customerName'] = customerName;
+                  }
+                  context.push(Uri(path: '/stock-entry', queryParameters: query)
+                      .toString());
+                  return;
                 }
-                if (txn.cartons != null && txn.cartons! > 0) {
-                  query['cartons'] = txn.cartons.toString();
-                }
-                if (txn.pcsPerCarton != null && txn.pcsPerCarton! > 0) {
-                  query['pcsPerCarton'] = txn.pcsPerCarton.toString();
-                }
-                if (customerName.isNotEmpty) {
-                  query['customerName'] = customerName;
-                }
-                context.push(Uri(path: '/stock-entry', queryParameters: query)
-                    .toString());
-              },
-              borderRadius: BorderRadius.circular(6),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppTheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                      color: AppTheme.primary.withValues(alpha: 0.35)),
-                ),
-                child: const Text(
-                  'Edit',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.primary,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            InkWell(
-              onTap: () async {
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('Reverse Transaction?'),
-                    content: const Text(
-                      'This will create an opposite stock entry to cancel this transaction. Continue?',
+                if (value == 'reverse') {
+                  final confirmed = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Reverse Transaction?'),
+                      content: const Text(
+                        'This will create an opposite stock entry to cancel this transaction. Continue?',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Reverse'),
+                        ),
+                      ],
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: const Text('Cancel'),
-                      ),
-                      ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        child: const Text('Reverse'),
-                      ),
-                    ],
-                  ),
-                );
-                if (confirmed != true) return;
-
-                try {
-                  final client = ref.read(apiClientProvider);
-                  await client.post('/transactions/${txn.id}/reverse', {});
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Transaction reversed successfully.'),
-                        backgroundColor: AppTheme.success,
-                      ),
-                    );
-                  }
-                  ref.read(transactionsProvider.notifier).fetchTransactions();
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed to reverse: $e'),
-                        backgroundColor: AppTheme.danger,
-                      ),
-                    );
+                  );
+                  if (confirmed != true) return;
+                  try {
+                    final client = ref.read(apiClientProvider);
+                    await client.post('/transactions/${txn.id}/reverse', {});
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Transaction reversed successfully.'),
+                          backgroundColor: AppTheme.success,
+                        ),
+                      );
+                    }
+                    ref.read(transactionsProvider.notifier).fetchTransactions();
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Failed to reverse: $e'),
+                          backgroundColor: AppTheme.danger,
+                        ),
+                      );
+                    }
                   }
                 }
               },
-              borderRadius: BorderRadius.circular(6),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: AppTheme.danger.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(
-                      color: AppTheme.danger.withValues(alpha: 0.35)),
+              itemBuilder: (context) => const [
+                PopupMenuItem<String>(
+                  value: 'edit',
+                  child: Text('Edit'),
                 ),
-                child: const Text(
-                  'Reverse',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.danger,
-                  ),
+                PopupMenuItem<String>(
+                  value: 'reverse',
+                  child: Text('Reverse'),
                 ),
+              ],
+              child: Icon(
+                Icons.more_vert_rounded,
+                size: 16,
+                color: AppTheme.textSecondary,
               ),
             ),
           ],
