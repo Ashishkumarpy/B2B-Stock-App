@@ -692,3 +692,96 @@ transactionsRouter.patch(
     return res.json({ data: updatedTxRes.data });
   },
 );
+
+transactionsRouter.post(
+  '/:id/reverse',
+  authRequired,
+  requireRole(['admin', 'manager', 'worker']),
+  async (req, res) => {
+    const txId = String(req.params.id || '').trim();
+    if (!txId) return res.status(400).json({ error: 'transaction id is required' });
+
+    const txRes = await supabaseAdmin
+      .from('transactions')
+      .select('*')
+      .eq('id', txId)
+      .maybeSingle();
+    if (txRes.error) return res.status(400).json({ error: txRes.error.message });
+    if (!txRes.data) return res.status(404).json({ error: 'Transaction not found' });
+
+    const original = txRes.data;
+    const originalType = String(original.type || '').trim();
+    if (!['stock_in', 'stock_out'].includes(originalType)) {
+      return res.status(400).json({ error: 'Only stock_in/stock_out transactions can be reversed' });
+    }
+
+    // Prevent duplicate reverse operations for the same source transaction.
+    const marker = `[REVERSED tx:${txId}]`;
+    const dupCheck = await supabaseAdmin
+      .from('transactions')
+      .select('id')
+      .like('notes', `%${marker}%`)
+      .limit(1)
+      .maybeSingle();
+    if (!dupCheck.error && dupCheck.data) {
+      return res.status(400).json({ error: 'This transaction is already reversed.' });
+    }
+
+    const reverseType = originalType === 'stock_in' ? 'stock_out' : 'stock_in';
+    const originalNotes = typeof original.notes === 'string' ? original.notes.trim() : '';
+    const reverseNotes = originalNotes
+      ? `${marker} ${originalNotes}`
+      : marker;
+
+    const insertRow = {
+      product_id: original.product_id,
+      product_name: original.product_name,
+      product_code: original.product_code,
+      color_name: original.color_name || 'Default',
+      warehouse_id: original.warehouse_id || null,
+      warehouse_name: original.warehouse_name || 'Warehouse',
+      type: reverseType,
+      quantity: Number(original.quantity || 0),
+      cartons: original.cartons ?? null,
+      pcs_per_carton: original.pcs_per_carton ?? null,
+      worker_id: original.worker_id || null,
+      worker_name: original.worker_name || 'System',
+      notes: reverseNotes,
+    };
+
+    let insertResult = await supabaseAdmin
+      .from('transactions')
+      .insert(insertRow)
+      .select('*')
+      .single();
+    if (
+      insertResult.error &&
+      String(insertResult.error.message || '')
+        .toLowerCase()
+        .includes("could not find the 'color_name' column")
+    ) {
+      const { color_name: _c, warehouse_id: _wId, warehouse_name: _wName, cartons: _cartons, pcs_per_carton: _ppc, ...legacyRow } = insertRow;
+      insertResult = await supabaseAdmin
+        .from('transactions')
+        .insert(legacyRow)
+        .select('*')
+        .single();
+    } else if (
+      insertResult.error &&
+      String(insertResult.error.message || '')
+        .toLowerCase()
+        .includes("could not find the 'cartons' column")
+    ) {
+      const { cartons: _cartons, pcs_per_carton: _ppc, ...legacyRow } = insertRow;
+      insertResult = await supabaseAdmin
+        .from('transactions')
+        .insert(legacyRow)
+        .select('*')
+        .single();
+    }
+    if (insertResult.error) return res.status(400).json({ error: insertResult.error.message });
+
+    sendStockTransactionPush(insertResult.data).catch(() => {});
+    return res.json({ data: insertResult.data });
+  },
+);

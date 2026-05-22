@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/transactions_provider.dart';
+import '../../providers/api_client_provider.dart';
 import '../../widgets/skeleton_loading.dart';
 import '../../../core/utils/formatters.dart';
 
@@ -611,6 +612,72 @@ class _StockActivityTile extends ConsumerWidget {
                     fontSize: 10,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.primary,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            InkWell(
+              onTap: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Reverse Transaction?'),
+                    content: const Text(
+                      'This will create an opposite stock entry to cancel this transaction. Continue?',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(ctx, false),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx, true),
+                        child: const Text('Reverse'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed != true) return;
+
+                try {
+                  final client = ref.read(apiClientProvider);
+                  await client.post('/transactions/${txn.id}/reverse', {});
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Transaction reversed successfully.'),
+                        backgroundColor: AppTheme.success,
+                      ),
+                    );
+                  }
+                  ref.read(transactionsProvider.notifier).fetchTransactions();
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to reverse: $e'),
+                        backgroundColor: AppTheme.danger,
+                      ),
+                    );
+                  }
+                }
+              },
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                      color: AppTheme.danger.withValues(alpha: 0.35)),
+                ),
+                child: const Text(
+                  'Reverse',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.danger,
                   ),
                 ),
               ),
