@@ -343,13 +343,28 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     final products = ref.watch(productsProvider).value ?? [];
     final warehousesAsync = ref.watch(warehousesProvider);
     final warehouses = warehousesAsync.value ?? [];
-    final warehouseOptions =
+    final warehouseOptionsRaw =
         (_type == TransactionType.stockOut && _selectedProduct != null && !_isLoadingStockOutWarehouses)
             ? warehouses
                 .where((w) => _stockOutWarehouseIdsWithStock
                     .contains(w['id']?.toString() ?? ''))
                 .toList()
             : warehouses;
+    final seenWarehouseIds = <String>{};
+    final warehouseOptions = warehouseOptionsRaw.where((w) {
+      final id = w['id']?.toString() ?? '';
+      if (id.isEmpty || seenWarehouseIds.contains(id)) return false;
+      seenWarehouseIds.add(id);
+      return true;
+    }).toList();
+    final warehouseOptionIds = warehouseOptions
+        .map((w) => w['id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final selectedWarehouseValue = (_selectedWarehouseId != null &&
+            warehouseOptionIds.contains(_selectedWarehouseId))
+        ? _selectedWarehouseId
+        : null;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor(context),
@@ -632,7 +647,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           ),
                           child: DropdownButtonHideUnderline(
                             child: DropdownButton<String>(
-                              value: _selectedWarehouseId,
+                              value: selectedWarehouseValue,
                               isExpanded: true,
                               hint: Text(
                                 'Select warehouse',
