@@ -520,7 +520,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // â”€â”€ MOVEMENT TYPE â”€â”€
+              // MOVEMENT TYPE
               Text(
                 'MOVEMENT TYPE',
                 style: TextStyle(
@@ -641,7 +641,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 24),
 
-              // â”€â”€ PRODUCT SELECTION â”€â”€
+              // PRODUCT SELECTION
               Text(
                 'PRODUCT *',
                 style: TextStyle(
@@ -725,7 +725,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 20),
 
-              // â”€â”€ WAREHOUSE & COLOR ROW â”€â”€
+              // WAREHOUSE & COLOR ROW
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -788,7 +788,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                       DropdownMenuItem(
                                         value: 'default',
                                         child: Text(
-                                          'Main Warehouse â€” Primary Location',
+                                          'Main Warehouse - Primary Location',
                                           style: TextStyle(
                                               fontSize: 13,
                                               color: AppTheme.primaryTextColor(
@@ -803,7 +803,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                       final loc =
                                           w['location']?.toString() ?? '';
                                       final display = loc.isNotEmpty
-                                          ? '$name â€” $loc'
+                                          ? '$name - $loc'
                                           : name;
                                       return DropdownMenuItem(
                                         value: w['id']?.toString(),
@@ -895,7 +895,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              location.isNotEmpty ? '$name â€¢ $location' : name,
+                                              location.isNotEmpty ? '$name - $location' : name,
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 color: AppTheme.primaryTextColor(context),
@@ -1019,7 +1019,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 20),
 
-              // â”€â”€ CARTONS, PCS & TOTAL QUANTITY â”€â”€
+              // CARTONS, PCS & TOTAL QUANTITY
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1190,7 +1190,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 20),
 
-              // â”€â”€ RECORDED BY * â”€â”€
+              // RECORDED BY *
               Text(
                 'RECORDED BY *',
                 style: TextStyle(
@@ -1264,7 +1264,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 const SizedBox(height: 20),
               ],
 
-              // â”€â”€ NOTES â”€â”€
+              // NOTES
               Text(
                 'NOTES (OPTIONAL)',
                 style: TextStyle(
@@ -1302,7 +1302,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 32),
 
-              // â”€â”€ ACTION BUTTONS â”€â”€
+              // ACTION BUTTONS
               ElevatedButton(
                 onPressed: _isSubmitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
@@ -1336,8 +1336,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           const SizedBox(width: 8),
                           Text(
                             _type == TransactionType.stockIn
-                                ? 'â†‘ Record Stock In'
-                                : 'â†“ Record Stock Out',
+                                ? 'Record Stock In'
+                                : 'Record Stock Out',
                             style: TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.w800),
                           ),
