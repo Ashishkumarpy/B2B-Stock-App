@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/theme/app_theme.dart';
@@ -520,7 +520,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── MOVEMENT TYPE ──
+              // â”€â”€ MOVEMENT TYPE â”€â”€
               Text(
                 'MOVEMENT TYPE',
                 style: TextStyle(
@@ -641,7 +641,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 24),
 
-              // ── PRODUCT SELECTION ──
+              // â”€â”€ PRODUCT SELECTION â”€â”€
               Text(
                 'PRODUCT *',
                 style: TextStyle(
@@ -673,33 +673,19 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                     children: [
                       Expanded(
                         child: _selectedProduct != null
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _selectedProduct!.code,
-                                    style: TextStyle(
-                                      fontFamily: 'monospace',
-                                      fontWeight: FontWeight.w900,
-                                      fontSize: 14,
-                                      color: AppTheme.primary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _selectedProduct!.name,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color:
-                                          AppTheme.secondaryTextColor(context),
-                                    ),
-                                  ),
-                                ],
+                            ? Text(
+                                _selectedProduct!.code,
+                                style: TextStyle(
+                                  fontFamily: 'monospace',
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                  color: AppTheme.primary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               )
                             : Text(
-                                'Choose product from folders...',
+                                'Choose product code...',
                                 style: TextStyle(
                                   color: AppTheme.mutedTextColor(context),
                                   fontSize: 14,
@@ -739,7 +725,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 20),
 
-              // ── WAREHOUSE & COLOR ROW ──
+              // â”€â”€ WAREHOUSE & COLOR ROW â”€â”€
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -802,7 +788,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                       DropdownMenuItem(
                                         value: 'default',
                                         child: Text(
-                                          'Main Warehouse — Primary Location',
+                                          'Main Warehouse â€” Primary Location',
                                           style: TextStyle(
                                               fontSize: 13,
                                               color: AppTheme.primaryTextColor(
@@ -817,7 +803,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                       final loc =
                                           w['location']?.toString() ?? '';
                                       final display = loc.isNotEmpty
-                                          ? '$name — $loc'
+                                          ? '$name â€” $loc'
                                           : name;
                                       return DropdownMenuItem(
                                         value: w['id']?.toString(),
@@ -909,7 +895,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              location.isNotEmpty ? '$name • $location' : name,
+                                              location.isNotEmpty ? '$name â€¢ $location' : name,
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 color: AppTheme.primaryTextColor(context),
@@ -1033,7 +1019,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 20),
 
-              // ── CARTONS, PCS & TOTAL QUANTITY ──
+              // â”€â”€ CARTONS, PCS & TOTAL QUANTITY â”€â”€
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1204,7 +1190,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 20),
 
-              // ── RECORDED BY * ──
+              // â”€â”€ RECORDED BY * â”€â”€
               Text(
                 'RECORDED BY *',
                 style: TextStyle(
@@ -1278,7 +1264,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 const SizedBox(height: 20),
               ],
 
-              // ── NOTES ──
+              // â”€â”€ NOTES â”€â”€
               Text(
                 'NOTES (OPTIONAL)',
                 style: TextStyle(
@@ -1316,7 +1302,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 32),
 
-              // ── ACTION BUTTONS ──
+              // â”€â”€ ACTION BUTTONS â”€â”€
               ElevatedButton(
                 onPressed: _isSubmitting ? null : _submit,
                 style: ElevatedButton.styleFrom(
@@ -1350,8 +1336,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           const SizedBox(width: 8),
                           Text(
                             _type == TransactionType.stockIn
-                                ? '↑ Record Stock In'
-                                : '↓ Record Stock Out',
+                                ? 'â†‘ Record Stock In'
+                                : 'â†“ Record Stock Out',
                             style: TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.w800),
                           ),
@@ -1487,7 +1473,7 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
                 Text(
                   isSearching
                       ? 'Search Results'
-                      : (_selectedCategory ?? 'Choose product from folders...'),
+                      : (_selectedCategory ?? 'Choose product code...'),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -1518,7 +1504,7 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
               style: TextStyle(
                   fontSize: 14, color: AppTheme.primaryTextColor(context)),
               decoration: InputDecoration(
-                hintText: 'Search products by name or code...',
+                hintText: 'Search product code...',
                 hintStyle: TextStyle(
                     color: AppTheme.mutedTextColor(context), fontSize: 13),
                 prefixIcon: Icon(Icons.search_rounded,
@@ -1597,11 +1583,11 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Text(
-                                  '📁',
-                                  style: TextStyle(fontSize: 32),
+                                Icon(
+                                  Icons.folder_rounded,
+                                  size: 32,
+                                  color: AppTheme.primary,
                                 ),
-                                const SizedBox(height: 6),
                                 Text(
                                   cat,
                                   textAlign: TextAlign.center,
