@@ -11,6 +11,7 @@ import '../../providers/auth_provider.dart';
 import '../../widgets/skeleton_loading.dart';
 import '../../widgets/stock_chart_widget.dart';
 import '../../providers/settings_provider.dart';
+import '../../providers/warehouse_stock_summary_provider.dart';
 import '../../../core/utils/formatters.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -37,6 +38,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final productsAsync = ref.watch(productsProvider);
     final transactionsAsync = ref.watch(transactionsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
+    final warehouseStockSummaryAsync = ref.watch(warehouseStockSummaryProvider);
     final user = ref.watch(authStateProvider).user;
     final role = user?.role ?? UserRole.customer;
 
@@ -53,6 +55,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ref.invalidate(productsProvider);
           ref.invalidate(transactionsProvider);
           ref.invalidate(categoriesProvider);
+          ref.invalidate(warehouseStockSummaryProvider);
         },
         child: CustomScrollView(
           slivers: [
@@ -123,6 +126,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                   // Quick Actions
                   _buildQuickActions(role),
+                  const SizedBox(height: 20),
+
+                  // Warehouse Stock Dashboard
+                  _buildWarehouseStockSection(warehouseStockSummaryAsync),
                   const SizedBox(height: 20),
 
                   // Stock Movement Chart
@@ -357,6 +364,135 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildWarehouseStockSection(
+      AsyncValue<List<Map<String, dynamic>>> summaryAsync) {
+    return DefaultTabController(
+      length: 2,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Warehouse Stock',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: AppTheme.surfaceColor(context),
+              borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Column(
+              children: [
+                const TabBar(
+                  tabs: [
+                    Tab(text: 'Top Warehouses'),
+                    Tab(text: 'All Warehouses'),
+                  ],
+                ),
+                SizedBox(
+                  height: 260,
+                  child: TabBarView(
+                    children: [
+                      _buildWarehouseStockTabContent(summaryAsync, topOnly: true),
+                      _buildWarehouseStockTabContent(summaryAsync, topOnly: false),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWarehouseStockTabContent(
+    AsyncValue<List<Map<String, dynamic>>> summaryAsync, {
+    required bool topOnly,
+  }) {
+    return summaryAsync.when(
+      data: (rows) {
+        if (rows.isEmpty) {
+          return Center(
+            child: Text(
+              'No warehouse stock data yet.',
+              style: TextStyle(color: AppTheme.mutedTextColor(context)),
+            ),
+          );
+        }
+
+        final list = topOnly ? rows.take(5).toList() : rows;
+        return ListView.separated(
+          padding: const EdgeInsets.all(12),
+          itemCount: list.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (context, index) {
+            final row = list[index];
+            final name = row['warehouse_name']?.toString() ?? 'Warehouse';
+            final location = row['location']?.toString() ?? '';
+            final qty = row['total_quantity'] ?? 0;
+            final products = row['product_count'] ?? 0;
+            final colors = row['color_count'] ?? 0;
+
+            return Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.inputFillColor(context),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          location.isNotEmpty ? '$name • $location' : name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primaryTextColor(context),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Products: $products • Colors: $colors',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.secondaryTextColor(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Qty: $qty',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.success,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Center(
+        child: SkeletonLoading(width: double.infinity, height: 180),
+      ),
+      error: (_, __) => Center(
+        child: Text(
+          'Unable to load warehouse stock.',
+          style: TextStyle(color: AppTheme.mutedTextColor(context)),
+        ),
+      ),
     );
   }
 

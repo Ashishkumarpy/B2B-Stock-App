@@ -76,6 +76,64 @@ warehousesRouter.get('/stock-options', authRequired, async (req, res) => {
   return res.json({ data });
 });
 
+warehousesRouter.get('/stock-summary', authRequired, async (_req, res) => {
+  const warehousesRes = await supabaseAdmin
+    .from('warehouses')
+    .select('id,name,location,is_active')
+    .eq('is_active', true)
+    .order('name', { ascending: true });
+  if (warehousesRes.error) {
+    return res.status(400).json({ error: warehousesRes.error.message });
+  }
+
+  const stocksRes = await supabaseAdmin
+    .from('warehouse_product_stocks')
+    .select('warehouse_id,product_id,color_name,quantity')
+    .gt('quantity', 0)
+    .limit(10000);
+  if (stocksRes.error) {
+    return res.status(400).json({ error: stocksRes.error.message });
+  }
+
+  const summaryByWarehouse = new Map();
+  for (const w of warehousesRes.data || []) {
+    summaryByWarehouse.set(String(w.id), {
+      warehouse_id: String(w.id),
+      warehouse_name: String(w.name || 'Warehouse'),
+      location: w.location || null,
+      total_quantity: 0,
+      product_ids: new Set(),
+      color_keys: new Set(),
+    });
+  }
+
+  for (const row of stocksRes.data || []) {
+    const wid = String(row?.warehouse_id || '').trim();
+    if (!summaryByWarehouse.has(wid)) continue;
+    const entry = summaryByWarehouse.get(wid);
+    const qty = Number(row?.quantity ?? 0);
+    const safeQty = Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0;
+    entry.total_quantity += safeQty;
+    const productId = String(row?.product_id || '').trim();
+    if (productId) entry.product_ids.add(productId);
+    const colorKey = `${productId}:${String(row?.color_name || '').trim().toLowerCase()}`;
+    entry.color_keys.add(colorKey);
+  }
+
+  const data = [...summaryByWarehouse.values()]
+    .map((entry) => ({
+      warehouse_id: entry.warehouse_id,
+      warehouse_name: entry.warehouse_name,
+      location: entry.location,
+      total_quantity: entry.total_quantity,
+      product_count: entry.product_ids.size,
+      color_count: entry.color_keys.size,
+    }))
+    .sort((a, b) => Number(b.total_quantity) - Number(a.total_quantity));
+
+  return res.json({ data });
+});
+
 warehousesRouter.post(
   '/',
   authRequired,
