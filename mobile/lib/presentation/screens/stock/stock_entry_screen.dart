@@ -53,6 +53,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   TransactionType _type = TransactionType.stockIn;
   String? _selectedWarehouseId;
   Set<String> _stockOutWarehouseIdsWithStock = <String>{};
+  List<Map<String, dynamic>> _stockOutWarehouseStockRows = const [];
   bool _isLoadingStockOutWarehouses = false;
   bool _isSubmitting = false;
 
@@ -136,6 +137,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       if (!mounted) return;
       setState(() {
         _stockOutWarehouseIdsWithStock = <String>{};
+        _stockOutWarehouseStockRows = const [];
         _isLoadingStockOutWarehouses = false;
       });
       return;
@@ -160,12 +162,17 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         );
         list = (fallbackResponse is Map ? fallbackResponse['data'] : null) as List? ?? const [];
       }
+      final rows = list
+          .whereType<Map>()
+          .map((row) => Map<String, dynamic>.from(row))
+          .toList();
       final ids = list
           .map((row) => (row as Map?)?['warehouse_id']?.toString() ?? '')
           .where((id) => id.isNotEmpty)
           .toSet();
       if (!mounted) return;
       setState(() {
+        _stockOutWarehouseStockRows = rows;
         _stockOutWarehouseIdsWithStock = ids;
         if (_selectedWarehouseId != null &&
             !_stockOutWarehouseIdsWithStock.contains(_selectedWarehouseId)) {
@@ -176,6 +183,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       if (!mounted) return;
       setState(() {
         _stockOutWarehouseIdsWithStock = <String>{};
+        _stockOutWarehouseStockRows = const [];
         _selectedWarehouseId = null;
       });
     } finally {
@@ -734,6 +742,88 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                             style: TextStyle(
                               fontSize: 11,
                               color: AppTheme.mutedTextColor(context),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: AppTheme.surfaceColor(context),
+                              borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                              border: Border.all(color: AppTheme.borderColor(context)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Warehouse Stock Dashboard',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppTheme.primaryTextColor(context),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                if (_isLoadingStockOutWarehouses)
+                                  Text(
+                                    'Loading stock by warehouse...',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.mutedTextColor(context),
+                                    ),
+                                  )
+                                else if (_stockOutWarehouseStockRows.isEmpty)
+                                  Text(
+                                    'No warehouse stock found for this selection.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppTheme.mutedTextColor(context),
+                                    ),
+                                  )
+                                else
+                                  ..._stockOutWarehouseStockRows.map((row) {
+                                    final wid = row['warehouse_id']?.toString() ?? '';
+                                    final name = row['warehouse_name']?.toString() ?? 'Warehouse';
+                                    final location = row['location']?.toString() ?? '';
+                                    final qty = row['available_quantity'];
+                                    final isSelected = wid.isNotEmpty && wid == _selectedWarehouseId;
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 6),
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppTheme.primary.withOpacity(0.08)
+                                            : AppTheme.inputFillColor(context),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              location.isNotEmpty ? '$name • $location' : name,
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                color: AppTheme.primaryTextColor(context),
+                                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            'Qty: ${qty ?? 0}',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: AppTheme.success,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                              ],
                             ),
                           ),
                         ],
