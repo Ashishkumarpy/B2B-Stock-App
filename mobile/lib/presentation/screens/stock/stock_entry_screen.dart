@@ -457,9 +457,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         }
       }
       final list = byLower.values.toList();
-      list.sort((a, b) => String(a['color_name'])
+      list.sort((a, b) => (a['color_name']?.toString() ?? '')
           .toLowerCase()
-          .compareTo(String(b['color_name']).toLowerCase()));
+          .compareTo((b['color_name']?.toString() ?? '').toLowerCase()));
       return list;
     })();
     final stockOutColorNames = stockOutColorRowsDeduped
