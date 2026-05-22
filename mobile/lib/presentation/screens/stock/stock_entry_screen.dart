@@ -1092,7 +1092,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'PCS / CARTON',
+                          'pcs / carton',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
