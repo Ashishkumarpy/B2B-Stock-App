@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -131,7 +131,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         int? inferredPcsPerCarton;
         final inferredFrequency = <int, int>{};
         final cartonNotesPattern =
-            RegExp(r'(\d+)\s*cartons?\s*[xÃ—]\s*(\d+)\s*pcs', caseSensitive: false);
+            RegExp(r'(\d+)\s*cartons?\s*[xX×]\s*(\d+)\s*pcs', caseSensitive: false);
         for (final tx in productTransactions) {
           final pcs = tx.pcsPerCarton;
           if (pcs != null && pcs > 1) {
@@ -179,7 +179,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           backgroundColor: AppTheme.backgroundColor(context),
           body: CustomScrollView(
             slivers: [
-              // â”€â”€ Simple Elegant App Bar with Edit Feature â”€â”€
+              // Ã¢â€â‚¬Ã¢â€â‚¬ Simple Elegant App Bar with Edit Feature Ã¢â€â‚¬Ã¢â€â‚¬
               SliverAppBar(
                 pinned: true,
                 backgroundColor: AppTheme.surfaceColor(context),
@@ -206,14 +206,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ],
               ),
 
-              // â”€â”€ Content â”€â”€
+              // Ã¢â€â‚¬Ã¢â€â‚¬ Content Ã¢â€â‚¬Ã¢â€â‚¬
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // â”€â”€ TAPPABLE IMAGE HERO SECTION â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ TAPPABLE IMAGE HERO SECTION Ã¢â€â‚¬Ã¢â€â‚¬
                       if (allImages.isNotEmpty) ...[
                         GestureDetector(
                           onTap: () => _openFullScreenViewer(
@@ -297,7 +297,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                           ),
                         ),
-                        // â”€â”€ Image Thumbnails Row (Tied to Hero) â”€â”€
+                        // Ã¢â€â‚¬Ã¢â€â‚¬ Image Thumbnails Row (Tied to Hero) Ã¢â€â‚¬Ã¢â€â‚¬
                         if (allImages.length > 1) ...[
                           const SizedBox(height: 8),
                           SizedBox(
@@ -405,7 +405,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Stock Card â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Stock Card Ã¢â€â‚¬Ã¢â€â‚¬
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -482,7 +482,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 16),
 
-                      // â”€â”€ Stock Action Buttons â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Stock Action Buttons Ã¢â€â‚¬Ã¢â€â‚¬
                       if (role.canRecordStock) ...[
                         Row(
                           children: [
@@ -526,7 +526,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 24),
 
-                      // â”€â”€ Color Stock Section (Color Stock matching Admin) â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Color Stock Section (Color Stock matching Admin) Ã¢â€â‚¬Ã¢â€â‚¬
                       Text(
                         'Color Stock',
                         style: TextStyle(
@@ -615,7 +615,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 24),
 
-                      // â”€â”€ Recent Activity â”€â”€
+                      // Ã¢â€â‚¬Ã¢â€â‚¬ Recent Activity Ã¢â€â‚¬Ã¢â€â‚¬
                       Text('Recent History',
                           style: TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 16)),
@@ -647,7 +647,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
             ],
           ),
-          // â”€â”€ FAB: Quick Stock Entry â”€â”€
+          // Ã¢â€â‚¬Ã¢â€â‚¬ FAB: Quick Stock Entry Ã¢â€â‚¬Ã¢â€â‚¬
           floatingActionButton: role.canRecordStock
               ? FloatingActionButton.extended(
                   onPressed: () => _showStockEntrySheet(context, product),
@@ -722,7 +722,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Stock Entry â€“ ${product.name}',
+            Text('Stock Entry Ã¢â‚¬â€œ ${product.name}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
@@ -771,7 +771,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 }
 
-// â”€â”€â”€ Full Screen Image Viewer with Zoom, Download & Share â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Full Screen Image Viewer with Zoom, Download & Share Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> images;
   final int initialIndex;
@@ -946,7 +946,7 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
   }
 }
 
-// â”€â”€â”€ Activity Tile â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Activity Tile Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // ignore: unused_element
 class _ActivityTile extends StatelessWidget {
   final Transaction tx;
@@ -990,7 +990,7 @@ class _ActivityTile extends StatelessWidget {
                   style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
                 ),
                 Text(
-                  '${tx.workerName.isEmpty ? 'Worker' : tx.workerName} â€¢ ${DateFormat('MMM d, h:mm a').format(tx.createdAt)}',
+                  '${tx.workerName.isEmpty ? 'Worker' : tx.workerName} Ã¢â‚¬Â¢ ${DateFormat('MMM d, h:mm a').format(tx.createdAt)}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -999,7 +999,7 @@ class _ActivityTile extends StatelessWidget {
                 ),
                 if (tx.cartons != null && tx.pcsPerCarton != null)
                   Text(
-                    '${tx.cartons} ctn Ã— ${tx.pcsPerCarton} pcs',
+                    '${tx.cartons} ctn x ${tx.pcsPerCarton} pcs',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
@@ -1114,7 +1114,7 @@ class _DetailedActivityTile extends StatelessWidget {
                   if (tx.colorName != null && tx.colorName!.trim().isNotEmpty) ...[
                     const SizedBox(width: 6),
                     Text(
-                      'â€¢ ${tx.colorName!.trim()}',
+                      'Ã¢â‚¬Â¢ ${tx.colorName!.trim()}',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
@@ -1142,7 +1142,7 @@ class _DetailedActivityTile extends StatelessWidget {
               if (tx.cartons != null && tx.pcsPerCarton != null) ...[
                 const SizedBox(height: 3),
                 Text(
-                  '${tx.cartons} ctn Ã— ${tx.pcsPerCarton} pcs',
+                  '${tx.cartons} ctn x ${tx.pcsPerCarton} pcs',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(

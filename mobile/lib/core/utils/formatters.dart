@@ -27,7 +27,7 @@ class AppFormatters {
     final cartons = totalPcs ~/ size;
     final pcs = totalPcs % size;
     if (cartons == 0) return '$pcs pcs';
-    if (pcs == 0) return '$cartons ctn';
-    return '$cartons ctn, $pcs pcs';
+    if (pcs == 0) return '$cartons ctn ($totalPcs pcs)';
+    return '$cartons ctn + $pcs pcs ($totalPcs pcs)';
   }
 }
