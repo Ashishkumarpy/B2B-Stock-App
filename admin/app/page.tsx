@@ -292,7 +292,7 @@ export default function DashboardPage() {
             colorRgb: '--color-success-rgb',
             colorHex: 'var(--color-success)',
             icon: '🥞',
-            href: '/products?view=all',
+            href: '/products?view=in_stock',
           },
           {
             label: 'Stock In (Today)',

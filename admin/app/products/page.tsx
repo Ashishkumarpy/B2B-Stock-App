@@ -205,7 +205,8 @@ export default function ProductsPage() {
     return f.products.some(p => p.name.toLowerCase().includes(query) || p.code.toLowerCase().includes(query));
   });
 
-  const viewAll = searchParams.get('view') === 'all';
+  const viewType = searchParams.get('view');
+  const isFilteredView = viewType === 'all' || viewType === 'in_stock';
 
   const searchedProducts = useMemo(() => {
     if (query) {
@@ -217,11 +218,14 @@ export default function ProductsPage() {
         )
         .sort(sortProductsByCode);
     }
-    if (viewAll) {
+    if (viewType === 'all') {
       return [...products].sort(sortProductsByCode);
     }
+    if (viewType === 'in_stock') {
+      return products.filter((p) => p.quantity > 0).sort(sortProductsByCode);
+    }
     return [];
-  }, [query, viewAll, products]);
+  }, [query, viewType, products]);
 
 
 
@@ -286,13 +290,13 @@ export default function ProductsPage() {
         <button onClick={openCreateCategory} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500">+ Create Folder</button>
       </div>
 
-      {query || viewAll ? (
+      {query || isFilteredView ? (
         <div className="card p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-slate-800 dark:text-white">
-              {viewAll && !query ? 'All Products' : 'Search Results'} ({searchedProducts.length})
+              {viewType === 'in_stock' && !query ? 'In-Stock Products Only' : viewType === 'all' && !query ? 'All Products' : 'Search Results'} ({searchedProducts.length})
             </h2>
-            {viewAll && (
+            {isFilteredView && (
               <button
                 type="button"
                 onClick={() => router.push('/products')}
