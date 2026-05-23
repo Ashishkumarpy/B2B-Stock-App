@@ -24,7 +24,7 @@
   --bg-surface: #ffffff;
   --bg-card: #ffffff;
   --bg-input: #f1f5f9;
-  --bg-hover: #f1f5f9;
+  --bg-hover: #e2e8f0;
   --border-color: #e2e8f0;
   --border-input: #cbd5e1;
   --text-primary: #0f172a;
@@ -170,4 +170,103 @@ body {
 /* ── Form overrides ─────────────────────────────────── */
 input, select, textarea {
   color-scheme: light dark;
+}
+
+/* ── Light Mode Override Rules for Hardcoded Tailwind Dark Classes ── */
+html:not(.dark) {
+  /* Text color overrides */
+  .text-white, 
+  .text-gray-100 {
+    color: var(--text-primary) !important;
+  }
+  
+  .text-gray-200, 
+  .text-gray-300, 
+  .text-gray-400, 
+  .text-slate-400 {
+    color: var(--text-secondary) !important;
+  }
+
+  .text-gray-500,
+  .text-slate-500 {
+    color: var(--text-muted) !important;
+  }
+
+  .text-indigo-200,
+  .text-indigo-300,
+  .text-indigo-400 {
+    color: var(--color-primary) !important;
+  }
+
+  .text-emerald-100,
+  .text-emerald-400 {
+    color: var(--color-success) !important;
+  }
+
+  .text-rose-100,
+  .text-rose-400,
+  .text-red-300,
+  .text-red-400 {
+    color: var(--color-danger) !important;
+  }
+
+  /* Background overrides */
+  .bg-\[\#0f1117\], 
+  .bg-\[\#11131a\], 
+  .bg-\[\#121826\], 
+  .bg-\[\#0a0a0f\] {
+    background-color: var(--bg-surface) !important;
+  }
+
+  .bg-white\/5 {
+    background-color: var(--bg-input) !important;
+  }
+
+  .bg-white\/10 {
+    background-color: var(--bg-input) !important;
+  }
+
+  /* Border overrides */
+  .border-white\/5,
+  .border-white\/10,
+  .border-white\/20,
+  .border-white\/30 {
+    border-color: var(--border-color) !important;
+  }
+  
+  /* Input, select, option elements inside forms */
+  input, select, textarea {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+  }
+  
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--color-primary) !important;
+    outline: none !important;
+  }
+
+  option {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* Modal wrapper backdrop override */
+  .fixed.bg-black\/70 {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Hover state overrides */
+  .hover\:bg-white\/5:hover {
+    background-color: var(--bg-hover) !important;
+  }
+  .hover\:bg-white\/10:hover {
+    background-color: var(--bg-hover) !important;
+  }
+  .hover\:text-white:hover {
+    color: var(--text-primary) !important;
+  }
+  .hover\:border-white\/10:hover {
+    border-color: var(--border-color) !important;
+  }
 }
