@@ -284,7 +284,7 @@ export default function DashboardPage() {
             colorRgb: '--color-primary-rgb',
             colorHex: 'var(--color-primary)',
             icon: '📦',
-            href: '/products',
+            href: '/products?view=all',
           },
           {
             label: 'Available Stock',
@@ -292,7 +292,7 @@ export default function DashboardPage() {
             colorRgb: '--color-success-rgb',
             colorHex: 'var(--color-success)',
             icon: '🥞',
-            href: '/products',
+            href: '/products?view=all',
           },
           {
             label: 'Stock In (Today)',
