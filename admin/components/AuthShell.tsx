@@ -99,8 +99,8 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-white">
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-5 text-sm text-gray-300">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0a0a0f] text-slate-800 dark:text-white">
+        <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.03] px-6 py-5 text-sm text-slate-600 dark:text-gray-300">
           Checking admin session...
         </div>
       </div>
@@ -110,8 +110,8 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
   if (isLoginRoute) {
     if (profile && !isAuthorized) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] p-6 text-white">
-          <div className="w-full max-w-md rounded-3xl border border-red-500/20 bg-[#11131a] p-8">
+        <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0a0a0f] p-6 text-slate-800 dark:text-white">
+          <div className="w-full max-w-md rounded-3xl border border-red-500/20 bg-white dark:bg-[#11131a] p-8 shadow-sm">
             <h1 className="text-xl font-semibold">Access denied</h1>
             <p className="mt-3 text-sm text-gray-400">
               Your account is signed in, but it does not have admin dashboard access.
@@ -148,8 +148,8 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
 
   if (!isAuthorized) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] p-6 text-white">
-        <div className="w-full max-w-md rounded-3xl border border-red-500/20 bg-[#11131a] p-8">
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0a0a0f] p-6 text-slate-800 dark:text-white">
+        <div className="w-full max-w-md rounded-3xl border border-red-500/20 bg-white dark:bg-[#11131a] p-8 shadow-sm">
           <h1 className="text-xl font-semibold">Admin access required</h1>
           <p className="mt-3 text-sm text-gray-400">
             This dashboard only allows users with the `admin` or `manager` role.
@@ -184,7 +184,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
   const initials = initialsFromName(name) || 'A';
 
   return (
-    <div className="flex min-h-screen bg-[#0a0a0f] text-white">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-[#0a0a0f] text-slate-800 dark:text-white">
       <Sidebar />
       <div className="flex min-h-screen flex-1 flex-col overflow-hidden">
         <TopBar

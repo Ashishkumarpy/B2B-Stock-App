@@ -362,6 +362,7 @@ export default function StockPage() {
   }, [form.product_id, products]);
 
   useEffect(() => {
+    const actionParam = (searchParams.get('action') ?? '').trim();
     const productId = (searchParams.get('productId') ?? '').trim();
     const typeParam = (searchParams.get('type') ?? '').trim();
     const colorParam = (searchParams.get('color') ?? '').trim();
@@ -374,19 +375,19 @@ export default function StockPage() {
     const pcsPerCartonParam = Number(searchParams.get('pcsPerCarton') ?? '');
     const customerParam = (searchParams.get('customer') ?? '').trim();
     const transactionIdParam = (searchParams.get('transactionId') ?? '').trim();
-    const queryKey = `${productId}|${typeParam}|${colorParam}|${warehouseIdParam}|${searchParams.get('quantity') ?? ''}|${notesParam}|${workerIdParam}|${workerNameParam}|${searchParams.get('cartons') ?? ''}|${searchParams.get('pcsPerCarton') ?? ''}|${customerParam}|${transactionIdParam}`;
-    if (!productId) {
+    const queryKey = `${actionParam}|${productId}|${typeParam}|${colorParam}|${warehouseIdParam}|${searchParams.get('quantity') ?? ''}|${notesParam}|${workerIdParam}|${workerNameParam}|${searchParams.get('cartons') ?? ''}|${searchParams.get('pcsPerCarton') ?? ''}|${customerParam}|${transactionIdParam}`;
+    if (!productId && actionParam !== 'record') {
       prefetchedQueryRef.current = null;
       return;
     }
     if (prefetchedQueryRef.current === queryKey) return;
-    if (!productId || products.length === 0) return;
-    const exists = products.some((p) => p.id === productId);
-    if (!exists) return;
+    if (productId && products.length === 0) return;
+    const exists = productId ? products.some((p) => p.id === productId) : false;
+    if (productId && !exists) return;
     const safeType: TransactionType =
       typeParam === 'stock_out' ? 'stock_out' : 'stock_in';
     const defaultWarehouse = warehouses[0]?.id ?? '';
-    const nextProduct = products.find((p) => p.id === productId);
+    const nextProduct = productId ? products.find((p) => p.id === productId) : null;
     const firstColor = nextProduct?.color_stocks?.[0]?.color || 'Default';
     const safeQuantity = Number.isFinite(quantityParam) && quantityParam > 0 ? quantityParam : 0;
     const safeCartons = Number.isFinite(cartonsParam) && cartonsParam > 0 ? cartonsParam : '';
@@ -397,7 +398,7 @@ export default function StockPage() {
         ...prev,
         product_id: productId,
         type: safeType,
-        color_name: colorParam || firstColor,
+        color_name: colorParam || (productId ? firstColor : 'Default'),
         warehouse_id: warehouseIdParam || prev.warehouse_id || defaultWarehouse,
         quantity: safeQuantity,
         notes: notesParam,

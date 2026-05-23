@@ -76,3 +76,5 @@ Thumbs.db
 # ── Misc project files ─────────────────────────────────────────────────────────
 scratch/
 mugs_import.json
+
+.vercel
