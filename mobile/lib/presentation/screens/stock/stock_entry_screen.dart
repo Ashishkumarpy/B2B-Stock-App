@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../providers/products_provider.dart';
@@ -40,6 +41,7 @@ class StockEntryScreen extends ConsumerStatefulWidget {
 }
 
 class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
+  static const String _stockEntryPrefsKey = 'stock_entry_prefs_v1';
   final _formKey = GlobalKey<FormState>();
   final _qtyController = TextEditingController();
   final _cartonsController = TextEditingController();
@@ -58,11 +60,14 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   bool _isLoadingStockOutColors = false;
   bool _isLoadingStockOutWarehouses = false;
   bool _isSubmitting = false;
+  Map<String, dynamic> _stockEntryPrefs = <String, dynamic>{};
+  final Set<String> _prefetchedProductImageUrls = <String>{};
 
   @override
   void initState() {
     super.initState();
     if (widget.initialType != null) _type = widget.initialType!;
+    _loadStockEntryPrefs();
 
     // Auto-select product if ID is provided
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -114,6 +119,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             if (_pcsPerCartonController.text.trim().isEmpty) {
               _pcsPerCartonController.text = defaultPcsPerCarton.toString();
             }
+            if (_type == TransactionType.stockIn) {
+              _applyStockInPrefs(match);
+            }
           });
           _refreshStockOutWarehouses();
         }
@@ -122,6 +130,85 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
     _cartonsController.addListener(_calculateTotal);
     _pcsPerCartonController.addListener(_calculateTotal);
+  }
+
+  Future<void> _loadStockEntryPrefs() async {
+    try {
+      final box = Hive.box(AppConstants.settingsBox);
+      final raw = box.get(_stockEntryPrefsKey);
+      if (raw is Map) {
+        if (!mounted) return;
+        setState(() {
+          _stockEntryPrefs = Map<String, dynamic>.from(raw);
+        });
+      }
+    } catch (_) {
+      // Keep default behavior if prefs read fails.
+    }
+  }
+
+  void _applyStockInPrefs(Product product) {
+    final rawPref = _stockEntryPrefs[product.id];
+    if (rawPref is! Map) return;
+    final pref = Map<String, dynamic>.from(rawPref);
+
+    final preferredColor = (pref['color_name']?.toString() ?? '').trim();
+    if (preferredColor.isNotEmpty) {
+      final hasPreferredColor =
+          product.colorStocks.any((c) => c.color == preferredColor);
+      if (hasPreferredColor) {
+        _selectedColor = preferredColor;
+      }
+    }
+
+    final preferredWarehouse = (pref['warehouse_id']?.toString() ?? '').trim();
+    if (preferredWarehouse.isNotEmpty) {
+      _selectedWarehouseId = preferredWarehouse;
+    }
+  }
+
+  Future<void> _saveStockInPrefs() async {
+    final product = _selectedProduct;
+    if (product == null || _type != TransactionType.stockIn) return;
+
+    final next = Map<String, dynamic>.from(_stockEntryPrefs);
+    next[product.id] = <String, dynamic>{
+      'warehouse_id': _selectedWarehouseId,
+      'color_name':
+          _selectedColor.trim().isEmpty ? 'Default' : _selectedColor.trim(),
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    };
+
+    try {
+      final box = Hive.box(AppConstants.settingsBox);
+      await box.put(_stockEntryPrefsKey, next);
+      if (!mounted) return;
+      setState(() {
+        _stockEntryPrefs = next;
+      });
+    } catch (_) {
+      // Transaction success should not depend on prefs persistence.
+    }
+  }
+
+  void _prefetchProductImages(List<Product> products) {
+    if (products.isEmpty || !mounted) return;
+    final urls = products
+        .map((p) {
+          if ((p.imageUrl ?? '').trim().isNotEmpty) return p.imageUrl!.trim();
+          if (p.images.isNotEmpty && p.images.first.url.trim().isNotEmpty) {
+            return p.images.first.url.trim();
+          }
+          return '';
+        })
+        .where((url) => url.isNotEmpty)
+        .take(36);
+
+    for (final url in urls) {
+      if (_prefetchedProductImageUrls.contains(url)) continue;
+      _prefetchedProductImageUrls.add(url);
+      precacheImage(NetworkImage(url), context);
+    }
   }
 
   void _calculateTotal() {
@@ -157,13 +244,16 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       final response = await client.get(
         '/warehouses/stock-options?product_id=$productId&color_name=$colorName',
       );
-      List list = (response is Map ? response['data'] : null) as List? ?? const [];
+      List list =
+          (response is Map ? response['data'] : null) as List? ?? const [];
       if (list.isEmpty) {
         // Fallback: show warehouses that have stock for this product in any color.
         final fallbackResponse = await client.get(
           '/warehouses/stock-options?product_id=$productId',
         );
-        list = (fallbackResponse is Map ? fallbackResponse['data'] : null) as List? ?? const [];
+        list = (fallbackResponse is Map ? fallbackResponse['data'] : null)
+                as List? ??
+            const [];
       }
       final rows = list
           .whereType<Map>()
@@ -216,11 +306,13 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     try {
       final client = ref.read(apiClientProvider);
       final productId = Uri.encodeQueryComponent(_selectedProduct!.id);
-      final warehouseId = Uri.encodeQueryComponent(_selectedWarehouseId!.trim());
+      final warehouseId =
+          Uri.encodeQueryComponent(_selectedWarehouseId!.trim());
       final response = await client.get(
         '/warehouses/$warehouseId/colors?product_id=$productId',
       );
-      final list = (response is Map ? response['data'] : null) as List? ?? const [];
+      final list =
+          (response is Map ? response['data'] : null) as List? ?? const [];
       final rows = list
           .whereType<Map>()
           .map((row) => Map<String, dynamic>.from(row))
@@ -229,10 +321,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       setState(() {
         _stockOutColorRows = rows;
         final availableColorNames = rows
-            .map((x) => (x['color_name']?.toString() ?? '').trim().toLowerCase())
+            .map(
+                (x) => (x['color_name']?.toString() ?? '').trim().toLowerCase())
             .where((x) => x.isNotEmpty)
             .toSet();
-        if (!availableColorNames.contains(_selectedColor.trim().toLowerCase())) {
+        if (!availableColorNames
+            .contains(_selectedColor.trim().toLowerCase())) {
           _selectedColor = rows.isNotEmpty
               ? (rows.first['color_name']?.toString() ?? 'Default')
               : 'Default';
@@ -287,7 +381,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
     // Validation for Stock Out
     if (_type == TransactionType.stockOut) {
-      if (_selectedWarehouseId == null || _selectedWarehouseId!.trim().isEmpty) {
+      if (_selectedWarehouseId == null ||
+          _selectedWarehouseId!.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Please select a warehouse for Stock Out.'),
@@ -360,6 +455,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         if (cartonsText.isNotEmpty) 'cartons': int.tryParse(cartonsText),
         'pcs_per_carton': resolvedPcsPerCarton,
       });
+      await _saveStockInPrefs();
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -402,6 +498,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               _selectedColor = 'Default';
             }
             _pcsPerCartonController.text = defaultPcsPerCarton.toString();
+            if (_type == TransactionType.stockIn) {
+              _applyStockInPrefs(p);
+            }
           });
           _refreshStockOutWarehouses();
           _refreshStockOutColors();
@@ -414,15 +513,19 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   @override
   Widget build(BuildContext context) {
     final products = ref.watch(productsProvider).value ?? [];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _prefetchProductImages(products);
+    });
     final warehousesAsync = ref.watch(warehousesProvider);
     final warehouses = warehousesAsync.value ?? [];
-    final warehouseOptionsRaw =
-        (_type == TransactionType.stockOut && _selectedProduct != null && !_isLoadingStockOutWarehouses)
-            ? warehouses
-                .where((w) => _stockOutWarehouseIdsWithStock
-                    .contains(w['id']?.toString() ?? ''))
-                .toList()
-            : warehouses;
+    final warehouseOptionsRaw = (_type == TransactionType.stockOut &&
+            _selectedProduct != null &&
+            !_isLoadingStockOutWarehouses)
+        ? warehouses
+            .where((w) => _stockOutWarehouseIdsWithStock
+                .contains(w['id']?.toString() ?? ''))
+            .toList()
+        : warehouses;
     final seenWarehouseIds = <String>{};
     final warehouseOptions = warehouseOptionsRaw.where((w) {
       final id = w['id']?.toString() ?? '';
@@ -784,39 +887,41 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                       ),
                                     ]
                                   : warehouses.isEmpty
-                                  ? [
-                                      DropdownMenuItem(
-                                        value: 'default',
-                                        child: Text(
-                                          'Main Warehouse - Primary Location',
-                                          style: TextStyle(
-                                              fontSize: 13,
-                                              color: AppTheme.primaryTextColor(
-                                                  context)),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ]
-                                  : warehouseOptions.map((w) {
-                                      final name = w['name']?.toString() ??
-                                          'Main Warehouse';
-                                      final loc =
-                                          w['location']?.toString() ?? '';
-                                      final display = loc.isNotEmpty
-                                          ? '$name - $loc'
-                                          : name;
-                                      return DropdownMenuItem(
-                                        value: w['id']?.toString(),
-                                        child: Text(
-                                          display,
-                                          style: TextStyle(
-                                              fontSize: 13,
-                                              color: AppTheme.primaryTextColor(
-                                                  context)),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      );
-                                    }).toList(),
+                                      ? [
+                                          DropdownMenuItem(
+                                            value: 'default',
+                                            child: Text(
+                                              'Main Warehouse - Primary Location',
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  color:
+                                                      AppTheme.primaryTextColor(
+                                                          context)),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ]
+                                      : warehouseOptions.map((w) {
+                                          final name = w['name']?.toString() ??
+                                              'Main Warehouse';
+                                          final loc =
+                                              w['location']?.toString() ?? '';
+                                          final display = loc.isNotEmpty
+                                              ? '$name - $loc'
+                                              : name;
+                                          return DropdownMenuItem(
+                                            value: w['id']?.toString(),
+                                            child: Text(
+                                              display,
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  color:
+                                                      AppTheme.primaryTextColor(
+                                                          context)),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          );
+                                        }).toList(),
                               onChanged: (val) {
                                 if (val == 'default') return;
                                 setState(() {
@@ -844,8 +949,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
                               color: AppTheme.surfaceColor(context),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                              border: Border.all(color: AppTheme.borderColor(context)),
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusLG),
+                              border: Border.all(
+                                  color: AppTheme.borderColor(context)),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -877,14 +984,20 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   )
                                 else
                                   ..._stockOutWarehouseStockRows.map((row) {
-                                    final wid = row['warehouse_id']?.toString() ?? '';
-                                    final name = row['warehouse_name']?.toString() ?? 'Warehouse';
-                                    final location = row['location']?.toString() ?? '';
+                                    final wid =
+                                        row['warehouse_id']?.toString() ?? '';
+                                    final name =
+                                        row['warehouse_name']?.toString() ??
+                                            'Warehouse';
+                                    final location =
+                                        row['location']?.toString() ?? '';
                                     final qty = row['available_quantity'];
-                                    final isSelected = wid.isNotEmpty && wid == _selectedWarehouseId;
+                                    final isSelected = wid.isNotEmpty &&
+                                        wid == _selectedWarehouseId;
                                     return Container(
                                       margin: const EdgeInsets.only(bottom: 6),
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 8),
                                       decoration: BoxDecoration(
                                         color: isSelected
                                             ? AppTheme.primary.withOpacity(0.08)
@@ -895,11 +1008,17 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                         children: [
                                           Expanded(
                                             child: Text(
-                                              location.isNotEmpty ? '$name - $location' : name,
+                                              location.isNotEmpty
+                                                  ? '$name - $location'
+                                                  : name,
                                               style: TextStyle(
                                                 fontSize: 12,
-                                                color: AppTheme.primaryTextColor(context),
-                                                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                                color:
+                                                    AppTheme.primaryTextColor(
+                                                        context),
+                                                fontWeight: isSelected
+                                                    ? FontWeight.w700
+                                                    : FontWeight.w500,
                                               ),
                                               overflow: TextOverflow.ellipsis,
                                             ),
@@ -958,37 +1077,43 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   color: AppTheme.mutedTextColor(context)),
                               items: _selectedProduct != null &&
                                       (_type != TransactionType.stockOut
-                                          ? _selectedProduct!.colorStocks.isNotEmpty
+                                          ? _selectedProduct!
+                                              .colorStocks.isNotEmpty
                                           : stockOutColorRowsDeduped.isNotEmpty)
                                   ? (_type == TransactionType.stockOut
-                                          ? stockOutColorRowsDeduped.map((c) {
-                                              final cName = c['color_name']?.toString() ?? 'Default';
-                                              final cQty = c['available_quantity'] ?? 0;
-                                              return DropdownMenuItem(
-                                                value: cName,
-                                                child: Text(
-                                                  '$cName ($cQty)',
-                                                  style: TextStyle(
-                                                      fontSize: 13,
-                                                      color: AppTheme.primaryTextColor(
+                                      ? stockOutColorRowsDeduped.map((c) {
+                                          final cName =
+                                              c['color_name']?.toString() ??
+                                                  'Default';
+                                          final cQty =
+                                              c['available_quantity'] ?? 0;
+                                          return DropdownMenuItem(
+                                            value: cName,
+                                            child: Text(
+                                              '$cName ($cQty)',
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  color:
+                                                      AppTheme.primaryTextColor(
                                                           context)),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              );
-                                            }).toList()
-                                          : _selectedProduct!.colorStocks.map((c) {
-                                      return DropdownMenuItem(
-                                        value: c.color,
-                                        child: Text(
-                                          '${c.color} (${c.quantity})',
-                                          style: TextStyle(
-                                              fontSize: 13,
-                                              color: AppTheme.primaryTextColor(
-                                                  context)),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      );
-                                    }).toList())
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          );
+                                        }).toList()
+                                      : _selectedProduct!.colorStocks.map((c) {
+                                          return DropdownMenuItem(
+                                            value: c.color,
+                                            child: Text(
+                                              '${c.color} (${c.quantity})',
+                                              style: TextStyle(
+                                                  fontSize: 13,
+                                                  color:
+                                                      AppTheme.primaryTextColor(
+                                                          context)),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          );
+                                        }).toList())
                                   : [
                                       DropdownMenuItem(
                                         value: 'Default',
