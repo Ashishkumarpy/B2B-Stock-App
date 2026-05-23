@@ -44,6 +44,8 @@ interface Product {
   name: string;
   code: string;
   category?: string;
+  image_url?: string | null;
+  images?: Array<{ url?: string | null } | string>;
   quantity: number;
   threshold: number;
   color_stocks?: Array<{ color: string; quantity: number }>;
@@ -71,6 +73,16 @@ const EMPTY_FORM = {
   customer_name: '',
 };
 
+const STOCK_PREFS_STORAGE_KEY = 'stock_entry_prefs_v1';
+
+type StockEntryPref = {
+  warehouse_id?: string;
+  color_name?: string;
+  updated_at: number;
+};
+
+type StockEntryPrefMap = Record<string, StockEntryPref>;
+
 export default function StockPage() {
   useRequireAuth();
   const router = useRouter();
@@ -89,6 +101,7 @@ export default function StockPage() {
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerCategory, setPickerCategory] = useState<string | null>(null);
   const prefetchedQueryRef = useRef<string | null>(null);
+  const [stockPrefs, setStockPrefs] = useState<StockEntryPrefMap>({});
 
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [showExportModal, setShowExportModal] = useState(false);
@@ -262,6 +275,15 @@ export default function StockPage() {
     return match?.[1]?.trim() ?? '';
   };
 
+  const resolveProductImageUrl = useCallback((product: Product): string | null => {
+    if (product.image_url && product.image_url.trim()) return product.image_url.trim();
+    for (const image of product.images ?? []) {
+      if (typeof image === 'string' && image.trim()) return image.trim();
+      if (typeof image === 'object' && image?.url && image.url.trim()) return image.url.trim();
+    }
+    return null;
+  }, []);
+
   const fetchTransactions = useCallback(async () => {
     try {
       const res = await serverGet('/transactions');
@@ -334,6 +356,38 @@ export default function StockPage() {
     };
   }, [fetchTransactions, fetchFormData]);
 
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(STOCK_PREFS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as StockEntryPrefMap;
+      if (parsed && typeof parsed === 'object') {
+        setStockPrefs(parsed);
+      }
+    } catch (e) {
+      console.warn('Failed to load stock entry preferences', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (products.length === 0) return;
+    const urls = products
+      .map((p) => resolveProductImageUrl(p))
+      .filter((u): u is string => Boolean(u))
+      .slice(0, 36);
+    urls.forEach((url) => {
+      const img = new window.Image();
+      img.decoding = 'async';
+      img.src = url;
+    });
+  }, [products, resolveProductImageUrl]);
+
+  const productById = useMemo(() => {
+    const map = new Map<string, Product>();
+    for (const p of products) map.set(p.id, p);
+    return map;
+  }, [products]);
+
 
   useEffect(() => {
     if (!form.warehouse_id && warehouses.length > 0) {
@@ -350,16 +404,30 @@ export default function StockPage() {
 
   useEffect(() => {
     if (!form.product_id) return;
-    const product = products.find((p) => p.id === form.product_id);
+    const product = productById.get(form.product_id);
     if (!product) return;
     const firstColor = product.color_stocks?.[0]?.color || 'Default';
     const productPcs = Number(product.pcs_per_carton);
+    const pref = stockPrefs[form.product_id];
+    const preferredColor = pref?.color_name?.trim() ? pref.color_name.trim() : '';
+    const preferredWarehouse = pref?.warehouse_id?.trim() ? pref.warehouse_id.trim() : '';
+    const hasPreferredWarehouse = preferredWarehouse
+      ? warehouses.some((w) => w.id === preferredWarehouse)
+      : false;
+
     setForm((prev) => ({ 
       ...prev, 
-      color_name: prev.color_name || firstColor,
+      color_name:
+        preferredColor ||
+        prev.color_name ||
+        firstColor,
+      warehouse_id:
+        hasPreferredWarehouse
+          ? preferredWarehouse
+          : (prev.warehouse_id || warehouses[0]?.id || ''),
       pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1
     }));
-  }, [form.product_id, products]);
+  }, [form.product_id, productById, stockPrefs, warehouses]);
 
   useEffect(() => {
     const actionParam = (searchParams.get('action') ?? '').trim();
@@ -415,8 +483,16 @@ export default function StockPage() {
     return () => window.clearTimeout(timer);
   }, [products, searchParams, warehouses]);
 
-  const selectedProduct = products.find((p) => p.id === form.product_id);
+  const selectedProduct = form.product_id ? productById.get(form.product_id) : undefined;
   const availableColors = selectedProduct?.color_stocks ?? [];
+  const colorSuggestions = useMemo(() => {
+    const fromProduct = (selectedProduct?.color_stocks ?? [])
+      .map((entry) => String(entry?.color || '').trim())
+      .filter(Boolean);
+    const prefColor = form.product_id ? stockPrefs[form.product_id]?.color_name?.trim() : '';
+    const all = prefColor ? [prefColor, ...fromProduct] : fromProduct;
+    return [...new Set(all)];
+  }, [form.product_id, selectedProduct?.color_stocks, stockPrefs]);
   const selectedColorQty = (() => {
     if (!selectedProduct) return 0;
     const normalized = form.color_name.trim().toLowerCase();
@@ -487,6 +563,19 @@ export default function StockPage() {
           worker_name: form.worker_name.trim(),
           notes: finalNotes || null,
         });
+
+        if (form.type === 'stock_in' && form.product_id) {
+          const nextPrefs = {
+            ...stockPrefs,
+            [form.product_id]: {
+              warehouse_id: form.warehouse_id || undefined,
+              color_name: form.color_name.trim() || undefined,
+              updated_at: Date.now(),
+            },
+          };
+          setStockPrefs(nextPrefs);
+          window.localStorage.setItem(STOCK_PREFS_STORAGE_KEY, JSON.stringify(nextPrefs));
+        }
       }
 
       setForm({
@@ -690,10 +779,10 @@ export default function StockPage() {
                   {form.product_id ? (
                     <div className="flex flex-col">
                       <span className="font-mono font-bold text-indigo-500 text-sm">
-                        {products.find(p => p.id === form.product_id)?.code}
+                        {productById.get(form.product_id)?.code}
                       </span>
                       <span className="text-[10px] text-gray-400 leading-tight">
-                        {products.find(p => p.id === form.product_id)?.name}
+                        {productById.get(form.product_id)?.name}
                       </span>
                     </div>
                   ) : (
@@ -735,11 +824,17 @@ export default function StockPage() {
                     <input
                       required
                       type="text"
+                      list="color-suggestions"
                       value={form.color_name}
                       onChange={(e) => setForm({ ...form, color_name: e.target.value })}
                       className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
                       placeholder="e.g. Black"
                     />
+                    <datalist id="color-suggestions">
+                      {colorSuggestions.map((color) => (
+                        <option key={color} value={color} />
+                      ))}
+                    </datalist>
                     {form.product_id && (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">
                         Stock: {selectedColorQty}
