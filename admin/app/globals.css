@@ -198,23 +198,65 @@ html:not(.dark) {
     color: var(--color-primary) !important;
   }
 
-  .text-emerald-100,
   .text-emerald-400 {
     color: var(--color-success) !important;
   }
 
-  .text-rose-100,
   .text-rose-400,
   .text-red-300,
   .text-red-400 {
     color: var(--color-danger) !important;
   }
 
+  /* Light mode high-contrast overrides for white-on-white text colors in detail pages */
+  .text-indigo-100 {
+    color: var(--color-primary) !important;
+  }
+  .text-emerald-100 {
+    color: var(--color-success) !important;
+  }
+  .text-rose-100 {
+    color: var(--color-danger) !important;
+  }
+  .text-amber-100 {
+    color: var(--color-warning) !important;
+  }
+
+  /* Inside dark black overlays, preserve light text colors for readability */
+  .bg-black\/35,
+  .bg-black\/40,
+  .bg-black\/45,
+  .bg-black\/50,
+  .bg-black\/85,
+  .bg-black\/90,
+  .bg-black\/95 {
+    &, & * {
+      &.text-white {
+        color: #ffffff !important;
+      }
+      &.text-gray-100 {
+        color: #f8fafc !important;
+      }
+      &.text-gray-200 {
+        color: #e2e8f0 !important;
+      }
+      &.text-gray-300 {
+        color: #cbd5e1 !important;
+      }
+    }
+  }
+
   /* Background overrides */
+  .bg-\%5B\#0f1117\%5D,
+  .bg-\%5B\#11131a\%5D,
+  .bg-\%5B\#121826\%5D,
+  .bg-\%5B\#0a0a0f\%5D,
+  .bg-\%5B\#13131e\%5D,
   .bg-\[\#0f1117\], 
   .bg-\[\#11131a\], 
   .bg-\[\#121826\], 
-  .bg-\[\#0a0a0f\] {
+  .bg-\[\#0a0a0f\],
+  .bg-\[\#13131e\] {
     background-color: var(--bg-surface) !important;
   }
 
