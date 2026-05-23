@@ -314,7 +314,7 @@ export default function FolderExplorerPage() {
                             event.stopPropagation();
                             openEdit(product);
                           }}
-                          className="rounded-lg border border-indigo-500/40 bg-indigo-600/20 px-2 py-1 text-[10px] font-semibold text-indigo-200 hover:bg-indigo-600/30"
+                          className="rounded-lg border border-indigo-200 dark:border-indigo-500/40 bg-indigo-50 dark:bg-indigo-600/20 px-2 py-1 text-[10px] font-semibold text-indigo-600 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 transition-all"
                         >
                           Edit
                         </button>
@@ -324,7 +324,7 @@ export default function FolderExplorerPage() {
                             event.stopPropagation();
                             handleDeleteProduct(product);
                           }}
-                          className="rounded-lg border border-red-500/40 bg-red-600/20 px-2 py-1 text-[10px] font-semibold text-red-200 hover:bg-red-600/30"
+                          className="rounded-lg border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-600/20 px-2 py-1 text-[10px] font-semibold text-red-600 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-600/30 transition-all"
                         >
                           Delete
                         </button>

@@ -458,7 +458,7 @@ export default function EditProductPage() {
                 <button
                   type="button"
                   onClick={addColorStock}
-                  className="rounded-lg border border-indigo-500/30 bg-indigo-600/20 px-3 py-1 text-xs font-semibold text-indigo-200 hover:bg-indigo-600/30"
+                  className="rounded-lg border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-600/20 px-3 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 transition-all"
                 >
                   + Add Color
                 </button>
@@ -490,7 +490,7 @@ export default function EditProductPage() {
                       <button
                         type="button"
                         onClick={() => removeColorStock(index)}
-                        className="rounded-lg border border-red-500/40 bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-200 hover:bg-red-500/30"
+                        className="rounded-lg border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-500/20 px-3 py-2 text-xs font-semibold text-red-600 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-500/30 transition-all"
                       >
                         Remove
                       </button>

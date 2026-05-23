@@ -179,6 +179,11 @@ html:not(.dark) {
   .text-gray-100 {
     color: var(--text-primary) !important;
   }
+
+  /* Redefine transparent white text classes to dark text in light mode */
+  [class*="text-white/"] {
+    color: var(--text-primary) !important;
+  }
   
   .text-gray-200, 
   .text-gray-300, 
@@ -221,17 +226,15 @@ html:not(.dark) {
   .text-amber-100 {
     color: var(--color-warning) !important;
   }
+  .text-red-200 {
+    color: var(--color-danger) !important;
+  }
 
   /* Inside dark black overlays, preserve light text colors for readability */
-  .bg-black\/35,
-  .bg-black\/40,
-  .bg-black\/45,
-  .bg-black\/50,
-  .bg-black\/85,
-  .bg-black\/90,
-  .bg-black\/95 {
+  [class*="bg-black/"] {
     &, & * {
-      &.text-white {
+      &.text-white,
+      &[class*="text-white/"] {
         color: #ffffff !important;
       }
       &.text-gray-100 {
@@ -260,19 +263,13 @@ html:not(.dark) {
     background-color: var(--bg-surface) !important;
   }
 
-  .bg-white\/5 {
-    background-color: var(--bg-input) !important;
-  }
-
-  .bg-white\/10 {
+  [class*="bg-white/5"],
+  [class*="bg-white/10"] {
     background-color: var(--bg-input) !important;
   }
 
   /* Border overrides */
-  .border-white\/5,
-  .border-white\/10,
-  .border-white\/20,
-  .border-white\/30 {
+  [class*="border-white/"] {
     border-color: var(--border-color) !important;
   }
   
@@ -294,21 +291,19 @@ html:not(.dark) {
   }
 
   /* Modal wrapper backdrop override */
-  .fixed.bg-black\/70 {
+  [class*="bg-black/70"] {
     background-color: rgba(0, 0, 0, 0.4) !important;
   }
 
   /* Hover state overrides */
-  .hover\:bg-white\/5:hover {
+  [class*="hover:bg-white/5"]:hover,
+  [class*="hover:bg-white/10"]:hover {
     background-color: var(--bg-hover) !important;
   }
-  .hover\:bg-white\/10:hover {
-    background-color: var(--bg-hover) !important;
-  }
-  .hover\:text-white:hover {
+  [class*="hover:text-white"]:hover {
     color: var(--text-primary) !important;
   }
-  .hover\:border-white\/10:hover {
+  [class*="hover:border-white/"]:hover {
     border-color: var(--border-color) !important;
   }
 }

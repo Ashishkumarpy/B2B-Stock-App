@@ -252,7 +252,7 @@ export default function ProductDetailAdminPage() {
             <button
               type="button"
               onClick={() => router.push(`/products/${encodeURIComponent(prevProduct.id)}`)}
-              className="rounded-xl border border-white/10 px-3.5 py-2 text-sm text-gray-200 hover:bg-white/5 transition-all flex items-center gap-1.5"
+              className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-transparent px-3.5 py-2 text-sm text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/5 transition-all flex items-center gap-1.5"
               title={`Previous: ${prevProduct.name}`}
             >
               <span className="text-xs">←</span> <span>Prev</span>
@@ -262,20 +262,20 @@ export default function ProductDetailAdminPage() {
             <button
               type="button"
               onClick={() => router.push(`/products/${encodeURIComponent(nextProduct.id)}`)}
-              className="rounded-xl border border-white/10 px-3.5 py-2 text-sm text-gray-200 hover:bg-white/5 transition-all flex items-center gap-1.5"
+              className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-transparent px-3.5 py-2 text-sm text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/5 transition-all flex items-center gap-1.5"
               title={`Next: ${nextProduct.name}`}
             >
               <span>Next</span> <span className="text-xs">→</span>
             </button>
           )}
           {(prevProduct || nextProduct) && (
-            <div className="h-6 w-px bg-white/10 mx-1" />
+            <div className="h-6 w-px bg-slate-200 dark:bg-white/10 mx-1" />
           )}
-          <button type="button" onClick={goBackToFolder} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-white/5">Back to Folder</button>
+          <button type="button" onClick={goBackToFolder} className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-transparent px-4 py-2 text-sm text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/5 transition-all">Back to Folder</button>
           {product && (
             <>
-              <button type="button" onClick={() => setShowEditModal(true)} className="rounded-xl border border-indigo-500/30 bg-indigo-600/20 px-4 py-2 text-sm font-semibold text-indigo-200 hover:bg-indigo-600/30">Edit</button>
-              <button type="button" onClick={handleDelete} disabled={deleting} className="rounded-xl border border-red-500/40 bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-200 hover:bg-red-500/30 disabled:opacity-60">{deleting ? 'Deleting...' : 'Delete'}</button>
+              <button type="button" onClick={() => setShowEditModal(true)} className="rounded-xl border border-indigo-200 dark:border-indigo-500/30 bg-indigo-50 dark:bg-indigo-600/20 px-4 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-200 hover:bg-indigo-100 dark:hover:bg-indigo-600/30 transition-all">Edit</button>
+              <button type="button" onClick={handleDelete} disabled={deleting} className="rounded-xl border border-red-200 dark:border-red-500/40 bg-red-50 dark:bg-red-500/20 px-4 py-2 text-sm font-semibold text-red-600 dark:text-red-200 hover:bg-red-100 dark:hover:bg-red-500/30 disabled:opacity-60 transition-all">{deleting ? 'Deleting...' : 'Delete'}</button>
             </>
           )}
         </div>
@@ -313,8 +313,8 @@ export default function ProductDetailAdminPage() {
               <div className="card p-5">
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="truncate font-mono text-2xl font-black text-indigo-200">{product.code}</p>
-                    <p className="mt-1 truncate text-sm font-semibold text-white/90">{product.name}</p>
+                    <p className="truncate font-mono text-2xl font-black text-indigo-600 dark:text-indigo-200">{product.code}</p>
+                    <p className="mt-1 truncate text-sm font-semibold text-slate-800 dark:text-white/90">{product.name}</p>
                   </div>
                   <span className={`inline-flex badge ${statusMap[product.stock_status]?.cls ?? 'badge-gray'}`}>
                     {statusMap[product.stock_status]?.label ?? 'Unknown'}
