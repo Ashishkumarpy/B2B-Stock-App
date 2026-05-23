@@ -281,28 +281,32 @@ export default function DashboardPage() {
           {
             label: 'Total Products',
             value: loadingProducts ? '...' : String(totalProducts),
-            color: 'var(--color-primary)',
+            colorRgb: '--color-primary-rgb',
+            colorHex: 'var(--color-primary)',
             icon: '📦',
             href: '/products',
           },
           {
             label: 'Available Stock',
             value: loadingProducts ? '...' : String(availableStock),
-            color: 'var(--color-success)',
+            colorRgb: '--color-success-rgb',
+            colorHex: 'var(--color-success)',
             icon: '🥞',
             href: '/products',
           },
           {
             label: 'Stock In (Today)',
             value: loadingTx ? '...' : `+${stockInToday}`,
-            color: 'var(--color-success)',
+            colorRgb: '--color-success-rgb',
+            colorHex: 'var(--color-success)',
             icon: '📥',
             href: '/stock',
           },
           {
             label: 'Stock Out (Today)',
             value: loadingTx ? '...' : `-${stockOutToday}`,
-            color: 'var(--color-danger)',
+            colorRgb: '--color-danger-rgb',
+            colorHex: 'var(--color-danger)',
             icon: '📤',
             href: '/stock',
           },
@@ -311,15 +315,15 @@ export default function DashboardPage() {
             key={i}
             onClick={() => router.push(stat.href)}
             style={{
-              backgroundColor: `${stat.color}10`,
-              borderColor: `${stat.color}25`,
+              backgroundColor: `rgba(var(${stat.colorRgb}), 0.08)`,
+              borderColor: `rgba(var(${stat.colorRgb}), 0.15)`,
             }}
             className="flex items-center gap-3 p-4 rounded-2xl border cursor-pointer hover:scale-[1.02] active:scale-95 transition-all shadow-sm group"
           >
             <div
               style={{
-                backgroundColor: `${stat.color}25`,
-                color: stat.color,
+                backgroundColor: `rgba(var(${stat.colorRgb}), 0.15)`,
+                color: stat.colorHex,
               }}
               className="w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold transition group-hover:rotate-6"
             >
@@ -327,7 +331,7 @@ export default function DashboardPage() {
             </div>
             <div className="min-w-0">
               <p
-                style={{ color: stat.color }}
+                style={{ color: stat.colorHex }}
                 className="text-lg lg:text-xl font-extrabold truncate"
               >
                 {stat.value}
@@ -522,7 +526,10 @@ export default function DashboardPage() {
                         cx={pt.x}
                         cy={pt.y}
                         r="2.5"
-                        className="fill-indigo-600 dark:fill-indigo-400 stroke-white dark:stroke-[#13131e]"
+                        style={{
+                          fill: 'var(--color-primary)',
+                          stroke: 'var(--bg-surface)',
+                        }}
                         strokeWidth="1.5"
                       />
                     ))}
