@@ -13,7 +13,7 @@ export default function Category() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
-  const [stockFilter, setStockFilter] = useState<'all' | Product['stockStatus']>('all');
+  const [stockFilter, setStockFilter] = useState<'all' | 'in_stock' | 'out_of_stock'>('in_stock');
   const [sortBy, setSortBy] = useState<'newest' | 'price_asc' | 'price_desc'>('newest');
 
   useEffect(() => {
@@ -28,8 +28,10 @@ export default function Category() {
   const visibleProducts = useMemo(() => {
     let result = products;
 
-    if (stockFilter !== 'all') {
-      result = result.filter((p) => p.stockStatus === stockFilter);
+    if (stockFilter === 'in_stock') {
+      result = result.filter((p) => p.stockStatus === 'in_stock' || p.stockStatus === 'low_stock');
+    } else if (stockFilter === 'out_of_stock') {
+      result = result.filter((p) => p.stockStatus === 'out_of_stock');
     }
 
     result = [...result].sort((a, b) => {
@@ -97,7 +99,6 @@ export default function Category() {
                 >
                   <option value="all">All</option>
                   <option value="in_stock">In Stock</option>
-                  <option value="low_stock">Low Stock</option>
                   <option value="out_of_stock">Out of Stock</option>
                 </select>
               </div>

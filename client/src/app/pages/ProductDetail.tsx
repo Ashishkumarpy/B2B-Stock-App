@@ -135,9 +135,12 @@ export default function ProductDetail() {
 
             {/* Stock Status */}
             <div className="mb-6">
-              {product.stockStatus === 'in_stock' && <span className="text-xs uppercase tracking-widest text-emerald-400">● In Stock ({product.quantity} units available)</span>}
-              {product.stockStatus === 'low_stock' && <span className="text-xs uppercase tracking-widest text-yellow-400">● Low Stock ({product.quantity} units left)</span>}
-              {product.stockStatus === 'out_of_stock' && <span className="text-xs uppercase tracking-widest text-red-400">● Out of Stock</span>}
+              {(product.stockStatus === 'in_stock' || product.stockStatus === 'low_stock') && (
+                <span className="text-xs uppercase tracking-widest text-emerald-600">● In Stock</span>
+              )}
+              {product.stockStatus === 'out_of_stock' && (
+                <span className="text-xs uppercase tracking-widest text-red-600">● Out of Stock</span>
+              )}
             </div>
 
             {product.description && (

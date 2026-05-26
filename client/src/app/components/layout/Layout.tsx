@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Outlet, Link } from 'react-router';
+import { Outlet, Link, useNavigate } from 'react-router';
 import { Menu, Search, User, ShoppingCart, X, ChevronRight, Mail, Phone, Award, Download } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { CartDrawer } from '../cart/CartDrawer';
@@ -25,6 +25,8 @@ export function Layout() {
   const [searchOpen, setSearchOpen] = useState(false);
   const { totalQuantity, setIsDrawerOpen } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const navigate = useNavigate();
 
   useEffect(() => {
     // Live categories/counts: keep the sidebar in sync with the products table.
@@ -32,9 +34,31 @@ export function Layout() {
     return () => unsub();
   }, []);
 
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const query = searchQuery.toLowerCase().trim();
+    return products.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.code.toLowerCase().includes(query) ||
+        (p.category && p.category.toLowerCase().includes(query)) ||
+        (p.description && p.description.toLowerCase().includes(query))
+    ).slice(0, 5);
+  }, [searchQuery, products]);
+
+  const handleSearchSubmit = (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+      setSearchOpen(false);
+      setSearchQuery('');
+    }
+  };
+
   const productCategories = useMemo(() => {
     const counts = new Map<string, number>();
     for (const product of products) {
+      if (product.stockStatus === 'out_of_stock') continue;
       const name = product.category?.trim();
       if (!name) continue;
       counts.set(name, (counts.get(name) ?? 0) + 1);
@@ -110,17 +134,72 @@ export function Layout() {
 
           {/* Search Bar */}
           {searchOpen && (
-            <div className="border-t border-slate-200 bg-white">
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                <div className="relative">
+            <div className="border-t border-slate-200 bg-white relative z-50">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 relative">
+                <form onSubmit={handleSearchSubmit} className="relative">
                   <input
                     type="text"
                     placeholder="SEARCH PRODUCTS..."
-                    className="w-full px-6 py-3 bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 transition-colors uppercase tracking-wider text-sm"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full px-6 py-3 bg-white border border-slate-200 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-slate-900 transition-colors uppercase tracking-wider text-sm pr-12"
                     autoFocus
                   />
-                  <Search className="absolute right-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500" />
-                </div>
+                  <button type="submit" className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-500 hover:text-slate-900 transition-colors cursor-pointer">
+                    <Search className="w-5 h-5" />
+                  </button>
+                </form>
+
+                {/* Instant Search Results Dropdown */}
+                {searchResults.length > 0 && (
+                  <div className="absolute left-4 right-4 sm:left-6 sm:right-6 lg:left-8 lg:right-8 mt-2 bg-white border border-slate-200 shadow-2xl rounded-md z-[100] max-h-96 overflow-y-auto divide-y divide-slate-100">
+                    {searchResults.map((product) => (
+                      <Link
+                        key={product.id}
+                        to={`/product/${product.id}`}
+                        onClick={() => {
+                          setSearchOpen(false);
+                          setSearchQuery('');
+                        }}
+                        className="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors"
+                      >
+                        <div className="w-12 h-12 bg-slate-50 border border-slate-200 flex-shrink-0 flex items-center justify-center p-1">
+                          <img
+                            src={product.imageUrl || 'https://images.unsplash.com/photo-1561172472-4f2d94f35e87?w=100'}
+                            alt={product.name}
+                            className="max-w-full max-h-full object-contain"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="text-xs uppercase tracking-wider text-slate-500">{product.category}</span>
+                            {product.stockStatus === 'out_of_stock' && (
+                              <span className="text-[9px] bg-red-100 text-red-700 px-1 py-0.5 rounded uppercase font-medium">Out of Stock</span>
+                            )}
+                          </div>
+                          <h4 className="text-sm font-medium text-slate-900 truncate uppercase">{product.name}</h4>
+                          <div className="text-[10px] text-slate-400 uppercase tracking-widest">SKU: {product.code}</div>
+                        </div>
+                        <div className="text-sm font-semibold text-slate-950 pr-2">
+                          ₹{product.price.toLocaleString()}
+                        </div>
+                      </Link>
+                    ))}
+                    <div className="p-3 text-center bg-slate-50">
+                      <button
+                        onClick={handleSearchSubmit}
+                        className="text-xs uppercase tracking-widest text-slate-600 hover:text-slate-955 font-medium transition-colors cursor-pointer"
+                      >
+                        View all results
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {searchQuery.trim() !== '' && searchResults.length === 0 && (
+                  <div className="absolute left-4 right-4 sm:left-6 sm:right-6 lg:left-8 lg:right-8 mt-2 bg-white border border-slate-200 shadow-xl rounded-md p-6 text-center text-sm text-slate-500 uppercase tracking-wider z-[100]">
+                    No products found matching "{searchQuery}"
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { subscribeToProducts, type Product } from '../../lib/productService';
 
@@ -16,7 +16,26 @@ export default function Products() {
     return () => unsub();
   }, []);
 
-  const categories = Array.from(new Set(products.map((p) => p.category)));
+  const [searchParams] = useSearchParams();
+  const searchBarQuery = searchParams.get('search') || '';
+
+  const inStockProducts = useMemo(() => {
+    if (searchBarQuery) {
+      const q = searchBarQuery.toLowerCase().trim();
+      return products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.code.toLowerCase().includes(q) ||
+          (p.category && p.category.toLowerCase().includes(q)) ||
+          (p.description && p.description.toLowerCase().includes(q))
+      );
+    }
+    return products.filter((p) => p.stockStatus !== 'out_of_stock');
+  }, [products, searchBarQuery]);
+
+  const categories = useMemo(() => {
+    return Array.from(new Set(products.map((p) => p.category)));
+  }, [products]);
 
   return (
     <div className="min-h-screen bg-white text-slate-900 pt-36">
@@ -69,21 +88,33 @@ export default function Products() {
       <section className="py-24 bg-white text-slate-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-16">
-            <h2 className="text-4xl md:text-5xl tracking-tighter uppercase mb-4">FEATURED PRODUCTS</h2>
-            <p className="text-lg text-slate-600 uppercase tracking-wider">Handpicked bestsellers</p>
+            <h2 className="text-4xl md:text-5xl tracking-tighter uppercase mb-4">
+              {searchBarQuery ? `Search Results for "${searchBarQuery}"` : 'FEATURED PRODUCTS'}
+            </h2>
+            <p className="text-lg text-slate-600 uppercase tracking-wider">
+              {searchBarQuery ? `Found ${inStockProducts.length} matching items` : 'Handpicked bestsellers'}
+            </p>
+            {searchBarQuery && (
+              <Link
+                to="/products"
+                className="inline-block mt-4 text-xs uppercase tracking-widest text-slate-500 hover:text-slate-900 underline"
+              >
+                Clear Search
+              </Link>
+            )}
           </div>
 
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <Loader2 className="w-8 h-8 animate-spin text-slate-500" />
             </div>
-          ) : products.length === 0 ? (
+          ) : inStockProducts.length === 0 ? (
             <div className="text-center py-24">
               <p className="text-slate-500 uppercase tracking-widest text-sm">No products found. Add some from the admin panel.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {products.map((product, index) => (
+              {inStockProducts.map((product, index) => (
                 <Link key={product.id} to={`/product/${product.id}`}>
                   <motion.div
                     className="group cursor-pointer"
@@ -101,11 +132,6 @@ export default function Products() {
                       {product.stockStatus === 'out_of_stock' && (
                         <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
                           <span className="text-xs uppercase tracking-widest text-white">Out of Stock</span>
-                        </div>
-                      )}
-                      {product.stockStatus === 'low_stock' && (
-                        <div className="absolute top-2 left-2 bg-yellow-500 text-black text-[10px] uppercase tracking-widest px-2 py-1">
-                          Low Stock
                         </div>
                       )}
                     </div>

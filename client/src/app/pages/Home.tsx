@@ -124,6 +124,7 @@ export default function Home() {
   const productCategories = useMemo(() => {
     const counts = new Map<string, number>();
     for (const product of products) {
+      if (product.stockStatus === 'out_of_stock') continue;
       const name = product.category?.trim();
       if (!name) continue;
       counts.set(name, (counts.get(name) ?? 0) + 1);
@@ -138,6 +139,10 @@ export default function Home() {
       .sort((a, b) => a.name.localeCompare(b.name));
 
     return categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+  }, [products]);
+
+  const inStockProducts = useMemo(() => {
+    return products.filter((p) => p.stockStatus !== 'out_of_stock');
   }, [products]);
 
   const carouselSettings = {
@@ -282,11 +287,11 @@ export default function Home() {
             </Link>
           </div>
 
-          {products.length === 0 ? (
+          {inStockProducts.length === 0 ? (
             <div className="text-slate-600 uppercase tracking-wider text-sm">No products yet.</div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {products.slice(0, 8).map((product, index) => (
+              {inStockProducts.slice(0, 8).map((product, index) => (
                 <Link key={product.id} to={`/product/${product.id}`}>
                   <motion.div
                     className="group cursor-pointer"
