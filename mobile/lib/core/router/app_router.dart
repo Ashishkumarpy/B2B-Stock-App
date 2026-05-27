@@ -206,6 +206,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final notes = state.uri.queryParameters['notes'];
               final recordedBy = state.uri.queryParameters['recordedBy'];
               final customerName = state.uri.queryParameters['customerName'];
+              final transactionId = state.uri.queryParameters['transactionId'];
+              final createdAt = state.uri.queryParameters['createdAt'];
+              final workerId = state.uri.queryParameters['workerId'];
+              
               final initialType = switch (typeRaw) {
                 'in' => TransactionType.stockIn,
                 'out' => TransactionType.stockOut,
@@ -224,6 +228,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   initialNotes: notes,
                   initialRecordedBy: recordedBy,
                   initialCustomerName: customerName,
+                  transactionId: transactionId,
+                  createdAt: createdAt,
+                  workerId: workerId,
                 ),
               );
             },

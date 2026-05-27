@@ -546,15 +546,39 @@ export default function StockPage() {
       const product = products.find((p) => p.id === form.product_id);
       if (!product) { setError('Product not found.'); setSaving(false); return; }
 
-      if (form.type === 'stock_out' && form.quantity > product.quantity) {
-        setError(`Only ${product.quantity} units available. Cannot dispatch more than available stock.`);
-        setSaving(false);
-        return;
-      }
-      if (form.type === 'stock_out' && form.quantity > selectedColorQty) {
-        setError(`Only ${selectedColorQty} units available for color "${form.color_name}".`);
-        setSaving(false);
-        return;
+      if (!isEditingOlderThan12Hours) {
+        let virtualProductQty = product.quantity;
+        let virtualColorQty = selectedColorQty;
+
+        if (editingTransaction && editingTransaction.product_id === form.product_id) {
+          const oldQty = editingTransaction.quantity;
+          if (editingTransaction.type === 'stock_out') {
+            virtualProductQty += oldQty;
+            const oldColorNormalized = (editingTransaction.color_name || 'Default').trim().toLowerCase();
+            const formColorNormalized = form.color_name.trim().toLowerCase();
+            if (oldColorNormalized === formColorNormalized) {
+              virtualColorQty += oldQty;
+            }
+          } else if (editingTransaction.type === 'stock_in') {
+            virtualProductQty -= oldQty;
+            const oldColorNormalized = (editingTransaction.color_name || 'Default').trim().toLowerCase();
+            const formColorNormalized = form.color_name.trim().toLowerCase();
+            if (oldColorNormalized === formColorNormalized) {
+              virtualColorQty -= oldQty;
+            }
+          }
+        }
+
+        if (form.type === 'stock_out' && form.quantity > virtualProductQty) {
+          setError(`Only ${virtualProductQty} units available. Cannot dispatch more than available stock.`);
+          setSaving(false);
+          return;
+        }
+        if (form.type === 'stock_out' && form.quantity > virtualColorQty) {
+          setError(`Only ${virtualColorQty} units available for color "${form.color_name}".`);
+          setSaving(false);
+          return;
+        }
       }
 
       let finalNotes = form.notes.trim();
@@ -772,8 +796,8 @@ export default function StockPage() {
 
       {/* Record Stock Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f1117] border border-white/10 rounded-2xl p-8 w-full max-w-lg">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#0f1117] border border-white/10 rounded-2xl p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>

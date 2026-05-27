@@ -589,6 +589,8 @@ class _StockActivityTile extends ConsumerWidget {
                 if (value == 'edit') {
                   final customerName = _extractCustomerName(txn.notes);
                   final query = <String, String>{
+                    'transactionId': txn.id,
+                    'createdAt': txn.createdAt.toIso8601String(),
                     'productId': txn.productId,
                     'type': isIn ? 'in' : 'out',
                     'colorName': txn.colorName?.trim().isNotEmpty == true
@@ -598,6 +600,9 @@ class _StockActivityTile extends ConsumerWidget {
                     'notes': txn.notes ?? '',
                     'recordedBy': workerName,
                   };
+                  if (txn.workerId.isNotEmpty) {
+                    query['workerId'] = txn.workerId;
+                  }
                   if (txn.warehouseId?.trim().isNotEmpty == true) {
                     query['warehouseId'] = txn.warehouseId!.trim();
                   }

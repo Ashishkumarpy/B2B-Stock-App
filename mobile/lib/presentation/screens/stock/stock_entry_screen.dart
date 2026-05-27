@@ -21,6 +21,9 @@ class StockEntryScreen extends ConsumerStatefulWidget {
   final String? initialNotes;
   final String? initialRecordedBy;
   final String? initialCustomerName;
+  final String? transactionId;
+  final String? createdAt;
+  final String? workerId;
 
   const StockEntryScreen({
     super.key,
@@ -34,6 +37,9 @@ class StockEntryScreen extends ConsumerStatefulWidget {
     this.initialNotes,
     this.initialRecordedBy,
     this.initialCustomerName,
+    this.transactionId,
+    this.createdAt,
+    this.workerId,
   });
 
   @override
@@ -49,6 +55,23 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   final _notesController = TextEditingController();
   final _recordedByController = TextEditingController();
   final _customerController = TextEditingController();
+
+  bool get _isEditing => widget.transactionId != null;
+
+  bool get _isEditingOlderThan12Hours {
+    if (!_isEditing || widget.createdAt == null) return false;
+    final parsed = DateTime.tryParse(widget.createdAt!);
+    if (parsed == null) return false;
+    return DateTime.now().difference(parsed).inHours > 12;
+  }
+
+  String _getCleanNotes(String? notes) {
+    if (notes == null) return '';
+    var clean = notes.trim();
+    clean = clean.replaceFirst(RegExp(r'^Customer:\s*[^|]+(\|)?', caseSensitive: false), '').trim();
+    clean = clean.replaceFirst(RegExp(r'^\d+\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*\d+\s*(?:pcs)?\s*(\|)?', caseSensitive: false), '').trim();
+    return clean;
+  }
 
   Product? _selectedProduct;
   String _selectedColor = 'Default';
@@ -76,7 +99,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         _recordedByController.text =
             widget.initialRecordedBy ?? currentUser?.name ?? 'Ashish';
         if (widget.initialNotes != null) {
-          _notesController.text = widget.initialNotes!;
+          _notesController.text = _getCleanNotes(widget.initialNotes!);
         }
         if (widget.initialCustomerName != null) {
           _customerController.text = widget.initialCustomerName!;
@@ -212,6 +235,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   }
 
   void _calculateTotal() {
+    if (_isEditingOlderThan12Hours) return;
     final cartons = int.tryParse(_cartonsController.text) ?? 0;
     final pcs = int.tryParse(_pcsPerCartonController.text) ?? 0;
     if (cartons > 0 && pcs > 0) {
@@ -380,7 +404,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     }
 
     // Validation for Stock Out
-    if (_type == TransactionType.stockOut) {
+    if (_type == TransactionType.stockOut && !_isEditingOlderThan12Hours) {
       if (_selectedWarehouseId == null ||
           _selectedWarehouseId!.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -392,13 +416,30 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         return;
       }
 
-      final availableQty = _selectedProduct!.colorStocks.isNotEmpty
+      int availableQty = _selectedProduct!.colorStocks.isNotEmpty
           ? (_selectedProduct!.colorStocks
                   .where((c) => c.color == _selectedColor)
                   .firstOrNull
                   ?.quantity ??
               0)
           : _selectedProduct!.quantity;
+
+      // Adjust for virtual quantity during editing
+      if (_isEditing && widget.productId == _selectedProduct!.id) {
+        final oldQty = widget.initialQuantity ?? 0;
+        final oldType = widget.initialType;
+        final oldColor = widget.initialColorName ?? 'Default';
+
+        if (oldType == TransactionType.stockOut) {
+          if (oldColor.trim().toLowerCase() == _selectedColor.trim().toLowerCase()) {
+            availableQty += oldQty;
+          }
+        } else if (oldType == TransactionType.stockIn) {
+          if (oldColor.trim().toLowerCase() == _selectedColor.trim().toLowerCase()) {
+            availableQty -= oldQty;
+          }
+        }
+      }
 
       if (qty > availableQty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -440,21 +481,32 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             : 'Customer: $customerText';
       }
 
-      await client.post('/transactions', {
-        'product_id': _selectedProduct!.id,
-        'product_name': _selectedProduct!.name,
-        'type': _type == TransactionType.stockIn ? 'stock_in' : 'stock_out',
-        'quantity': qty,
-        'color_name': _selectedColor,
-        'notes': finalNotes,
-        'warehouse_id':
-            (_selectedWarehouseId == null || _selectedWarehouseId == 'default')
-                ? null
-                : _selectedWarehouseId,
-        'worker_name': workerName,
-        if (cartonsText.isNotEmpty) 'cartons': int.tryParse(cartonsText),
-        'pcs_per_carton': resolvedPcsPerCarton,
-      });
+      if (_isEditing) {
+        await client.patch('/transactions/${widget.transactionId}', {
+          'type': _type == TransactionType.stockIn ? 'stock_in' : 'stock_out',
+          'quantity': qty,
+          'notes': finalNotes.isEmpty ? null : finalNotes,
+          'worker_name': workerName,
+          'cartons': cartonsText.isNotEmpty ? int.tryParse(cartonsText) : null,
+          'pcs_per_carton': resolvedPcsPerCarton,
+        });
+      } else {
+        await client.post('/transactions', {
+          'product_id': _selectedProduct!.id,
+          'product_name': _selectedProduct!.name,
+          'type': _type == TransactionType.stockIn ? 'stock_in' : 'stock_out',
+          'quantity': qty,
+          'color_name': _selectedColor,
+          'notes': finalNotes,
+          'warehouse_id':
+              (_selectedWarehouseId == null || _selectedWarehouseId == 'default')
+                  ? null
+                  : _selectedWarehouseId,
+          'worker_name': workerName,
+          if (cartonsText.isNotEmpty) 'cartons': int.tryParse(cartonsText),
+          'pcs_per_carton': resolvedPcsPerCarton,
+        });
+      }
       await _saveStockInPrefs();
 
       if (mounted) {
@@ -623,6 +675,33 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_isEditingOlderThan12Hours) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: Colors.amber.shade800, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'This transaction was recorded more than 12 hours ago. Only the customer name and notes can be edited.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.amber.shade900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // MOVEMENT TYPE
               Text(
                 'MOVEMENT TYPE',
@@ -638,48 +717,53 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 children: [
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() => _type = TransactionType.stockIn);
-                        _refreshStockOutWarehouses();
-                        _refreshStockOutColors();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: _type == TransactionType.stockIn
-                              ? const Color(0xFFECFDF5)
-                              : Colors.white,
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusLG),
-                          border: Border.all(
+                      onTap: _isEditingOlderThan12Hours
+                          ? null
+                          : () {
+                              setState(() => _type = TransactionType.stockIn);
+                              _refreshStockOutWarehouses();
+                              _refreshStockOutColors();
+                            },
+                      child: Opacity(
+                        opacity: _isEditingOlderThan12Hours && _type != TransactionType.stockIn ? 0.4 : 1.0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
                             color: _type == TransactionType.stockIn
-                                ? AppTheme.success
-                                : const Color(0xFFE2E8F0),
-                            width: _type == TransactionType.stockIn ? 2 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.arrow_upward_rounded,
-                              size: 16,
+                                ? const Color(0xFFECFDF5)
+                                : Colors.white,
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusLG),
+                            border: Border.all(
                               color: _type == TransactionType.stockIn
                                   ? AppTheme.success
-                                  : AppTheme.textMuted,
+                                  : const Color(0xFFE2E8F0),
+                              width: _type == TransactionType.stockIn ? 2 : 1,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Stock In',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.arrow_upward_rounded,
+                                size: 16,
                                 color: _type == TransactionType.stockIn
                                     ? AppTheme.success
-                                    : AppTheme.textSecondary,
+                                    : AppTheme.textMuted,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Text(
+                                'Stock In',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: _type == TransactionType.stockIn
+                                      ? AppTheme.success
+                                      : AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -687,55 +771,60 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _type = TransactionType.stockOut;
-                          if (_selectedProduct != null &&
-                              _selectedProduct!.quantity <= 0) {
-                            _selectedProduct = null;
-                            _selectedColor = 'Default';
-                          }
-                        });
-                        _refreshStockOutWarehouses();
-                        _refreshStockOutColors();
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: _type == TransactionType.stockOut
-                              ? const Color(0xFFFEF2F2)
-                              : Colors.white,
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusLG),
-                          border: Border.all(
+                      onTap: _isEditingOlderThan12Hours
+                          ? null
+                          : () {
+                              setState(() {
+                                _type = TransactionType.stockOut;
+                                if (_selectedProduct != null &&
+                                    _selectedProduct!.quantity <= 0) {
+                                  _selectedProduct = null;
+                                  _selectedColor = 'Default';
+                                }
+                              });
+                              _refreshStockOutWarehouses();
+                              _refreshStockOutColors();
+                            },
+                      child: Opacity(
+                        opacity: _isEditingOlderThan12Hours && _type != TransactionType.stockOut ? 0.4 : 1.0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
                             color: _type == TransactionType.stockOut
-                                ? AppTheme.danger
-                                : const Color(0xFFE2E8F0),
-                            width: _type == TransactionType.stockOut ? 2 : 1,
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.arrow_downward_rounded,
-                              size: 16,
+                                ? const Color(0xFFFEF2F2)
+                                : Colors.white,
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusLG),
+                            border: Border.all(
                               color: _type == TransactionType.stockOut
                                   ? AppTheme.danger
-                                  : AppTheme.textMuted,
+                                  : const Color(0xFFE2E8F0),
+                              width: _type == TransactionType.stockOut ? 2 : 1,
                             ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Stock Out',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.arrow_downward_rounded,
+                                size: 16,
                                 color: _type == TransactionType.stockOut
                                     ? AppTheme.danger
-                                    : AppTheme.textSecondary,
+                                    : AppTheme.textMuted,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Text(
+                                'Stock Out',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: _type == TransactionType.stockOut
+                                      ? AppTheme.danger
+                                      : AppTheme.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -756,45 +845,49 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               ),
               const SizedBox(height: 8),
               InkWell(
-                onTap: () {
-                  final filteredProducts = _type == TransactionType.stockOut
-                      ? products.where((p) => p.quantity > 0).toList()
-                      : products;
-                  _openProductPicker(filteredProducts);
-                },
+                onTap: _isEditingOlderThan12Hours
+                    ? null
+                    : () {
+                        final filteredProducts = _type == TransactionType.stockOut
+                            ? products.where((p) => p.quantity > 0).toList()
+                            : products;
+                        _openProductPicker(filteredProducts);
+                      },
                 borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: AppTheme.surfaceColor(context),
-                    borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-                    border: Border.all(color: AppTheme.borderColor(context)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: _selectedProduct != null
-                            ? Text(
-                                _selectedProduct!.code,
-                                style: TextStyle(
-                                  fontFamily: 'monospace',
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 14,
-                                  color: AppTheme.primary,
+                child: Opacity(
+                  opacity: _isEditingOlderThan12Hours ? 0.6 : 1.0,
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppTheme.surfaceColor(context),
+                      borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                      border: Border.all(color: AppTheme.borderColor(context)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: _selectedProduct != null
+                              ? Text(
+                                  _selectedProduct!.code,
+                                  style: TextStyle(
+                                    fontFamily: 'monospace',
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 14,
+                                    color: AppTheme.primary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                )
+                              : Text(
+                                  'Choose product code...',
+                                  style: TextStyle(
+                                    color: AppTheme.mutedTextColor(context),
+                                    fontSize: 14,
+                                  ),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              )
-                            : Text(
-                                'Choose product code...',
-                                style: TextStyle(
-                                  color: AppTheme.mutedTextColor(context),
-                                  fontSize: 14,
-                                ),
-                              ),
-                      ),
+                        ),
                       Row(
                         children: [
                           if (_selectedProduct != null) ...[
@@ -826,6 +919,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                   ),
                 ),
               ),
+            ),
               const SizedBox(height: 20),
 
               // WAREHOUSE & COLOR ROW
@@ -847,88 +941,96 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surfaceColor(context),
-                            borderRadius:
-                                BorderRadius.circular(AppTheme.radiusLG),
-                            border: Border.all(
-                                color: AppTheme.borderColor(context)),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedWarehouseValue,
-                              isExpanded: true,
-                              hint: Text(
-                                'Select warehouse',
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: AppTheme.mutedTextColor(context),
-                                ),
+                        IgnorePointer(
+                          ignoring: _isEditingOlderThan12Hours,
+                          child: Opacity(
+                            opacity: _isEditingOlderThan12Hours ? 0.6 : 1.0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceColor(context),
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusLG),
+                                border: Border.all(
+                                    color: AppTheme.borderColor(context)),
                               ),
-                              icon: Icon(Icons.keyboard_arrow_down_rounded,
-                                  color: AppTheme.mutedTextColor(context)),
-                              items: (_type == TransactionType.stockOut &&
-                                      _selectedProduct != null &&
-                                      !_isLoadingStockOutWarehouses &&
-                                      warehouseOptions.isEmpty)
-                                  ? [
-                                      DropdownMenuItem(
-                                        value: 'default',
-                                        child: Text(
-                                          'No warehouse has stock for this color',
-                                          style: TextStyle(
-                                              fontSize: 13,
-                                              color: AppTheme.primaryTextColor(
-                                                  context)),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ]
-                                  : warehouses.isEmpty
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedWarehouseValue,
+                                  isExpanded: true,
+                                  hint: Text(
+                                    'Select warehouse',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.mutedTextColor(context),
+                                    ),
+                                  ),
+                                  icon: Icon(Icons.keyboard_arrow_down_rounded,
+                                      color: AppTheme.mutedTextColor(context)),
+                                  items: (_type == TransactionType.stockOut &&
+                                          _selectedProduct != null &&
+                                          !_isLoadingStockOutWarehouses &&
+                                          warehouseOptions.isEmpty)
                                       ? [
                                           DropdownMenuItem(
                                             value: 'default',
                                             child: Text(
-                                              'Main Warehouse - Primary Location',
+                                              'No warehouse has stock for this color',
                                               style: TextStyle(
                                                   fontSize: 13,
-                                                  color:
-                                                      AppTheme.primaryTextColor(
-                                                          context)),
+                                                  color: AppTheme.primaryTextColor(
+                                                      context)),
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
                                         ]
-                                      : warehouseOptions.map((w) {
-                                          final name = w['name']?.toString() ??
-                                              'Main Warehouse';
-                                          final loc =
-                                              w['location']?.toString() ?? '';
-                                          final display = loc.isNotEmpty
-                                              ? '$name - $loc'
-                                              : name;
-                                          return DropdownMenuItem(
-                                            value: w['id']?.toString(),
-                                            child: Text(
-                                              display,
-                                              style: TextStyle(
-                                                  fontSize: 13,
-                                                  color:
-                                                      AppTheme.primaryTextColor(
-                                                          context)),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          );
-                                        }).toList(),
-                              onChanged: (val) {
-                                if (val == 'default') return;
-                                setState(() {
-                                  _selectedWarehouseId = val;
-                                });
-                                _refreshStockOutColors();
-                              },
+                                      : warehouses.isEmpty
+                                          ? [
+                                              DropdownMenuItem(
+                                                value: 'default',
+                                                child: Text(
+                                                  'Main Warehouse - Primary Location',
+                                                  style: TextStyle(
+                                                      fontSize: 13,
+                                                      color:
+                                                          AppTheme.primaryTextColor(
+                                                              context)),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                            ]
+                                          : warehouseOptions.map((w) {
+                                              final name = w['name']?.toString() ??
+                                                  'Main Warehouse';
+                                              final loc =
+                                                  w['location']?.toString() ?? '';
+                                              final display = loc.isNotEmpty
+                                                  ? '$name - $loc'
+                                                  : name;
+                                              return DropdownMenuItem(
+                                                value: w['id']?.toString(),
+                                                child: Text(
+                                                  display,
+                                                  style: TextStyle(
+                                                      fontSize: 13,
+                                                      color:
+                                                          AppTheme.primaryTextColor(
+                                                              context)),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              );
+                                            }).toList(),
+                                  onChanged: _isEditingOlderThan12Hours
+                                      ? null
+                                      : (val) {
+                                          if (val == 'default') return;
+                                          setState(() {
+                                            _selectedWarehouseId = val;
+                                          });
+                                          _refreshStockOutColors();
+                                        },
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1060,80 +1162,88 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           ),
                         ),
                         const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          decoration: BoxDecoration(
-                            color: AppTheme.surfaceColor(context),
-                            borderRadius:
-                                BorderRadius.circular(AppTheme.radiusLG),
-                            border: Border.all(
-                                color: AppTheme.borderColor(context)),
-                          ),
-                          child: DropdownButtonHideUnderline(
-                            child: DropdownButton<String>(
-                              value: selectedColorValue,
-                              isExpanded: true,
-                              icon: Icon(Icons.keyboard_arrow_down_rounded,
-                                  color: AppTheme.mutedTextColor(context)),
-                              items: _selectedProduct != null &&
-                                      (_type != TransactionType.stockOut
-                                          ? _selectedProduct!
-                                              .colorStocks.isNotEmpty
-                                          : stockOutColorRowsDeduped.isNotEmpty)
-                                  ? (_type == TransactionType.stockOut
-                                      ? stockOutColorRowsDeduped.map((c) {
-                                          final cName =
-                                              c['color_name']?.toString() ??
-                                                  'Default';
-                                          final cQty =
-                                              c['available_quantity'] ?? 0;
-                                          return DropdownMenuItem(
-                                            value: cName,
+                        IgnorePointer(
+                          ignoring: _isEditingOlderThan12Hours,
+                          child: Opacity(
+                            opacity: _isEditingOlderThan12Hours ? 0.6 : 1.0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.surfaceColor(context),
+                                borderRadius:
+                                    BorderRadius.circular(AppTheme.radiusLG),
+                                border: Border.all(
+                                    color: AppTheme.borderColor(context)),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: selectedColorValue,
+                                  isExpanded: true,
+                                  icon: Icon(Icons.keyboard_arrow_down_rounded,
+                                      color: AppTheme.mutedTextColor(context)),
+                                  items: _selectedProduct != null &&
+                                          (_type != TransactionType.stockOut
+                                              ? _selectedProduct!
+                                                  .colorStocks.isNotEmpty
+                                              : stockOutColorRowsDeduped.isNotEmpty)
+                                      ? (_type == TransactionType.stockOut
+                                          ? stockOutColorRowsDeduped.map((c) {
+                                              final cName =
+                                                  c['color_name']?.toString() ??
+                                                      'Default';
+                                              final cQty =
+                                                  c['available_quantity'] ?? 0;
+                                              return DropdownMenuItem(
+                                                value: cName,
+                                                child: Text(
+                                                  '$cName ($cQty)',
+                                                  style: TextStyle(
+                                                      fontSize: 13,
+                                                      color:
+                                                          AppTheme.primaryTextColor(
+                                                              context)),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              );
+                                            }).toList()
+                                          : _selectedProduct!.colorStocks.map((c) {
+                                              return DropdownMenuItem(
+                                                value: c.color,
+                                                child: Text(
+                                                  '${c.color} (${c.quantity})',
+                                                  style: TextStyle(
+                                                      fontSize: 13,
+                                                      color:
+                                                          AppTheme.primaryTextColor(
+                                                              context)),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              );
+                                            }).toList())
+                                      : [
+                                          DropdownMenuItem(
+                                            value: 'Default',
                                             child: Text(
-                                              '$cName ($cQty)',
+                                              'Default',
                                               style: TextStyle(
                                                   fontSize: 13,
-                                                  color:
-                                                      AppTheme.primaryTextColor(
-                                                          context)),
-                                              overflow: TextOverflow.ellipsis,
+                                                  color: AppTheme.primaryTextColor(
+                                                      context)),
                                             ),
-                                          );
-                                        }).toList()
-                                      : _selectedProduct!.colorStocks.map((c) {
-                                          return DropdownMenuItem(
-                                            value: c.color,
-                                            child: Text(
-                                              '${c.color} (${c.quantity})',
-                                              style: TextStyle(
-                                                  fontSize: 13,
-                                                  color:
-                                                      AppTheme.primaryTextColor(
-                                                          context)),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          );
-                                        }).toList())
-                                  : [
-                                      DropdownMenuItem(
-                                        value: 'Default',
-                                        child: Text(
-                                          'Default',
-                                          style: TextStyle(
-                                              fontSize: 13,
-                                              color: AppTheme.primaryTextColor(
-                                                  context)),
-                                        ),
-                                      ),
-                                    ],
-                              onChanged: (val) {
-                                if (val != null) {
-                                  setState(() {
-                                    _selectedColor = val;
-                                  });
-                                  _refreshStockOutWarehouses();
-                                }
-                              },
+                                          ),
+                                        ],
+                                  onChanged: _isEditingOlderThan12Hours
+                                      ? null
+                                      : (val) {
+                                          if (val != null) {
+                                            setState(() {
+                                              _selectedColor = val;
+                                            });
+                                            _refreshStockOutWarehouses();
+                                          }
+                                        },
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -1165,16 +1275,21 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _cartonsController,
+                          enabled: !_isEditingOlderThan12Hours,
                           keyboardType: TextInputType.number,
                           style: TextStyle(
                               fontSize: 14,
-                              color: AppTheme.primaryTextColor(context)),
+                              color: _isEditingOlderThan12Hours
+                                  ? AppTheme.mutedTextColor(context)
+                                  : AppTheme.primaryTextColor(context)),
                           decoration: InputDecoration(
                             hintText: 'e.g. 5',
                             hintStyle: TextStyle(
                                 color: AppTheme.mutedTextColor(context),
                                 fontSize: 13),
-                            fillColor: AppTheme.inputFillColor(context),
+                            fillColor: _isEditingOlderThan12Hours
+                                ? AppTheme.inputFillColor(context).withOpacity(0.5)
+                                : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 14),
@@ -1183,6 +1298,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
                                   color: AppTheme.borderColor(context)),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusLG),
+                              borderSide: BorderSide(
+                                  color: AppTheme.borderColor(context).withOpacity(0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -1214,16 +1335,21 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _pcsPerCartonController,
+                          enabled: !_isEditingOlderThan12Hours,
                           keyboardType: TextInputType.number,
                           style: TextStyle(
                               fontSize: 14,
-                              color: AppTheme.primaryTextColor(context)),
+                              color: _isEditingOlderThan12Hours
+                                  ? AppTheme.mutedTextColor(context)
+                                  : AppTheme.primaryTextColor(context)),
                           decoration: InputDecoration(
                             hintText: 'e.g. 20',
                             hintStyle: TextStyle(
                                 color: AppTheme.mutedTextColor(context),
                                 fontSize: 13),
-                            fillColor: AppTheme.inputFillColor(context),
+                            fillColor: _isEditingOlderThan12Hours
+                                ? AppTheme.inputFillColor(context).withOpacity(0.5)
+                                : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 14),
@@ -1232,6 +1358,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
                                   color: AppTheme.borderColor(context)),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusLG),
+                              borderSide: BorderSide(
+                                  color: AppTheme.borderColor(context).withOpacity(0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -1263,11 +1395,14 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _qtyController,
+                          enabled: !_isEditingOlderThan12Hours,
                           keyboardType: TextInputType.number,
                           style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,
-                              color: AppTheme.primaryTextColor(context)),
+                              color: _isEditingOlderThan12Hours
+                                  ? AppTheme.mutedTextColor(context)
+                                  : AppTheme.primaryTextColor(context)),
                           validator: (val) {
                             if (val == null || val.isEmpty) return 'Required';
                             if (int.tryParse(val) == null) return 'Invalid';
@@ -1278,7 +1413,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                             hintStyle: TextStyle(
                                 color: AppTheme.mutedTextColor(context),
                                 fontSize: 13),
-                            fillColor: AppTheme.inputFillColor(context),
+                            fillColor: _isEditingOlderThan12Hours
+                                ? AppTheme.inputFillColor(context).withOpacity(0.5)
+                                : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 14),
@@ -1287,6 +1424,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
                                   color: AppTheme.borderColor(context)),
+                            ),
+                            disabledBorder: OutlineInputBorder(
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusLG),
+                              borderSide: BorderSide(
+                                  color: AppTheme.borderColor(context).withOpacity(0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -1328,14 +1471,20 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               const SizedBox(height: 8),
               TextFormField(
                 controller: _recordedByController,
+                enabled: !_isEditingOlderThan12Hours,
                 style: TextStyle(
-                    fontSize: 14, color: AppTheme.primaryTextColor(context)),
+                    fontSize: 14,
+                    color: _isEditingOlderThan12Hours
+                        ? AppTheme.mutedTextColor(context)
+                        : AppTheme.primaryTextColor(context)),
                 validator: (val) => val == null || val.trim().isEmpty
                     ? 'Recorded By is required'
                     : null,
                 decoration: InputDecoration(
                   hintText: 'Ashish',
-                  fillColor: AppTheme.inputFillColor(context),
+                  fillColor: _isEditingOlderThan12Hours
+                      ? AppTheme.inputFillColor(context).withOpacity(0.5)
+                      : AppTheme.inputFillColor(context),
                   filled: true,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -1343,6 +1492,11 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                     borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                     borderSide:
                         BorderSide(color: AppTheme.borderColor(context)),
+                  ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                    borderSide: BorderSide(
+                        color: AppTheme.borderColor(context).withOpacity(0.5)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusLG),
@@ -1453,17 +1607,21 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            _type == TransactionType.stockIn
-                                ? Icons.arrow_upward_rounded
-                                : Icons.arrow_downward_rounded,
+                            _isEditing
+                                ? Icons.save_rounded
+                                : (_type == TransactionType.stockIn
+                                    ? Icons.arrow_upward_rounded
+                                    : Icons.arrow_downward_rounded),
                             size: 18,
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            _type == TransactionType.stockIn
-                                ? 'Record Stock In'
-                                : 'Record Stock Out',
-                            style: TextStyle(
+                            _isEditing
+                                ? 'Save Changes'
+                                : (_type == TransactionType.stockIn
+                                    ? 'Record Stock In'
+                                    : 'Record Stock Out'),
+                            style: const TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.w800),
                           ),
                         ],
