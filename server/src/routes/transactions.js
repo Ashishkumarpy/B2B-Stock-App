@@ -590,6 +590,44 @@ transactionsRouter.patch(
     if (!oldRes.data) return res.status(404).json({ error: 'Transaction not found' });
     const oldTx = oldRes.data;
 
+    // Check if the transaction is older than 12 hours
+    const createdAtTime = new Date(oldTx.created_at).getTime();
+    const isOlderThan12Hours = (Date.now() - createdAtTime) > 12 * 60 * 60 * 1000;
+
+    if (isOlderThan12Hours) {
+      // Validate that locked fields have not changed.
+      const payloadCartons = payload.cartons !== undefined && payload.cartons !== null ? (payload.cartons === '' ? null : Number(payload.cartons)) : null;
+      const oldCartons = oldTx.cartons ?? null;
+
+      const payloadPcs = payload.pcs_per_carton !== undefined && payload.pcs_per_carton !== null ? (payload.pcs_per_carton === '' ? null : Number(payload.pcs_per_carton)) : null;
+      const oldPcs = oldTx.pcs_per_carton ?? null;
+
+      if (
+        type !== String(oldTx.type || '') ||
+        quantity !== Number(oldTx.quantity || 0) ||
+        workerName !== String(oldTx.worker_name || '') ||
+        payloadCartons !== oldCartons ||
+        payloadPcs !== oldPcs
+      ) {
+        return res.status(400).json({
+          error: 'This transaction was recorded more than 12 hours ago. Only customer name and notes can be edited.',
+        });
+      }
+
+      // Update only notes in the transactions table
+      const updatedTxRes = await supabaseAdmin
+        .from('transactions')
+        .update({
+          notes,
+        })
+        .eq('id', txId)
+        .select('*')
+        .maybeSingle();
+
+      if (updatedTxRes.error) return res.status(400).json({ error: updatedTxRes.error.message });
+      return res.json({ data: updatedTxRes.data });
+    }
+
     const productId = String(oldTx.product_id || '').trim();
     const warehouseId = String(oldTx.warehouse_id || '').trim();
     const colorName = String(oldTx.color_name || 'Default').trim() || 'Default';

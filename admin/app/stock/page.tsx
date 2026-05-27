@@ -23,6 +23,7 @@ interface Transaction {
   created_at: string;
   cartons?: number | null;
   pcs_per_carton?: number | null;
+  worker_id?: string;
 }
 
 export function parseCartonFromNotes(notes?: string | null): { cartons: number; pcsPerCarton: number } | null {
@@ -37,6 +38,21 @@ export function parseCartonFromNotes(notes?: string | null): { cartons: number; 
     }
   }
   return null;
+}
+
+export function getCleanNotes(notes?: string | null): string {
+  if (!notes) return '';
+  let clean = notes.trim();
+  
+  // 1. Strip customer prefix: "Customer: <any chars till | or end>"
+  const customerRegex = /^Customer:\s*[^|]+(\|)?/i;
+  clean = clean.replace(customerRegex, '').trim();
+
+  // 2. Strip cartons prefix: "\d+ ctn × \d+ pcs" or similar, case insensitively
+  const cartonRegex = /^\d+\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*\d+\s*(?:pcs)?\s*(\|)?/i;
+  clean = clean.replace(cartonRegex, '').trim();
+
+  return clean;
 }
 
 interface Product {
@@ -94,6 +110,18 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingTransactionId, setEditingTransactionId] = useState<string | null>(null);
+  
+  const editingTransaction = useMemo(() => {
+    if (!editingTransactionId) return null;
+    return transactions.find((t) => t.id === editingTransactionId) || null;
+  }, [editingTransactionId, transactions]);
+
+  const isEditingOlderThan12Hours = useMemo(() => {
+    if (!editingTransaction) return false;
+    const createdAtTime = new Date(editingTransaction.created_at).getTime();
+    return (Date.now() - createdAtTime) > 12 * 60 * 60 * 1000;
+  }, [editingTransaction]);
+
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -469,7 +497,7 @@ export default function StockPage() {
         color_name: colorParam || (productId ? firstColor : 'Default'),
         warehouse_id: warehouseIdParam || prev.warehouse_id || defaultWarehouse,
         quantity: safeQuantity,
-        notes: notesParam,
+        notes: getCleanNotes(notesParam),
         worker_id: workerIdParam || prev.worker_id,
         worker_name: workerNameParam || prev.worker_name,
         cartons: safeCartons,
@@ -718,6 +746,12 @@ export default function StockPage() {
                           const matchedWarehouse = warehouses.find((w) => w.name === t.warehouse_name);
                           if (matchedWarehouse?.id) params.set('warehouseId', matchedWarehouse.id);
                         }
+                        if (t.worker_id) {
+                          params.set('workerId', t.worker_id);
+                        } else if (t.worker_name) {
+                          const matchedWorker = workers.find((w) => w.name === t.worker_name);
+                          if (matchedWorker?.id) params.set('workerId', matchedWorker.id);
+                        }
                         if (t.cartons != null) params.set('cartons', String(t.cartons));
                         if (t.pcs_per_carton != null) params.set('pcsPerCarton', String(t.pcs_per_carton));
                         const customer = parseCustomerFromNotes(t.notes);
@@ -746,6 +780,13 @@ export default function StockPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
+              {isEditingOlderThan12Hours && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2.5 text-xs text-amber-300 leading-normal">
+                  <span className="text-sm">ℹ️</span>
+                  <p>This transaction was recorded more than 12 hours ago. Only the customer name and notes can be edited.</p>
+                </div>
+              )}
+
               {/* Type Toggle */}
               <div>
                 <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Movement Type</label>
@@ -754,13 +795,14 @@ export default function StockPage() {
                     <button
                       key={t}
                       type="button"
+                      disabled={isEditingOlderThan12Hours}
                       onClick={() => setForm({ ...form, type: t })}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition ${form.type === t
                           ? t === 'stock_in'
                             ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
                             : 'bg-red-600/20 border-red-500 text-red-300'
                           : 'border-white/10 text-gray-500 hover:bg-white/5'
-                        }`}
+                        } ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {t === 'stock_in' ? '↑ Stock In' : '↓ Stock Out'}
                     </button>
@@ -773,8 +815,9 @@ export default function StockPage() {
                 <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Product *</label>
                 <button
                   type="button"
+                  disabled={isEditingOlderThan12Hours}
                   onClick={() => setShowProductPicker(true)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-left text-white focus:outline-none focus:border-indigo-500 flex justify-between items-center"
+                  className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-left text-white focus:outline-none focus:border-indigo-500 flex justify-between items-center ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {form.product_id ? (
                     <div className="flex flex-col">
@@ -804,8 +847,9 @@ export default function StockPage() {
                   <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Warehouse</label>
                   <select
                     value={form.warehouse_id}
+                    disabled={isEditingOlderThan12Hours}
                     onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {warehouses.length === 0 ? (
                       <option value="" className="bg-[#0f1117]">Main Warehouse (fallback)</option>
@@ -824,10 +868,11 @@ export default function StockPage() {
                     <input
                       required
                       type="text"
+                      disabled={isEditingOlderThan12Hours}
                       list="color-suggestions"
                       value={form.color_name}
                       onChange={(e) => setForm({ ...form, color_name: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. Black"
                     />
                     <datalist id="color-suggestions">
@@ -856,13 +901,14 @@ export default function StockPage() {
                     <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Cartons</label>
                     <input
                       type="number" min="0"
+                      disabled={isEditingOlderThan12Hours}
                       value={form.cartons}
                       onChange={(e) => {
                         const c = Number(e.target.value);
                         const p = Number(form.pcsPerCarton) || 0;
                         setForm({ ...form, cartons: e.target.value, quantity: c * p || 0 });
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 5"
                     />
                   </div>
@@ -870,13 +916,14 @@ export default function StockPage() {
                     <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Pcs / Carton</label>
                     <input
                       type="number" min="0"
+                      disabled={isEditingOlderThan12Hours}
                       value={form.pcsPerCarton}
                       onChange={(e) => {
                         const p = Number(e.target.value);
                         const c = Number(form.cartons) || 0;
                         setForm({ ...form, pcsPerCarton: e.target.value, quantity: c * p || 0 });
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 20"
                     />
                   </div>
@@ -884,9 +931,10 @@ export default function StockPage() {
                     <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Total Quantity *</label>
                     <input
                       type="number" required min="1"
+                      disabled={isEditingOlderThan12Hours}
                       value={form.quantity || ''}
                       onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 100"
                     />
                   </div>
@@ -895,12 +943,13 @@ export default function StockPage() {
                   <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Recorded By *</label>
                   <select
                     required
+                    disabled={isEditingOlderThan12Hours}
                     value={form.worker_id}
                     onChange={(e) => {
                       const w = workers.find(w => w.id === e.target.value);
                       setForm({ ...form, worker_id: e.target.value, worker_name: w?.name || '' });
                     }}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="" disabled className="bg-[#0f1117]">Select Worker...</option>
                     {workers.map((w) => (
