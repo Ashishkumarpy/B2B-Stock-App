@@ -132,6 +132,13 @@ export default function StockPage() {
   const [stockPrefs, setStockPrefs] = useState<StockEntryPrefMap>({});
 
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [typeFilter, setTypeFilter] = useState<'both' | 'stock_in' | 'stock_out'>('both');
+
+  const filteredTransactions = useMemo(() => {
+    if (typeFilter === 'both') return transactions;
+    return transactions.filter((t) => t.type === typeFilter);
+  }, [transactions, typeFilter]);
+
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportDate, setExportDate] = useState(() => {
     const local = new Date();
@@ -685,112 +692,152 @@ export default function StockPage() {
         ) : transactions.length === 0 ? (
           <div className="p-12 text-center text-gray-500 text-sm">No stock entries yet. Click "+ Record Stock" to log the first transaction.</div>
         ) : (
-          <table className="data-table w-full text-sm">
-            <thead>
-              <tr>
-                <th className="text-left">Worker</th>
-                <th className="text-left">Type</th>
-                <th className="text-left">Code</th>
-                <th className="text-left">Color</th>
-                <th className="text-left">Warehouse</th>
-                <th className="text-right">Qty</th>
-                <th className="text-left">Notes</th>
-                <th className="text-left">Date / Time</th>
-                <th className="text-left">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {transactions.map((t) => (
-                <tr key={t.id}>
-                  <td className="text-white font-medium">{t.worker_name}</td>
-                  <td>
-                    <span className={`badge ${t.type === 'stock_in' ? 'badge-green' : 'badge-red'}`}>
-                      {t.type === 'stock_in' ? 'Stock In' : 'Stock Out'}
-                    </span>
-                  </td>
-                  <td className="py-2">
-                    <div className="flex flex-col">
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/products/${encodeURIComponent(t.product_id)}`)}
-                        className="font-mono text-sm font-bold text-indigo-400 hover:underline text-left"
-                      >
-                        {t.product_code}
-                      </button>
-                      <span className="text-[10px] text-gray-500 max-w-[200px] truncate leading-tight mt-0.5">
-                        {t.product_name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="text-gray-300">{t.color_name || 'Default'}</td>
-                  <td className="text-gray-300 max-w-[180px] truncate">{t.warehouse_name || 'Main Warehouse'}</td>
-                  <td className="text-right py-2">
-                    <div className="flex flex-col items-end justify-center">
-                      <span className={`font-mono font-bold text-sm ${t.type === 'stock_in' ? 'text-emerald-400' : 'text-red-400'}`}>
-                        {t.type === 'stock_in' ? '+' : '-'}{t.quantity}
-                      </span>
-                      {(() => {
-                        if (t.cartons && t.pcs_per_carton) {
-                          return (
-                            <span className="text-[10px] text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
-                              {t.cartons} ctn × {t.pcs_per_carton}
-                            </span>
-                          );
-                        }
-                        const parsed = parseCartonFromNotes(t.notes);
-                        if (parsed) {
-                          return (
-                            <span className="text-[10px] text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
-                              {parsed.cartons} ctn × {parsed.pcsPerCarton}
-                            </span>
-                          );
-                        }
-                        return null;
-                      })()}
-                    </div>
-                  </td>
-                  <td className="text-gray-500 text-xs max-w-[140px] truncate">{t.notes || '—'}</td>
-                  <td className="text-gray-500 text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const params = new URLSearchParams({
-                          transactionId: t.id,
-                          productId: t.product_id,
-                          type: t.type,
-                          color: t.color_name || 'Default',
-                          quantity: String(t.quantity),
-                          notes: t.notes || '',
-                          workerName: t.worker_name || '',
-                        });
-                        if (t.warehouse_id) {
-                          params.set('warehouseId', t.warehouse_id);
-                        } else if (t.warehouse_name) {
-                          const matchedWarehouse = warehouses.find((w) => w.name === t.warehouse_name);
-                          if (matchedWarehouse?.id) params.set('warehouseId', matchedWarehouse.id);
-                        }
-                        if (t.worker_id) {
-                          params.set('workerId', t.worker_id);
-                        } else if (t.worker_name) {
-                          const matchedWorker = workers.find((w) => w.name === t.worker_name);
-                          if (matchedWorker?.id) params.set('workerId', matchedWorker.id);
-                        }
-                        if (t.cartons != null) params.set('cartons', String(t.cartons));
-                        if (t.pcs_per_carton != null) params.set('pcsPerCarton', String(t.pcs_per_carton));
-                        const customer = parseCustomerFromNotes(t.notes);
-                        if (customer) params.set('customer', customer);
-                        router.push(`/stock?${params.toString()}`);
-                      }}
-                      className="rounded-md border border-indigo-400/40 bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20"
-                    >
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <>
+            {/* Filter Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-white/5 bg-white/[0.02]">
+              <div className="flex items-center gap-2.5">
+                <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Type Filter:</span>
+                <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                  <button
+                    onClick={() => setTypeFilter('both')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('stock_in')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    Stock In
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('stock_out')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                  >
+                    Stock Out
+                  </button>
+                </div>
+              </div>
+              <div className="text-xs text-gray-500 font-medium">
+                Showing {filteredTransactions.length} of {transactions.length} entries
+              </div>
+            </div>
+
+            {filteredTransactions.length === 0 ? (
+              <div className="p-12 text-center text-gray-500 text-sm">
+                No {typeFilter === 'stock_in' ? 'Stock In' : 'Stock Out'} entries found.
+              </div>
+            ) : (
+              <table className="data-table w-full text-sm">
+                <thead>
+                  <tr>
+                    <th className="text-left w-12">#</th>
+                    <th className="text-left">Worker</th>
+                    <th className="text-left">Type</th>
+                    <th className="text-left">Code</th>
+                    <th className="text-left">Color</th>
+                    <th className="text-left">Warehouse</th>
+                    <th className="text-right">Qty</th>
+                    <th className="text-left">Notes</th>
+                    <th className="text-left">Date / Time</th>
+                    <th className="text-left">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTransactions.map((t, idx) => (
+                    <tr key={t.id}>
+                      <td className="text-gray-500 font-mono text-xs w-12">{idx + 1}</td>
+                      <td className="text-white font-medium">{t.worker_name}</td>
+                      <td>
+                        <span className={`badge ${t.type === 'stock_in' ? 'badge-green' : 'badge-red'}`}>
+                          {t.type === 'stock_in' ? 'Stock In' : 'Stock Out'}
+                        </span>
+                      </td>
+                      <td className="py-2">
+                        <div className="flex flex-col">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/products/${encodeURIComponent(t.product_id)}`)}
+                            className="font-mono text-sm font-bold text-indigo-400 hover:underline text-left"
+                          >
+                            {t.product_code}
+                          </button>
+                          <span className="text-[10px] text-gray-500 max-w-[200px] truncate leading-tight mt-0.5">
+                            {t.product_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="text-gray-300">{t.color_name || 'Default'}</td>
+                      <td className="text-gray-300 max-w-[180px] truncate">{t.warehouse_name || 'Main Warehouse'}</td>
+                      <td className="text-right py-2">
+                        <div className="flex flex-col items-end justify-center">
+                          <span className={`font-mono font-bold text-sm ${t.type === 'stock_in' ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {t.type === 'stock_in' ? '+' : '-'}{t.quantity}
+                          </span>
+                          {(() => {
+                            if (t.cartons && t.pcs_per_carton) {
+                              return (
+                                <span className="text-[10px] text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
+                                  {t.cartons} ctn × {t.pcs_per_carton}
+                                </span>
+                              );
+                            }
+                            const parsed = parseCartonFromNotes(t.notes);
+                            if (parsed) {
+                              return (
+                                <span className="text-[10px] text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
+                                  {parsed.cartons} ctn × {parsed.pcsPerCarton}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
+                      <td className="text-gray-500 text-xs max-w-[140px] truncate">{t.notes || '—'}</td>
+                      <td className="text-gray-500 text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const params = new URLSearchParams({
+                              transactionId: t.id,
+                              productId: t.product_id,
+                              type: t.type,
+                              color: t.color_name || 'Default',
+                              quantity: String(t.quantity),
+                              notes: t.notes || '',
+                              workerName: t.worker_name || '',
+                            });
+                            if (t.warehouse_id) {
+                              params.set('warehouseId', t.warehouse_id);
+                            } else if (t.warehouse_name) {
+                              const matchedWarehouse = warehouses.find((w) => w.name === t.warehouse_name);
+                              if (matchedWarehouse?.id) params.set('warehouseId', matchedWarehouse.id);
+                            }
+                            if (t.worker_id) {
+                              params.set('workerId', t.worker_id);
+                            } else if (t.worker_name) {
+                              const matchedWorker = workers.find((w) => w.name === t.worker_name);
+                              if (matchedWorker?.id) params.set('workerId', matchedWorker.id);
+                            }
+                            if (t.cartons != null) params.set('cartons', String(t.cartons));
+                            if (t.pcs_per_carton != null) params.set('pcsPerCarton', String(t.pcs_per_carton));
+                            const customer = parseCustomerFromNotes(t.notes);
+                            if (customer) params.set('customer', customer);
+                            router.push(`/stock?${params.toString()}`);
+                          }}
+                          className="rounded-md border border-indigo-400/40 bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20"
+                        >
+                          Edit
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </>
         )}
       </div>
 
