@@ -64,6 +64,9 @@ export default function FolderExplorerPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const warehouseId = searchParams.get('warehouseId');
+  const [warehouseStocks, setWarehouseStocks] = useState<Record<string, number> | null>(null);
+  const [selectedWarehouseName, setSelectedWarehouseName] = useState<string | null>(null);
   
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
@@ -150,17 +153,48 @@ export default function FolderExplorerPage() {
     fetchProducts();
   }, [router]);
 
+  useEffect(() => {
+    if (!warehouseId) {
+      setWarehouseStocks(null);
+      setSelectedWarehouseName(null);
+      return;
+    }
+    setLoading(true);
+    Promise.all([
+      serverGet(`/warehouses/${encodeURIComponent(warehouseId)}/products`),
+      serverGet('/warehouses')
+    ])
+      .then(([productsRes, warehousesRes]: any) => {
+        const stocksMap: Record<string, number> = {};
+        for (const item of productsRes?.data ?? []) {
+          stocksMap[item.product_id] = item.available_quantity;
+        }
+        setWarehouseStocks(stocksMap);
+        
+        const wList = (warehousesRes?.data ?? []) as any[];
+        const match = wList.find((w) => w.id === warehouseId);
+        if (match) {
+          setSelectedWarehouseName(match.location ? `${match.name} — ${match.location}` : match.name);
+        } else {
+          setSelectedWarehouseName('Selected Warehouse');
+        }
+      })
+      .catch((err) => console.error('Failed to fetch warehouse details:', err))
+      .finally(() => setLoading(false));
+  }, [warehouseId]);
+
   const productsInFolder = useMemo(() => {
     const items: Product[] = [];
 
     for (const product of products) {
       const segments = splitCategoryPath(product.category);
       if (!isPrefix(currentSegments, segments)) continue;
+      if (warehouseId && warehouseStocks && (warehouseStocks[product.id] ?? 0) <= 0) continue;
       items.push(product);
     }
 
     return items.sort(sortProductsByCode);
-  }, [currentSegments, products]);
+  }, [currentSegments, products, warehouseId, warehouseStocks]);
 
   const query = search.trim().toLowerCase();
   const visibleProducts = productsInFolder.filter(
@@ -184,7 +218,11 @@ export default function FolderExplorerPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => router.push('/products')}
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (warehouseId) params.set('warehouseId', warehouseId);
+              router.push(`/products?${params.toString()}`);
+            }}
             className="rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-white/5"
           >
             Back to Products
@@ -216,7 +254,11 @@ export default function FolderExplorerPage() {
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
-            onClick={() => router.push('/products/folder')}
+            onClick={() => {
+              const params = new URLSearchParams();
+              if (warehouseId) params.set('warehouseId', warehouseId);
+              router.push(`/products/folder?${params.toString()}`);
+            }}
             className={`rounded-lg px-3 py-1.5 text-xs ${currentSegments.length === 0 ? 'bg-indigo-600 text-white' : 'border border-white/10 text-gray-300'
               }`}
           >
@@ -229,7 +271,11 @@ export default function FolderExplorerPage() {
               <button
                 key={`${path}-${index}`}
                 type="button"
-                onClick={() => router.push(`/products/folder?name=${encodeURIComponent(path)}`)}
+                onClick={() => {
+                  const params = new URLSearchParams({ name: path });
+                  if (warehouseId) params.set('warehouseId', warehouseId);
+                  router.push(`/products/folder?${params.toString()}`);
+                }}
                 className={`rounded-lg px-3 py-1.5 text-xs ${active ? 'bg-indigo-600 text-white' : 'border border-white/10 text-gray-300'
                   }`}
               >
@@ -247,6 +293,28 @@ export default function FolderExplorerPage() {
         />
       </div>
 
+      {selectedWarehouseName && (
+        <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 shadow-sm mb-6">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🏢</span>
+            <div>
+              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider leading-none">Filtered by Warehouse</p>
+              <p className="text-sm font-bold text-white mt-1.5">{selectedWarehouseName}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.delete('warehouseId');
+              router.push(newUrl.pathname + newUrl.search);
+            }}
+            className="rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 text-xs font-semibold px-4 py-2 transition"
+          >
+            Clear Filter
+          </button>
+        </div>
+      )}
+
       <div className="card p-4 md:p-6">
         <h2 className="mb-4 text-sm font-semibold text-white">Products in {currentLabel}</h2>
         {loading ? (
@@ -258,7 +326,8 @@ export default function FolderExplorerPage() {
         ) : (
           <div className={gridClass}>
             {visibleProducts.map((product, index) => {
-              const status = statusMap[product.stock_status] || statusMap.out_of_stock;
+              const displayQty = warehouseStocks ? (warehouseStocks[product.id] ?? 0) : product.quantity;
+              const status = (displayQty > 0) ? statusMap.in_stock : statusMap.out_of_stock;
               return (
                 <div
                   key={product.id}
@@ -286,9 +355,9 @@ export default function FolderExplorerPage() {
                     <div className="mt-2 flex items-center justify-between text-[11px] text-gray-200">
                       <span>Qty: {(() => {
                         const size = product.pcs_per_carton || 1;
-                        if (size <= 1) return `${product.quantity} pcs`;
-                        const cartons = Math.floor(product.quantity / size);
-                        const pcs = product.quantity % size;
+                        if (size <= 1) return `${displayQty} pcs`;
+                        const cartons = Math.floor(displayQty / size);
+                        const pcs = displayQty % size;
                         if (cartons === 0) return `${pcs} pcs`;
                         if (pcs === 0) return `${cartons} ctn`;
                         return `${cartons} ctn, ${pcs} pcs`;

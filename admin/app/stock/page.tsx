@@ -130,6 +130,8 @@ export default function StockPage() {
   const [pickerCategory, setPickerCategory] = useState<string | null>(null);
   const prefetchedQueryRef = useRef<string | null>(null);
   const [stockPrefs, setStockPrefs] = useState<StockEntryPrefMap>({});
+  const [productStockDistribution, setProductStockDistribution] = useState<any[]>([]);
+  const [isLoadingStockDistribution, setIsLoadingStockDistribution] = useState(false);
 
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [typeFilter, setTypeFilter] = useState<'both' | 'stock_in' | 'stock_out'>('both');
@@ -397,6 +399,31 @@ export default function StockPage() {
     }
   }, [router]);
 
+  const fetchStockDistribution = useCallback(async (productId: string, autoRoute: boolean = false) => {
+    setIsLoadingStockDistribution(true);
+    try {
+      const res = await serverGet(`/products/${encodeURIComponent(productId)}/stock-distribution`);
+      const rows = ((res as any)?.data ?? []) as any[];
+      setProductStockDistribution(rows);
+      
+      if (autoRoute && rows.length > 0) {
+        const firstStockRow = rows.find((r) => parseInt(r.quantity?.toString() ?? '0', 10) > 0);
+        if (firstStockRow) {
+          setForm((prev) => ({
+            ...prev,
+            color_name: firstStockRow.color_name || 'Default',
+            warehouse_id: firstStockRow.warehouse_id || prev.warehouse_id || warehouses[0]?.id || '',
+          }));
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch stock distribution:', e);
+      setProductStockDistribution([]);
+    } finally {
+      setIsLoadingStockDistribution(false);
+    }
+  }, [warehouses]);
+
   useEffect(() => {
     fetchTransactions();
     fetchFormData();
@@ -427,6 +454,15 @@ export default function StockPage() {
       supabase.removeChannel(channel);
     };
   }, [fetchTransactions, fetchFormData]);
+
+  useEffect(() => {
+    if (!form.product_id || form.type !== 'stock_out') {
+      setProductStockDistribution([]);
+      return;
+    }
+    const needsRouting = !form.color_name || form.color_name === 'Default' || !form.warehouse_id;
+    fetchStockDistribution(form.product_id, needsRouting);
+  }, [form.product_id, form.type, fetchStockDistribution]);
 
   useEffect(() => {
     try {
@@ -478,15 +514,24 @@ export default function StockPage() {
     if (!form.product_id) return;
     const product = productById.get(form.product_id);
     if (!product) return;
-    const firstColor = product.color_stocks?.[0]?.color || 'Default';
     const productPcs = Number(product.pcs_per_carton);
+ 
+    if (form.type === 'stock_out') {
+      setForm((prev) => ({
+        ...prev,
+        pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1
+      }));
+      return;
+    }
+
+    const firstColor = product.color_stocks?.[0]?.color || 'Default';
     const pref = stockPrefs[form.product_id];
     const preferredColor = pref?.color_name?.trim() ? pref.color_name.trim() : '';
     const preferredWarehouse = pref?.warehouse_id?.trim() ? pref.warehouse_id.trim() : '';
     const hasPreferredWarehouse = preferredWarehouse
       ? warehouses.some((w) => w.id === preferredWarehouse)
       : false;
-
+ 
     setForm((prev) => ({ 
       ...prev, 
       color_name:
@@ -499,7 +544,7 @@ export default function StockPage() {
           : (prev.warehouse_id || warehouses[0]?.id || ''),
       pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1
     }));
-  }, [form.product_id, productById, stockPrefs, warehouses]);
+  }, [form.product_id, form.type, productById, stockPrefs, warehouses]);
 
   useEffect(() => {
     const actionParam = (searchParams.get('action') ?? '').trim();
@@ -551,29 +596,134 @@ export default function StockPage() {
       setEditingTransactionId(transactionIdParam || null);
       setShowModal(true);
       prefetchedQueryRef.current = queryKey;
+      if (productId && safeType === 'stock_out') {
+        fetchStockDistribution(productId, !colorParam && !warehouseIdParam);
+      }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [products, searchParams, warehouses]);
+  }, [products, searchParams, warehouses, fetchStockDistribution]);
 
   const selectedProduct = form.product_id ? productById.get(form.product_id) : undefined;
   const availableColors = selectedProduct?.color_stocks ?? [];
+
+  const allWarehouseIdsWithStock = useMemo(() => {
+    if (form.type !== 'stock_out' || !form.product_id) return new Set<string>();
+    return new Set(
+      productStockDistribution
+        .map((r) => r.warehouse_id?.toString() ?? '')
+        .filter(Boolean)
+    );
+  }, [productStockDistribution, form.type, form.product_id]);
+
+  const colorRows = useMemo(() => {
+    if (form.type !== 'stock_out' || !form.product_id) return [];
+    const colorQtyMap = new Map<string, { color_name: string; available_quantity: number }>();
+    for (const row of productStockDistribution) {
+      const colorName = (row.color_name?.toString() ?? '').trim();
+      if (!colorName) continue;
+      const key = colorName.toLowerCase();
+      const qty = parseInt(row.quantity?.toString() ?? '0', 10);
+      if (qty <= 0) continue;
+      
+      const existing = colorQtyMap.get(key);
+      if (existing) {
+        existing.available_quantity += qty;
+      } else {
+        colorQtyMap.set(key, { color_name: colorName, available_quantity: qty });
+      }
+    }
+    return Array.from(colorQtyMap.values()).sort((a, b) =>
+      a.color_name.toLowerCase().localeCompare(b.color_name.toLowerCase())
+    );
+  }, [productStockDistribution, form.type, form.product_id]);
+
   const colorSuggestions = useMemo(() => {
+    if (form.type === 'stock_out' && form.product_id) {
+      return colorRows.map((r) => r.color_name);
+    }
     const fromProduct = (selectedProduct?.color_stocks ?? [])
       .map((entry) => String(entry?.color || '').trim())
       .filter(Boolean);
     const prefColor = form.product_id ? stockPrefs[form.product_id]?.color_name?.trim() : '';
     const all = prefColor ? [prefColor, ...fromProduct] : fromProduct;
     return [...new Set(all)];
-  }, [form.product_id, selectedProduct?.color_stocks, stockPrefs]);
-  const selectedColorQty = (() => {
+  }, [form.product_id, form.type, colorRows, selectedProduct?.color_stocks, stockPrefs]);
+
+  const selectedColorQty = useMemo(() => {
     if (!selectedProduct) return 0;
-    const normalized = form.color_name.trim().toLowerCase();
-    if (!normalized || normalized === 'default') return selectedProduct.quantity;
+    const normalizedColor = form.color_name.trim().toLowerCase();
+    if (form.type === 'stock_out' && form.warehouse_id) {
+      const match = productStockDistribution.find(
+        (r) =>
+          r.warehouse_id?.toString() === form.warehouse_id?.toString() &&
+          (r.color_name?.toString() ?? '').trim().toLowerCase() === normalizedColor
+      );
+      return match ? parseInt(match.quantity?.toString() ?? '0', 10) : 0;
+    }
+    if (!normalizedColor || normalizedColor === 'default') return selectedProduct.quantity;
     const colorRow = selectedProduct.color_stocks?.find(
-      (c) => c.color.trim().toLowerCase() === normalized
+      (c) => c.color.trim().toLowerCase() === normalizedColor
     );
     return colorRow?.quantity ?? 0;
-  })();
+  }, [selectedProduct, form.color_name, form.type, form.warehouse_id, productStockDistribution]);
+
+  const filteredWarehouseOptions = useMemo(() => {
+    if (form.type !== 'stock_out' || !form.product_id || isLoadingStockDistribution) {
+      return warehouses;
+    }
+    return warehouses.filter((w) => allWarehouseIdsWithStock.has(w.id));
+  }, [warehouses, allWarehouseIdsWithStock, form.type, form.product_id, isLoadingStockDistribution]);
+
+  const handleWarehouseChange = (warehouseId: string) => {
+    setForm((prev) => {
+      let newColor = prev.color_name;
+      if (prev.type === 'stock_out' && productStockDistribution.length > 0) {
+        const colorsInSelectedWarehouse = new Set(
+          productStockDistribution
+            .filter((r) => r.warehouse_id?.toString() === warehouseId && parseInt(r.quantity?.toString() ?? '0', 10) > 0)
+            .map((r) => (r.color_name?.toString() ?? '').trim().toLowerCase())
+        );
+        const currentColor = prev.color_name.trim().toLowerCase();
+        if (!colorsInSelectedWarehouse.has(currentColor) && colorsInSelectedWarehouse.size > 0) {
+          const firstStockedColor = productStockDistribution.find(
+            (r) => r.warehouse_id?.toString() === warehouseId && parseInt(r.quantity?.toString() ?? '0', 10) > 0
+          );
+          if (firstStockedColor) {
+            newColor = firstStockedColor.color_name || 'Default';
+          }
+        }
+      }
+      return { ...prev, warehouse_id: warehouseId, color_name: newColor };
+    });
+  };
+
+  const handleColorChange = (colorName: string) => {
+    setForm((prev) => {
+      let newWarehouseId = prev.warehouse_id;
+      if (prev.type === 'stock_out' && productStockDistribution.length > 0) {
+        const targetColor = colorName.trim().toLowerCase();
+        
+        const warehousesWithColorStock = productStockDistribution
+          .filter((r) => {
+            const rowColor = (r.color_name?.toString() ?? '').trim().toLowerCase();
+            const qty = parseInt(r.quantity?.toString() ?? '0', 10);
+            return rowColor === targetColor && qty > 0;
+          })
+          .map((r) => r.warehouse_id?.toString() ?? '')
+          .filter(Boolean);
+        
+        if (newWarehouseId && !warehousesWithColorStock.includes(newWarehouseId) && warehousesWithColorStock.length > 0) {
+          const sorted = productStockDistribution
+            .filter((r) => (r.color_name?.toString() ?? '').trim().toLowerCase() === targetColor && parseInt(r.quantity?.toString() ?? '0', 10) > 0)
+            .sort((a, b) => parseInt(b.quantity?.toString() ?? '0', 10) - parseInt(a.quantity?.toString() ?? '0', 10));
+          if (sorted.length > 0) {
+            newWarehouseId = sorted[0].warehouse_id;
+          }
+        }
+      }
+      return { ...prev, color_name: colorName, warehouse_id: newWarehouseId };
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -591,35 +741,28 @@ export default function StockPage() {
       if (!product) { setError('Product not found.'); setSaving(false); return; }
 
       if (!isEditingOlderThan12Hours) {
-        let virtualProductQty = product.quantity;
         let virtualColorQty = selectedColorQty;
 
         if (editingTransaction && editingTransaction.product_id === form.product_id) {
           const oldQty = editingTransaction.quantity;
+          const oldColorNormalized = (editingTransaction.color_name || 'Default').trim().toLowerCase();
+          const oldWarehouseId = editingTransaction.warehouse_id?.toString() || '';
+          const formColorNormalized = form.color_name.trim().toLowerCase();
+          const formWarehouseId = form.warehouse_id?.toString() || '';
+
           if (editingTransaction.type === 'stock_out') {
-            virtualProductQty += oldQty;
-            const oldColorNormalized = (editingTransaction.color_name || 'Default').trim().toLowerCase();
-            const formColorNormalized = form.color_name.trim().toLowerCase();
-            if (oldColorNormalized === formColorNormalized) {
+            if (oldColorNormalized === formColorNormalized && oldWarehouseId === formWarehouseId) {
               virtualColorQty += oldQty;
             }
           } else if (editingTransaction.type === 'stock_in') {
-            virtualProductQty -= oldQty;
-            const oldColorNormalized = (editingTransaction.color_name || 'Default').trim().toLowerCase();
-            const formColorNormalized = form.color_name.trim().toLowerCase();
-            if (oldColorNormalized === formColorNormalized) {
+            if (oldColorNormalized === formColorNormalized && oldWarehouseId === formWarehouseId) {
               virtualColorQty -= oldQty;
             }
           }
         }
 
-        if (form.type === 'stock_out' && form.quantity > virtualProductQty) {
-          setError(`Only ${virtualProductQty} units available. Cannot dispatch more than available stock.`);
-          setSaving(false);
-          return;
-        }
         if (form.type === 'stock_out' && form.quantity > virtualColorQty) {
-          setError(`Only ${virtualColorQty} units available for color "${form.color_name}".`);
+          setError(`Only ${virtualColorQty} units available for color "${form.color_name}" in the selected warehouse.`);
           setSaving(false);
           return;
         }
@@ -942,7 +1085,12 @@ export default function StockPage() {
                       key={t}
                       type="button"
                       disabled={isEditingOlderThan12Hours}
-                      onClick={() => setForm({ ...form, type: t })}
+                      onClick={() => {
+                        setForm((prev) => ({ ...prev, type: t }));
+                        if (t === 'stock_out' && form.product_id) {
+                          fetchStockDistribution(form.product_id, true);
+                        }
+                      }}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition ${form.type === t
                           ? t === 'stock_in'
                             ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
@@ -994,13 +1142,13 @@ export default function StockPage() {
                   <select
                     value={form.warehouse_id}
                     disabled={isEditingOlderThan12Hours}
-                    onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}
+                    onChange={(e) => handleWarehouseChange(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {warehouses.length === 0 ? (
-                      <option value="" className="bg-[#0f1117]">Main Warehouse (fallback)</option>
+                    {filteredWarehouseOptions.length === 0 ? (
+                      <option value="" className="bg-[#0f1117]">No warehouse with stock</option>
                     ) : (
-                      warehouses.map((w) => (
+                      filteredWarehouseOptions.map((w) => (
                         <option key={w.id} value={w.id} className="bg-[#0f1117]">
                           {w.location ? `${w.name} — ${w.location}` : w.name}
                         </option>
@@ -1010,28 +1158,55 @@ export default function StockPage() {
                 </div>
                 <div>
                   <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Color *</label>
-                  <div className="relative">
-                    <input
-                      required
-                      type="text"
-                      disabled={isEditingOlderThan12Hours}
-                      list="color-suggestions"
-                      value={form.color_name}
-                      onChange={(e) => setForm({ ...form, color_name: e.target.value })}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      placeholder="e.g. Black"
-                    />
-                    <datalist id="color-suggestions">
-                      {colorSuggestions.map((color) => (
-                        <option key={color} value={color} />
-                      ))}
-                    </datalist>
-                    {form.product_id && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">
-                        Stock: {selectedColorQty}
-                      </span>
-                    )}
-                  </div>
+                  {form.type === 'stock_out' ? (
+                    <div className="relative">
+                      <select
+                        required
+                        disabled={isEditingOlderThan12Hours}
+                        value={form.color_name}
+                        onChange={(e) => handleColorChange(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {colorSuggestions.length === 0 ? (
+                          <option value="" className="bg-[#0f1117]">No colors in stock</option>
+                        ) : (
+                          colorSuggestions.map((color) => (
+                            <option key={color} value={color} className="bg-[#0f1117]">
+                              {color}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                      {form.product_id && (
+                        <span className="absolute right-8 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded pointer-events-none">
+                          Stock: {selectedColorQty}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <input
+                        required
+                        type="text"
+                        disabled={isEditingOlderThan12Hours}
+                        list="color-suggestions"
+                        value={form.color_name}
+                        onChange={(e) => handleColorChange(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        placeholder="e.g. Black"
+                      />
+                      <datalist id="color-suggestions">
+                        {colorSuggestions.map((color) => (
+                          <option key={color} value={color} />
+                        ))}
+                      </datalist>
+                      {form.product_id && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">
+                          Stock: {selectedColorQty}
+                        </span>
+                      )}
+                    </div>
+                  )}
                   {availableColors.length > 0 && (
                     <p className="mt-1 text-[11px] text-gray-500">
                       Available: {availableColors.map((c) => `${c.color} (${c.quantity})`).join(', ')}
@@ -1198,14 +1373,19 @@ export default function StockPage() {
                       type="button"
                       onClick={() => {
                         const productPcs = Number(p.pcs_per_carton);
-                        setForm({
-                          ...form,
+                        setForm((prev) => ({
+                          ...prev,
                           product_id: p.id,
-                          color_name: p.color_stocks?.[0]?.color || 'Default',
                           pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1,
                           cartons: '',
                           quantity: 0,
-                        });
+                          ...(prev.type !== 'stock_out' ? {
+                            color_name: p.color_stocks?.[0]?.color || 'Default',
+                          } : {}),
+                        }));
+                        if (form.type === 'stock_out') {
+                          fetchStockDistribution(p.id, true);
+                        }
                         setShowProductPicker(false);
                         setPickerSearch('');
                         setPickerCategory(null);
@@ -1229,14 +1409,19 @@ export default function StockPage() {
                       type="button"
                       onClick={() => {
                         const productPcs = Number(p.pcs_per_carton);
-                        setForm({
-                          ...form,
+                        setForm((prev) => ({
+                          ...prev,
                           product_id: p.id,
-                          color_name: p.color_stocks?.[0]?.color || 'Default',
                           pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1,
                           cartons: '',
                           quantity: 0,
-                        });
+                          ...(prev.type !== 'stock_out' ? {
+                            color_name: p.color_stocks?.[0]?.color || 'Default',
+                          } : {}),
+                        }));
+                        if (form.type === 'stock_out') {
+                          fetchStockDistribution(p.id, true);
+                        }
                         setShowProductPicker(false);
                         setPickerSearch('');
                         setPickerCategory(null);

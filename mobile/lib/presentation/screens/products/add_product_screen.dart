@@ -46,6 +46,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
   late TextEditingController _descriptionController;
   late TextEditingController _unitController;
   late TextEditingController _costPriceController;
+  late TextEditingController _pcsPerCartonController;
 
   // Images editing state
   List<Map<String, String>> _productImages = [];
@@ -78,6 +79,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
         TextEditingController(text: widget.productToEdit?.unit ?? 'Units');
     _costPriceController = TextEditingController(
         text: widget.productToEdit?.costPrice?.toString() ?? '0');
+    _pcsPerCartonController = TextEditingController(
+        text: widget.productToEdit?.pcsPerCarton?.toString() ?? '1');
 
     // Load initial images
     if (widget.productToEdit != null) {
@@ -118,6 +121,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
     _descriptionController.dispose();
     _unitController.dispose();
     _costPriceController.dispose();
+    _pcsPerCartonController.dispose();
     for (final input in _colorStockInputs) {
       input.dispose();
     }
@@ -242,6 +246,7 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             ? _mainImageUrl
             : (finalImages.isNotEmpty ? finalImages.first['url'] : null),
         'description': _descriptionController.text.trim(),
+        'pcs_per_carton': int.tryParse(_pcsPerCartonController.text.trim()) ?? 1,
         'unit': _unitController.text.trim().isEmpty
             ? 'Units'
             : _unitController.text.trim(),
@@ -485,6 +490,29 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
                       keyboardType: TextInputType.number,
                       validator: (val) =>
                           val == null || val.isEmpty ? 'Enter threshold' : null,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppTheme.sp16),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _pcsPerCartonController,
+                      decoration: const InputDecoration(
+                        labelText: 'Pcs per Carton *',
+                        contentPadding:
+                            EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                      ),
+                      keyboardType: TextInputType.number,
+                      validator: (val) {
+                        if (val == null || val.isEmpty) return 'Enter pcs/ctn';
+                        final num = int.tryParse(val);
+                        if (num == null || num <= 0) return 'Must be >= 1';
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: AppTheme.sp12),

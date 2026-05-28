@@ -149,7 +149,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               _applyStockInPrefs(match);
             }
           });
-          _refreshStockOutWarehouses();
+          _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: true);
         }
       }
     });
@@ -233,7 +233,13 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     for (final url in urls) {
       if (_prefetchedProductImageUrls.contains(url)) continue;
       _prefetchedProductImageUrls.add(url);
-      precacheImage(NetworkImage(url), context);
+      precacheImage(
+        NetworkImage(url),
+        context,
+        onError: (exception, stackTrace) {
+          // Suppress prefetching exceptions for broken URLs or network interruptions.
+        },
+      );
     }
   }
 
@@ -248,7 +254,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     }
   }
 
-  Future<void> _loadProductStockDistribution() async {
+  Future<void> _loadProductStockDistribution({
+    bool autoRouteWarehouse = false,
+    bool autoRouteColor = false,
+  }) async {
     final product = _selectedProduct;
     if (product == null) {
       setState(() {
@@ -277,13 +286,41 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       setState(() {
         _productStockDistribution = rows;
       });
-      _applyInMemoryFilters();
+
+      // For stock-out, automatically select the first color that has stock
+      if (_type == TransactionType.stockOut && rows.isNotEmpty) {
+        final currentColor = _selectedColor.trim().toLowerCase();
+        final currentHasStock = rows.any((r) =>
+            (r['color_name']?.toString() ?? '').trim().toLowerCase() == currentColor &&
+            (int.tryParse(r['quantity']?.toString() ?? '0') ?? 0) > 0);
+
+        if (!currentHasStock) {
+          final stockRow = rows.firstWhere(
+            (r) => (int.tryParse(r['quantity']?.toString() ?? '0') ?? 0) > 0,
+            orElse: () => <String, dynamic>{},
+          );
+          if (stockRow.isNotEmpty) {
+            final color = stockRow['color_name']?.toString() ?? 'Default';
+            setState(() {
+              _selectedColor = color;
+            });
+          }
+        }
+      }
+
+      _applyInMemoryFilters(
+        autoRouteWarehouse: autoRouteWarehouse,
+        autoRouteColor: autoRouteColor,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _productStockDistribution = const [];
       });
-      _applyInMemoryFilters();
+      _applyInMemoryFilters(
+        autoRouteWarehouse: autoRouteWarehouse,
+        autoRouteColor: autoRouteColor,
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -293,7 +330,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     }
   }
 
-  void _applyInMemoryFilters() {
+  void _applyInMemoryFilters({
+    bool autoRouteWarehouse = false,
+    bool autoRouteColor = false,
+  }) {
     if (_type != TransactionType.stockOut || _selectedProduct == null) {
       setState(() {
         _stockOutWarehouseIdsWithStock = <String>{};
@@ -305,7 +345,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
     final targetColor = _selectedColor.trim().toLowerCase();
     
-    // Group stocks by warehouse
+    // 1. Group stocks by warehouse (filtered by selected color for the dashboard/warning state)
     final warehouseQtyMap = <String, int>{};
     final warehouseDetailMap = <String, Map<String, dynamic>>{};
     
@@ -315,7 +355,6 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       
       final rowColor = (row['color_name']?.toString() ?? '').trim().toLowerCase();
       
-      // If target color is selected and not default, match it
       if (targetColor.isNotEmpty && targetColor != 'default' && rowColor != targetColor) {
         continue;
       }
@@ -338,18 +377,18 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     }).toList();
 
     warehouseRows.sort((a, b) => (b['available_quantity'] as int).compareTo(a['available_quantity'] as int));
-    final warehouseIds = warehouseRows.map((r) => r['warehouse_id'].toString()).toSet();
+    
+    // Calculate all warehouses where the product has any stock (unfiltered for dropdown free selection)
+    final allWarehouseIdsWithStock = _productStockDistribution
+        .map((r) => r['warehouse_id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
 
-    // Group available colors
+    // 2. Group available colors (unfiltered by warehouse for dropdown free selection)
     final colorQtyMap = <String, int>{};
     final colorNameMap = <String, String>{};
     
     for (final row in _productStockDistribution) {
-      final wid = row['warehouse_id']?.toString() ?? '';
-      if (_selectedWarehouseId != null && _selectedWarehouseId!.isNotEmpty && wid != _selectedWarehouseId) {
-        continue;
-      }
-      
       final colorName = (row['color_name']?.toString() ?? '').trim();
       if (colorName.isEmpty) continue;
       
@@ -371,16 +410,60 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     colorRows.sort((a, b) => (a['color_name'] as String).toLowerCase().compareTo((b['color_name'] as String).toLowerCase()));
 
     setState(() {
-      _stockOutWarehouseStockRows = warehouseRows;
-      _stockOutWarehouseIdsWithStock = warehouseIds;
-      _stockOutColorRows = colorRows;
+      _stockOutWarehouseStockRows = warehouseRows; // Filtered by color for dashboard
+      _stockOutWarehouseIdsWithStock = allWarehouseIdsWithStock; // All stocked warehouses for dropdown
+      _stockOutColorRows = colorRows; // All stocked colors for dropdown (free selection)
 
-      if (_selectedWarehouseId != null && !warehouseIds.contains(_selectedWarehouseId)) {
-        _selectedWarehouseId = null;
+      // If the currently selected warehouse has no stock for this color, auto-switch to one that does
+      final targetColorWarehouseIds = warehouseRows
+          .where((r) => (r['available_quantity'] as int) > 0)
+          .map((r) => r['warehouse_id'].toString())
+          .toSet();
+
+      if (autoRouteWarehouse) {
+        if (_selectedWarehouseId != null && !targetColorWarehouseIds.contains(_selectedWarehouseId)) {
+          if (targetColorWarehouseIds.isNotEmpty) {
+            _selectedWarehouseId = warehouseRows.first['warehouse_id']?.toString();
+          }
+        }
+      }
+
+      if (_selectedWarehouseId == null && allWarehouseIdsWithStock.isNotEmpty) {
+        final preferredWarehouse = warehouseRows.isNotEmpty
+            ? warehouseRows.first['warehouse_id']?.toString()
+            : allWarehouseIdsWithStock.first;
+        _selectedWarehouseId = preferredWarehouse;
+      }
+
+      // If autoRouteColor is true, auto-switch to a color that has stock in the selected warehouse
+      if (autoRouteColor && _selectedWarehouseId != null) {
+        final colorsInSelectedWarehouse = _productStockDistribution
+            .where((r) {
+              final wid = r['warehouse_id']?.toString() ?? '';
+              final qty = int.tryParse(r['quantity']?.toString() ?? '0') ?? 0;
+              return wid == _selectedWarehouseId && qty > 0;
+            })
+            .map((r) => (r['color_name']?.toString() ?? '').trim().toLowerCase())
+            .toSet();
+
+        final currentColor = _selectedColor.trim().toLowerCase();
+        if (!colorsInSelectedWarehouse.contains(currentColor) && colorsInSelectedWarehouse.isNotEmpty) {
+          final firstStockedColor = _productStockDistribution.firstWhere(
+            (r) {
+              final wid = r['warehouse_id']?.toString() ?? '';
+              final qty = int.tryParse(r['quantity']?.toString() ?? '0') ?? 0;
+              return wid == _selectedWarehouseId && qty > 0;
+            },
+            orElse: () => <String, dynamic>{},
+          );
+          if (firstStockedColor.isNotEmpty) {
+            _selectedColor = firstStockedColor['color_name']?.toString() ?? 'Default';
+          }
+        }
       }
 
       final availableColorNames = colorRows.map((r) => r['color_name'].toString().trim().toLowerCase()).toSet();
-      if (_selectedWarehouseId != null && !availableColorNames.contains(_selectedColor.trim().toLowerCase())) {
+      if (_selectedColor.trim().isNotEmpty && !availableColorNames.contains(_selectedColor.trim().toLowerCase())) {
         _selectedColor = colorRows.isNotEmpty
             ? (colorRows.first['color_name']?.toString() ?? 'Default')
             : 'Default';
@@ -388,7 +471,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     });
   }
 
-  Future<void> _refreshStockOutWarehouses() async {
+  Future<void> _refreshStockOutWarehouses({
+    bool autoRouteWarehouse = false,
+    bool autoRouteColor = false,
+  }) async {
     if (_type != TransactionType.stockOut || _selectedProduct == null) {
       setState(() {
         _stockOutWarehouseIdsWithStock = <String>{};
@@ -401,13 +487,22 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
     if (_lastLoadedProductId != _selectedProduct!.id) {
       _lastLoadedProductId = _selectedProduct!.id;
-      await _loadProductStockDistribution();
+      await _loadProductStockDistribution(
+        autoRouteWarehouse: autoRouteWarehouse,
+        autoRouteColor: autoRouteColor,
+      );
     } else {
-      _applyInMemoryFilters();
+      _applyInMemoryFilters(
+        autoRouteWarehouse: autoRouteWarehouse,
+        autoRouteColor: autoRouteColor,
+      );
     }
   }
 
-  Future<void> _refreshStockOutColors() async {
+  Future<void> _refreshStockOutColors({
+    bool autoRouteWarehouse = false,
+    bool autoRouteColor = false,
+  }) async {
     if (_type != TransactionType.stockOut || _selectedProduct == null) {
       setState(() {
         _stockOutColorRows = const [];
@@ -417,9 +512,15 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
     if (_lastLoadedProductId != _selectedProduct!.id) {
       _lastLoadedProductId = _selectedProduct!.id;
-      await _loadProductStockDistribution();
+      await _loadProductStockDistribution(
+        autoRouteWarehouse: autoRouteWarehouse,
+        autoRouteColor: autoRouteColor,
+      );
     } else {
-      _applyInMemoryFilters();
+      _applyInMemoryFilters(
+        autoRouteWarehouse: autoRouteWarehouse,
+        autoRouteColor: autoRouteColor,
+      );
     }
   }
 
@@ -608,8 +709,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               _applyStockInPrefs(p);
             }
           });
-          _refreshStockOutWarehouses();
-          _refreshStockOutColors();
+          _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: true);
+          _refreshStockOutColors(autoRouteWarehouse: true, autoRouteColor: true);
           Navigator.pop(context);
         },
       ),
@@ -618,6 +719,21 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
+      warehousesProvider,
+      (previous, next) {
+        if (next.hasValue && _selectedWarehouseId == null) {
+          final list = next.value ?? [];
+          final active = list.where((w) => w['is_active'] == true).toList();
+          if (active.isNotEmpty) {
+            setState(() {
+              _selectedWarehouseId = active.first['id']?.toString();
+            });
+          }
+        }
+      },
+    );
+
     final products = ref.watch(productsProvider).value ?? [];
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _prefetchProductImages(products);
@@ -775,8 +891,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           ? null
                           : () {
                               setState(() => _type = TransactionType.stockIn);
-                              _refreshStockOutWarehouses();
-                              _refreshStockOutColors();
+                              _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: true);
+                              _refreshStockOutColors(autoRouteWarehouse: true, autoRouteColor: true);
                             },
                       child: Opacity(
                         opacity: _isEditingOlderThan12Hours && _type != TransactionType.stockIn ? 0.4 : 1.0,
@@ -836,8 +952,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   _selectedColor = 'Default';
                                 }
                               });
-                              _refreshStockOutWarehouses();
-                              _refreshStockOutColors();
+                              _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: true);
+                              _refreshStockOutColors(autoRouteWarehouse: true, autoRouteColor: true);
                             },
                       child: Opacity(
                         opacity: _isEditingOlderThan12Hours && _type != TransactionType.stockOut ? 0.4 : 1.0,
@@ -1081,7 +1197,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                           setState(() {
                                             _selectedWarehouseId = val;
                                           });
-                                          _refreshStockOutColors();
+                                          _refreshStockOutColors(autoRouteColor: true, autoRouteWarehouse: false);
                                         },
                                 ),
                               ),
@@ -1293,7 +1409,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                             setState(() {
                                               _selectedColor = val;
                                             });
-                                            _refreshStockOutWarehouses();
+                                            _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: false);
                                           }
                                         },
                                 ),

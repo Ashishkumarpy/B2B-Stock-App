@@ -42,6 +42,9 @@ export default function ProductsPage() {
   const [customCategories, setCustomCategories] = useState<string[]>([]);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategory, setNewCategory] = useState('');
+  const warehouseId = searchParams.get('warehouseId');
+  const [warehouseStocks, setWarehouseStocks] = useState<Record<string, number> | null>(null);
+  const [selectedWarehouseName, setSelectedWarehouseName] = useState<string | null>(null);
   
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -92,6 +95,36 @@ export default function ProductsPage() {
       supabase.removeChannel(channel);
     };
   }, [fetchProducts]);
+
+  useEffect(() => {
+    if (!warehouseId) {
+      setWarehouseStocks(null);
+      setSelectedWarehouseName(null);
+      return;
+    }
+    setLoading(true);
+    Promise.all([
+      serverGet(`/warehouses/${encodeURIComponent(warehouseId)}/products`),
+      serverGet('/warehouses')
+    ])
+      .then(([productsRes, warehousesRes]: any) => {
+        const stocksMap: Record<string, number> = {};
+        for (const item of productsRes?.data ?? []) {
+          stocksMap[item.product_id] = item.available_quantity;
+        }
+        setWarehouseStocks(stocksMap);
+        
+        const wList = (warehousesRes?.data ?? []) as any[];
+        const match = wList.find((w) => w.id === warehouseId);
+        if (match) {
+          setSelectedWarehouseName(match.location ? `${match.name} — ${match.location}` : match.name);
+        } else {
+          setSelectedWarehouseName('Selected Warehouse');
+        }
+      })
+      .catch((err) => console.error('Failed to fetch warehouse details:', err))
+      .finally(() => setLoading(false));
+  }, [warehouseId]);
 
   useEffect(() => {
     try {
@@ -190,16 +223,25 @@ export default function ProductsPage() {
     }
   };
 
+  const filteredProducts = useMemo(() => {
+    if (!warehouseId || !warehouseStocks) return products;
+    return products.filter((p) => (warehouseStocks[p.id] ?? 0) > 0);
+  }, [products, warehouseId, warehouseStocks]);
+
   const query = search.trim().toLowerCase();
   const folderSummaries = allCategories.map((category) => {
-    const categoryProducts = products.filter((p) => p.category === category);
+    const categoryProducts = filteredProducts.filter((p) => p.category === category);
     const sampleImage = categoryProducts.find((p) => p.image_url)?.image_url ?? null;
-    const totalQty = categoryProducts.reduce((sum, p) => sum + p.quantity, 0);
+    const totalQty = categoryProducts.reduce((sum, p) => {
+      const qty = warehouseStocks ? (warehouseStocks[p.id] ?? 0) : p.quantity;
+      return sum + qty;
+    }, 0);
     const lowStockCount = categoryProducts.filter(p => p.stock_status !== 'in_stock').length;
     return { name: category, count: categoryProducts.length, totalQty, lowStockCount, sampleImage, products: categoryProducts };
   });
 
   const visibleFolders = folderSummaries.filter((f) => {
+    if (warehouseId && f.products.length === 0) return false;
     if (!query) return true;
     if (f.name.toLowerCase().includes(query)) return true;
     return f.products.some(p => p.name.toLowerCase().includes(query) || p.code.toLowerCase().includes(query));
@@ -210,7 +252,7 @@ export default function ProductsPage() {
 
   const searchedProducts = useMemo(() => {
     if (query) {
-      return products
+      return filteredProducts
         .filter(
           (p) =>
             p.name.toLowerCase().includes(query) ||
@@ -219,22 +261,31 @@ export default function ProductsPage() {
         .sort(sortProductsByCode);
     }
     if (viewType === 'all') {
-      return [...products].sort(sortProductsByCode);
+      return [...filteredProducts].sort(sortProductsByCode);
     }
     if (viewType === 'in_stock') {
-      return products.filter((p) => p.quantity > 0).sort(sortProductsByCode);
+      return filteredProducts.filter((p) => {
+        const qty = warehouseStocks ? (warehouseStocks[p.id] ?? 0) : p.quantity;
+        return qty > 0;
+      }).sort(sortProductsByCode);
     }
     if (viewType === 'out_of_stock') {
-      return products.filter((p) => p.quantity === 0).sort(sortProductsByCode);
+      return filteredProducts.filter((p) => {
+        const qty = warehouseStocks ? (warehouseStocks[p.id] ?? 0) : p.quantity;
+        return qty === 0;
+      }).sort(sortProductsByCode);
+    }
+    if (warehouseId) {
+      return [...filteredProducts].sort(sortProductsByCode);
     }
     return [];
-  }, [query, viewType, products]);
+  }, [query, viewType, filteredProducts, warehouseStocks, warehouseId]);
 
 
 
   const renderProductCard = (product: Product, index: number) => {
-    const status = (product.stock_status === 'in_stock') ? { label: 'In Stock', cls: 'badge-green' } :
-                   (product.stock_status === 'low_stock') ? { label: 'Low Stock', cls: 'badge-yellow' } :
+    const displayQty = warehouseStocks ? (warehouseStocks[product.id] ?? 0) : product.quantity;
+    const status = (displayQty > 0) ? { label: 'In Stock', cls: 'badge-green' } :
                    { label: 'Out of Stock', cls: 'badge-red' };
     return (
       <div
@@ -254,7 +305,7 @@ export default function ProductsPage() {
           <p className="font-mono text-sm font-semibold text-gray-100">{product.code}</p>
           <p className="truncate text-xs font-medium text-gray-100">{product.name}</p>
           <div className="mt-2 flex items-center justify-between text-[11px] text-gray-200">
-            <span>Qty: {formatQuantity(product.quantity, product.pcs_per_carton)}</span>
+            <span>Qty: {formatQuantity(displayQty, product.pcs_per_carton)}</span>
             <span>Rs {product.price.toLocaleString()}</span>
           </div>
           <div className="mt-2 flex items-center justify-between gap-2">
@@ -274,13 +325,35 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Products</h1>
-          <p className="mt-1 text-sm text-gray-500">{products.length} products total</p>
+          <p className="mt-1 text-sm text-gray-500">{filteredProducts.length} products shown</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => router.push('/products/folder')} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-gray-200 hover:bg-white/5">Open Explorer</button>
           <button onClick={() => openAdd()} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all">+ Add Product</button>
         </div>
       </div>
+
+      {selectedWarehouseName && (
+        <div className="flex items-center justify-between bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <span className="text-xl">🏢</span>
+            <div>
+              <p className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider leading-none">Filtered by Warehouse</p>
+              <p className="text-sm font-bold text-white mt-1.5">{selectedWarehouseName}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const newUrl = new URL(window.location.href);
+              newUrl.searchParams.delete('warehouseId');
+              router.push(newUrl.pathname + newUrl.search);
+            }}
+            className="rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 text-xs font-semibold px-4 py-2 transition"
+          >
+            Clear Filter
+          </button>
+        </div>
+      )}
 
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <input
@@ -293,11 +366,11 @@ export default function ProductsPage() {
         <button onClick={openCreateCategory} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500">+ Create Folder</button>
       </div>
 
-      {query || isFilteredView ? (
+      {query || isFilteredView || warehouseId ? (
         <div className="card p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-slate-800 dark:text-white">
-              {viewType === 'in_stock' && !query ? 'In-Stock Products Only' : viewType === 'out_of_stock' && !query ? 'Out-of-Stock Products Only' : viewType === 'all' && !query ? 'All Products' : 'Search Results'} ({searchedProducts.length})
+              {viewType === 'in_stock' && !query ? 'In-Stock Products Only' : viewType === 'out_of_stock' && !query ? 'Out-of-Stock Products Only' : viewType === 'all' && !query ? 'All Products' : warehouseId && !query ? 'Warehouse Products' : 'Search Results'} ({searchedProducts.length})
             </h2>
             {isFilteredView && (
               <button
@@ -328,7 +401,11 @@ export default function ProductsPage() {
                 <button
                   key={folder.name}
                   type="button"
-                  onClick={() => router.push(`/products/folder?name=${encodeURIComponent(folder.name)}`)}
+                  onClick={() => {
+                    const params = new URLSearchParams({ name: folder.name });
+                    if (warehouseId) params.set('warehouseId', warehouseId);
+                    router.push(`/products/folder?${params.toString()}`);
+                  }}
                   className="group relative aspect-square overflow-hidden rounded-3xl border border-white/10 bg-white/5 hover:border-indigo-500/40 transition-all"
                 >
                   <div className="relative h-full w-full bg-[#121826]">

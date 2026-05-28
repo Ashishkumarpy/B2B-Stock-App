@@ -447,7 +447,7 @@ export default function DashboardPage() {
                 {sortedWarehouses.map((wh) => (
                   <div
                     key={wh.warehouse_id}
-                    onClick={() => router.push(`/warehouses`)}
+                    onClick={() => router.push(`/products?warehouseId=${wh.warehouse_id}`)}
                     className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.05] transition-all cursor-pointer border border-slate-100 dark:border-transparent"
                   >
                     <div className="min-w-0">
