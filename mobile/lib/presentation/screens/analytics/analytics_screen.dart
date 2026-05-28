@@ -8,6 +8,7 @@ import '../../providers/products_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
+import '../../../core/utils/formatters.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
@@ -56,6 +57,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 _buildFilterBar(transactions),
                 const SizedBox(height: AppTheme.sp16),
                 _buildOverviewCards(products),
+                const SizedBox(height: AppTheme.sp24),
+                _buildFinancialValueCards(products, transactions),
                 const SizedBox(height: AppTheme.sp24),
                 _buildMonthlyTransactionFlow(transactions),
                 const SizedBox(height: AppTheme.sp24),
@@ -595,6 +598,129 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           total: products.length,
         ),
       ],
+    );
+  }
+
+  Widget _buildFinancialValueCards(List<Product> products, List<Transaction> transactions) {
+    final totalPriceValue = products.fold<double>(0.0, (sum, p) => sum + (p.price * p.quantity));
+    final inStockValue = products.where((p) => p.quantity > 0).fold<double>(0.0, (sum, p) => sum + (p.price * p.quantity));
+    final outStockValue = products.where((p) => p.quantity == 0).fold<double>(0.0, (sum, p) => sum + (p.price * p.threshold));
+
+    double estimatedRevenue = 0.0;
+    for (final t in transactions) {
+      if (t.isStockOut) {
+        final matchingProducts = products.where((p) => p.id == t.productId);
+        if (matchingProducts.isNotEmpty) {
+          estimatedRevenue += t.quantity * matchingProducts.first.price;
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSectionTitle('Value & Revenue Analytics'),
+        const SizedBox(height: 12),
+        GridView.count(
+          crossAxisCount: 2,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: AppTheme.sp12,
+          crossAxisSpacing: AppTheme.sp12,
+          childAspectRatio: 1.5,
+          children: [
+            _buildFinancialCard(
+              label: 'Total Price Value',
+              value: AppFormatters.formatCurrency(totalPriceValue),
+              sub: 'Current inventory price value',
+              icon: Icons.account_balance_wallet_rounded,
+              color: AppTheme.primary,
+            ),
+            _buildFinancialCard(
+              label: 'Estimated Revenue',
+              value: AppFormatters.formatCurrency(estimatedRevenue),
+              sub: 'Stock dispatch revenue',
+              icon: Icons.trending_up_rounded,
+              color: AppTheme.warning,
+            ),
+            _buildFinancialCard(
+              label: 'In Stock Value',
+              value: AppFormatters.formatCurrency(inStockValue),
+              sub: 'Active stock value',
+              icon: Icons.check_circle_outline_rounded,
+              color: AppTheme.success,
+            ),
+            _buildFinancialCard(
+              label: 'Out of Stock Value',
+              value: AppFormatters.formatCurrency(outStockValue),
+              sub: 'Replenishment value',
+              icon: Icons.remove_circle_outline_rounded,
+              color: AppTheme.danger,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFinancialCard({
+    required String label,
+    required String value,
+    required String sub,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(AppTheme.sp12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        border: Border.all(color: color.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+              Icon(icon, color: color, size: 16),
+            ],
+          ),
+          const Spacer(),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            sub,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 8.5,
+              color: AppTheme.textMuted,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

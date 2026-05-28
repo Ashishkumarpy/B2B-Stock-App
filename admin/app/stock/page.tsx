@@ -133,11 +133,48 @@ export default function StockPage() {
 
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [typeFilter, setTypeFilter] = useState<'both' | 'stock_in' | 'stock_out'>('both');
+  const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('all');
+  const [customDate, setCustomDate] = useState<string>(() => {
+    const local = new Date();
+    const offset = local.getTimezoneOffset();
+    const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
+    return adjusted.toISOString().slice(0, 10);
+  });
 
   const filteredTransactions = useMemo(() => {
-    if (typeFilter === 'both') return transactions;
-    return transactions.filter((t) => t.type === typeFilter);
-  }, [transactions, typeFilter]);
+    let result = transactions;
+
+    // Apply Date Filter
+    if (dateFilter === 'today') {
+      const local = new Date();
+      const offset = local.getTimezoneOffset();
+      const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
+      const todayLocalStr = adjusted.toISOString().slice(0, 10);
+      
+      result = result.filter((t) => {
+        const dateObj = new Date(t.created_at);
+        const localTx = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000));
+        const datePart = localTx.toISOString().slice(0, 10);
+        return datePart === todayLocalStr;
+      });
+    } else if (dateFilter === 'custom') {
+      result = result.filter((t) => {
+        const dateObj = new Date(t.created_at);
+        const localTx = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000));
+        const datePart = localTx.toISOString().slice(0, 10);
+        return datePart === customDate;
+      });
+    }
+
+    // Apply Type Filter
+    if (typeFilter === 'stock_in') {
+      result = result.filter((t) => t.type === 'stock_in');
+    } else if (typeFilter === 'stock_out') {
+      result = result.filter((t) => t.type === 'stock_out');
+    }
+
+    return result;
+  }, [transactions, dateFilter, customDate, typeFilter]);
 
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportDate, setExportDate] = useState(() => {
@@ -694,30 +731,68 @@ export default function StockPage() {
         ) : (
           <>
             {/* Filter Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-white/5 bg-white/[0.02]">
-              <div className="flex items-center gap-2.5">
-                <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Type Filter:</span>
-                <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-                  <button
-                    onClick={() => setTypeFilter('both')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setTypeFilter('stock_in')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    Stock In
-                  </button>
-                  <button
-                    onClick={() => setTypeFilter('stock_out')}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
-                  >
-                    Stock Out
-                  </button>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 border-b border-white/5 bg-white/[0.02]">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+                {/* Date Filter */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Date:</span>
+                  <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                    <button
+                      onClick={() => setDateFilter('all')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      All Time
+                    </button>
+                    <button
+                      onClick={() => setDateFilter('today')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      Today
+                    </button>
+                    <button
+                      onClick={() => setDateFilter('custom')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      Choose Date
+                    </button>
+                  </div>
+
+                  {dateFilter === 'custom' && (
+                    <input
+                      type="date"
+                      value={customDate}
+                      onChange={(e) => setCustomDate(e.target.value)}
+                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  )}
+                </div>
+
+                {/* Type Filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Type:</span>
+                  <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                    <button
+                      onClick={() => setTypeFilter('both')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      All Types
+                    </button>
+                    <button
+                      onClick={() => setTypeFilter('stock_in')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      Stock In
+                    </button>
+                    <button
+                      onClick={() => setTypeFilter('stock_out')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      Stock Out
+                    </button>
+                  </div>
                 </div>
               </div>
+
               <div className="text-xs text-gray-500 font-medium">
                 Showing {filteredTransactions.length} of {transactions.length} entries
               </div>
@@ -725,7 +800,7 @@ export default function StockPage() {
 
             {filteredTransactions.length === 0 ? (
               <div className="p-12 text-center text-gray-500 text-sm">
-                No {typeFilter === 'stock_in' ? 'Stock In' : 'Stock Out'} entries found.
+                No entries found for the selected filter criteria.
               </div>
             ) : (
               <table className="data-table w-full text-sm">

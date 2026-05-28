@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📊 Zentory Admin Dashboard
 
-## Getting Started
+The **Zentory Admin Dashboard** is a premium, enterprise-grade control panel designed for administrators, catalog managers, and operations dispatchers. Built with **Next.js 16**, **React 19**, and **Tailwind CSS v4**, it provides real-time oversight of inventory levels, workers, orders, and products.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🌟 Key Features
+
+- **📊 Live Inventory & Auditing:** Subscribes to real-time database channels via Supabase to track product stock adjustments as they happen on the mobile floor.
+- **🛍️ Order Management:** Monitor customer-facing orders submitted through the storefront, inspect transaction lists, and dispatch pending orders.
+- **👥 Workers & Role Allocation:** Administer worker accounts, verify access, and manage user roles (Admin vs. Operator).
+- **📂 Bulk Catalog Imports/Exports:** Import stock lists and export records to Excel using integrated **SheetJS (`xlsx`)** pipelines.
+- **🔔 Notification Hub:** Dispatch push notifications to mobile workers using the server's Firebase Cloud Messaging integrations.
+
+---
+
+## ⚙️ Tech Stack & Dependencies
+
+- **Framework:** [Next.js 16](https://nextjs.org/) (using the modern App Router)
+- **Library:** [React 19](https://react.dev/)
+- **Styling:** [Tailwind CSS v4](https://tailwindcss.com/)
+- **Database Client:** [@supabase/supabase-js](https://supabase.com/docs/reference/javascript/introduction)
+- **Utilities:** [xlsx](https://sheetjs.com/) (Excel processing), `firebase` (client notifications configuration)
+
+---
+
+## 🚀 Getting Started
+
+### 1. Prerequisites
+Ensure you have [Node.js](https://nodejs.org/) (v18+) installed.
+
+### 2. Environment Configuration
+Create a `.env.local` file in the `admin/` directory:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+NEXT_PUBLIC_API_URL=http://localhost:5000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 3. Installation
+Install the workspace dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 4. Run Development Server
+```bash
+npm run dev
+```
+Open [http://localhost:3000](http://localhost:3000) to view the dashboard.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 5. Production Build
+To create a production-ready optimized bundle:
+```bash
+npm run build
+npm run start
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## 📂 Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [`app/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/admin/app): Next.js App Router containing pages and routing definitions.
+  - [`products/page.tsx`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/admin/app/products/page.tsx): Product management panel.
+- `components/`: Reusable dashboard widgets, tables, filters, and graphs.
+- `lib/`: Helper functions, Supabase client initialization, and utility hooks.
+- `public/`: Brand assets, fonts, and icons.

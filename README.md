@@ -54,14 +54,14 @@ graph TD
 
 The repository is organized into distinct, isolated modules:
 
-| Path | Stack | Purpose |
-| :--- | :--- | :--- |
-| **[`client/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/client)** | React 18, Vite, Tailwind CSS, Supabase SDK | Customer storefront, product catalog, and ordering checkout. |
-| **[`admin/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/admin)** | Next.js 16, TypeScript, Supabase client | Management dashboard for categories, stock levels, orders, and workers. |
-| **[`mobile/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/mobile)** | Flutter, Riverpod, Hive, Supabase SDK | Worker/admin mobile workflows, barcode scanning, and inventory auditing. |
-| **[`server/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/server)** | Node.js, Express, Supabase, Cloudinary | Production-ready central backend API controlling auth and heavy pipelines. |
-| **[`supabase/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/supabase)** | PostgreSQL SQL Schemas | Core database structure, triggers, and row-level security (RLS) definitions. |
-| **[`shared/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/shared)** | TypeScript | Shared cross-platform interface and data contract types. |
+| Module | Path | Stack | Details / Documentation |
+| :--- | :--- | :--- | :--- |
+| **🛍️ Customer Storefront** | [`client/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/client) | React 18, Vite 6, Tailwind v4, Radix UI | See [client/README.md](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/client/README.md) |
+| **📊 Admin Dashboard** | [`admin/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/admin) | Next.js 16, React 19, Tailwind v4, SheetJS | See [admin/README.md](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/admin/README.md) |
+| **📱 Operations Mobile App** | [`mobile/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/mobile) | Flutter 3.x, Riverpod, Hive, GoRouter | See [mobile/README.md](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/mobile/README.md) |
+| **⚡ API Gateway Backend** | [`server/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/server) | Node Express, Sharp, Cloudinary CDN, FCM | See [server/README.md](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/server/README.md) |
+| **🗄️ Database & Security** | [`supabase/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/supabase) | PostgreSQL Tables, Triggers & RLS | Schemas: [schema.sql](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/supabase/schema.sql) |
+| **🔗 Shared Entities** | [`shared/`](file:///c:/Users/DELL/.antigravity/apps/B2B%20Stock%20App/shared) | TypeScript Interfaces & Types | Shared data structures and contracts |
 
 ---
 

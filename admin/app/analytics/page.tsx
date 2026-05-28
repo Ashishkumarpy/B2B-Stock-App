@@ -8,6 +8,7 @@ import { supabase } from '../../lib/supabase';
 
 interface Transaction {
   id: string;
+  product_id?: string;
   type: 'stock_in' | 'stock_out';
   quantity: number;
   created_at: string;
@@ -17,6 +18,9 @@ interface Product {
   id: string;
   category: string;
   quantity: number;
+  price: number;
+  cost_price?: number;
+  threshold?: number;
 }
 
 export default function AnalyticsPage() {
@@ -83,7 +87,22 @@ export default function AnalyticsPage() {
     color: [`#6366f1`, `#8b5cf6`, `#38bdf8`, `#34d399`, `#fb923c`][idx % 5]
   })).sort((a, b) => b.percentage - a.percentage);
 
-  // 2. Monthly Trends (Last 6 Months)
+  // 2. Financial Value Metrics Calculations
+  const totalPriceValue = products.reduce((acc, p) => acc + (Number(p.price) || 0) * (Number(p.quantity) || 0), 0);
+  const inStockValue = products.reduce((acc, p) => p.quantity > 0 ? acc + (Number(p.price) || 0) * (Number(p.quantity) || 0) : acc, 0);
+  const outStockValue = products.reduce((acc, p) => p.quantity === 0 ? acc + (Number(p.price) || 0) * (Number(p.threshold) || 10) : acc, 0);
+
+  let estimatedRevenue = 0;
+  transactions.forEach(t => {
+    if (t.type === 'stock_out') {
+      const prod = products.find(p => p.id === t.product_id);
+      if (prod) {
+        estimatedRevenue += t.quantity * prod.price;
+      }
+    }
+  });
+
+  // 3. Monthly Trends (Last 6 Months)
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const now = new Date();
   const monthlyTrend = Array.from({ length: 6 }).map((_, i) => {
@@ -108,7 +127,7 @@ export default function AnalyticsPage() {
 
   const maxTrend = Math.max(...monthlyTrend.flatMap((m) => [m.in, m.out]), 1);
 
-  // 3. Current Month Stats
+  // 4. Current Month Stats
   const currentMonth = monthlyTrend[5];
 
   return (
@@ -122,6 +141,27 @@ export default function AnalyticsPage() {
         <div className="p-12 text-center text-gray-500 text-sm">Loading analytics…</div>
       ) : (
         <>
+          {/* Financial & Inventory Value Cards */}
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Total Price Value', value: `₹${totalPriceValue.toLocaleString('en-IN')}`, sub: 'Current retail inventory value', icon: '💰', border: 'stat-indigo' },
+              { label: 'Estimated Revenue', value: `₹${estimatedRevenue.toLocaleString('en-IN')}`, sub: 'Revenue from stock dispatches', icon: '📈', border: 'stat-violet' },
+              { label: 'In Stock Value', value: `₹${inStockValue.toLocaleString('en-IN')}`, sub: 'Active inventory value', icon: '🟢', border: 'stat-emerald' },
+              { label: 'Out of Stock Value', value: `₹${outStockValue.toLocaleString('en-IN')}`, sub: 'Replenishment value (to threshold)', icon: '🔴', border: 'stat-sky' },
+            ].map((s) => (
+              <div key={s.label} className={`card p-5 hover:scale-[1.02] transition-transform duration-200 ${s.border}`}>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">{s.label}</p>
+                    <p className="text-xl font-bold text-white mt-1">{s.value}</p>
+                    <p className="text-[10px] text-gray-400 mt-2">{s.sub}</p>
+                  </div>
+                  <span className="text-2xl p-2 bg-white/5 rounded-xl">{s.icon}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Monthly trend bar chart */}
             <div className="card p-6">
