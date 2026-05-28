@@ -29,6 +29,8 @@ export default function AnalyticsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'custom'>('all');
+  const [customDate, setCustomDate] = useState(new Date().toISOString().split('T')[0]);
 
   const fetchAnalytics = async () => {
     try {
@@ -87,22 +89,38 @@ export default function AnalyticsPage() {
     color: [`#6366f1`, `#8b5cf6`, `#38bdf8`, `#34d399`, `#fb923c`][idx % 5]
   })).sort((a, b) => b.percentage - a.percentage);
 
-  // 2. Financial Value Metrics Calculations
+  // 2. Filter Transactions by Date for Flow Metrics
+  const filteredTransactions = transactions.filter(t => {
+    if (dateFilter === 'all') return true;
+    const tDate = new Date(t.created_at).toISOString().split('T')[0];
+    if (dateFilter === 'today') {
+      const todayStr = new Date().toISOString().split('T')[0];
+      return tDate === todayStr;
+    }
+    if (dateFilter === 'custom') {
+      return tDate === customDate;
+    }
+    return true;
+  });
+
+  // 3. Financial Value Metrics Calculations
   const totalPriceValue = products.reduce((acc, p) => acc + (Number(p.price) || 0) * (Number(p.quantity) || 0), 0);
-  const inStockValue = products.reduce((acc, p) => p.quantity > 0 ? acc + (Number(p.price) || 0) * (Number(p.quantity) || 0) : acc, 0);
   const outStockValue = products.reduce((acc, p) => p.quantity === 0 ? acc + (Number(p.price) || 0) * (Number(p.threshold) || 10) : acc, 0);
 
+  let inStockValue = 0;
   let estimatedRevenue = 0;
-  transactions.forEach(t => {
-    if (t.type === 'stock_out') {
-      const prod = products.find(p => p.id === t.product_id);
-      if (prod) {
+  filteredTransactions.forEach(t => {
+    const prod = products.find(p => p.id === t.product_id);
+    if (prod) {
+      if (t.type === 'stock_in') {
+        inStockValue += t.quantity * prod.price;
+      } else if (t.type === 'stock_out') {
         estimatedRevenue += t.quantity * prod.price;
       }
     }
   });
 
-  // 3. Monthly Trends (Last 6 Months)
+  // 4. Monthly Trends (Last 6 Months)
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const now = new Date();
   const monthlyTrend = Array.from({ length: 6 }).map((_, i) => {
@@ -127,14 +145,50 @@ export default function AnalyticsPage() {
 
   const maxTrend = Math.max(...monthlyTrend.flatMap((m) => [m.in, m.out]), 1);
 
-  // 4. Current Month Stats
+  // 5. Current Month Stats
   const currentMonth = monthlyTrend[5];
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold">Analytics</h1>
-        <p className="text-gray-500 text-sm mt-1">Live stock trends and category distribution</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">Analytics</h1>
+          <p className="text-gray-500 text-sm mt-1">Live stock trends and category distribution</p>
+        </div>
+
+        {/* Date Filter Toolbar */}
+        <div className="flex items-center gap-3">
+          <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Date:</span>
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+            <button
+              onClick={() => setDateFilter('all')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+            >
+              All Time
+            </button>
+            <button
+              onClick={() => setDateFilter('today')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+            >
+              Today
+            </button>
+            <button
+              onClick={() => setDateFilter('custom')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+            >
+              Choose Date
+            </button>
+          </div>
+
+          {dateFilter === 'custom' && (
+            <input
+              type="date"
+              value={customDate}
+              onChange={(e) => setCustomDate(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+            />
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -146,10 +200,14 @@ export default function AnalyticsPage() {
             {[
               { label: 'Total Price Value', value: `₹${totalPriceValue.toLocaleString('en-IN')}`, sub: 'Current retail inventory value', icon: '💰', border: 'stat-indigo' },
               { label: 'Estimated Revenue', value: `₹${estimatedRevenue.toLocaleString('en-IN')}`, sub: 'Revenue from stock dispatches', icon: '📈', border: 'stat-violet' },
-              { label: 'In Stock Value', value: `₹${inStockValue.toLocaleString('en-IN')}`, sub: 'Active inventory value', icon: '🟢', border: 'stat-emerald' },
-              { label: 'Out of Stock Value', value: `₹${outStockValue.toLocaleString('en-IN')}`, sub: 'Replenishment value (to threshold)', icon: '🔴', border: 'stat-sky' },
+              { label: 'In Stock Value', value: `₹${inStockValue.toLocaleString('en-IN')}`, sub: 'Value of items stocked in', icon: '🟢', border: 'stat-emerald', onClick: () => router.push('/products?view=in_stock') },
+              { label: 'Out of Stock Value', value: `₹${outStockValue.toLocaleString('en-IN')}`, sub: 'Replenishment value (to threshold)', icon: '🔴', border: 'stat-sky', onClick: () => router.push('/products?view=out_of_stock') },
             ].map((s) => (
-              <div key={s.label} className={`card p-5 hover:scale-[1.02] transition-transform duration-200 ${s.border}`}>
+              <div
+                key={s.label}
+                onClick={s.onClick}
+                className={`card p-5 transition-transform duration-200 ${s.border} ${s.onClick ? 'cursor-pointer hover:scale-[1.02] hover:border-indigo-500/30' : 'hover:scale-[1.02]'}`}
+              >
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">{s.label}</p>

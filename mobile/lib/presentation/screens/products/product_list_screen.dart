@@ -41,7 +41,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     super.initState();
     if (widget.initialFilter != null &&
         widget.initialFilter != 'low' &&
-        widget.initialFilter != 'in_stock') {
+        widget.initialFilter != 'in_stock' &&
+        widget.initialFilter != 'out_of_stock') {
       _openFolder = widget.initialFilter;
     }
     _loadWarehouseProductsIfNeeded();
@@ -53,7 +54,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     if (widget.initialFilter != oldWidget.initialFilter &&
         widget.initialFilter != null &&
         widget.initialFilter != 'low' &&
-        widget.initialFilter != 'in_stock') {
+        widget.initialFilter != 'in_stock' &&
+        widget.initialFilter != 'out_of_stock') {
       setState(() {
         _openFolder = widget.initialFilter;
       });
@@ -131,7 +133,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         ? '$_openFolder (Low Stock)'
                         : (widget.initialFilter == 'in_stock'
                             ? '$_openFolder (In Stock)'
-                            : _openFolder!),
+                            : (widget.initialFilter == 'out_of_stock'
+                                ? '$_openFolder (Out of Stock)'
+                                : _openFolder!)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -142,7 +146,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     ? 'Low Stock Products'
                     : (widget.initialFilter == 'in_stock'
                         ? 'In Stock Products'
-                        : 'Products'),
+                        : (widget.initialFilter == 'out_of_stock'
+                            ? 'Out of Stock Products'
+                            : 'Products')),
               ),
         leading: _openFolder != null
             ? IconButton(
@@ -211,6 +217,40 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.success,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => context.go('/products'),
+                    child: Text(
+                      'Clear',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.danger,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (widget.initialFilter == 'out_of_stock')
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppTheme.danger.withValues(alpha: 0.08),
+              child: Row(
+                children: [
+                  Icon(Icons.remove_circle_rounded,
+                      size: 14, color: AppTheme.danger),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Filtering: Out-of-Stock Products Only',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.danger,
                       ),
                     ),
                   ),
@@ -331,6 +371,32 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   return _buildProductGrid(results, 'Search Results', role);
                 }
 
+                // ── Flat Filtered Product Mode (In Stock / Out of Stock / Low Stock) ──
+                final isFlatProductMode = widget.initialFilter == 'in_stock' ||
+                    widget.initialFilter == 'out_of_stock' ||
+                    widget.initialFilter == 'low';
+                if (isFlatProductMode && _openFolder == null) {
+                  var filteredProducts = sourceProducts;
+                  if (widget.initialFilter == 'in_stock') {
+                    filteredProducts =
+                        filteredProducts.where((p) => p.quantity > 0).toList();
+                  } else if (widget.initialFilter == 'out_of_stock') {
+                    filteredProducts =
+                        filteredProducts.where((p) => p.quantity == 0).toList();
+                  } else if (widget.initialFilter == 'low') {
+                    filteredProducts = filteredProducts
+                        .where((p) => p.quantity <= p.threshold)
+                        .toList();
+                  }
+                  
+                  final title = widget.initialFilter == 'in_stock'
+                      ? 'In Stock Products'
+                      : (widget.initialFilter == 'out_of_stock'
+                          ? 'Out of Stock Products'
+                          : 'Low Stock Products');
+                  return _buildProductGrid(filteredProducts, title, role);
+                }
+
                 // ── Warehouse mode should always show products directly ──
                 if (isWarehouseMode) {
                   var warehouseProducts = sourceProducts;
@@ -341,6 +407,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     warehouseProducts = warehouseProducts
                         .where((p) => p.quantity <= p.threshold)
                         .toList();
+                  } else if (widget.initialFilter == 'out_of_stock') {
+                    warehouseProducts =
+                        warehouseProducts.where((p) => p.quantity == 0).toList();
                   }
                   return _buildProductGrid(
                       warehouseProducts,
@@ -363,6 +432,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     folderProducts = folderProducts
                         .where((p) => p.quantity <= p.threshold)
                         .toList();
+                  } else if (widget.initialFilter == 'out_of_stock') {
+                    folderProducts =
+                        folderProducts.where((p) => p.quantity == 0).toList();
                   }
 
                   return _buildProductGrid(folderProducts, _openFolder!, role);
@@ -390,11 +462,15 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       final alerts = catProds
                           .where((p) => p.quantity <= p.threshold)
                           .length;
+                      final outOfStock = catProds
+                          .where((p) => p.quantity == 0)
+                          .length;
                       return _FolderData(
                         name: cat,
                         count: catProds.length,
                         totalQty: totalQty,
                         alerts: alerts,
+                        outOfStock: outOfStock,
                         sampleImage: sampleImg,
                       );
                     }).toList();
@@ -405,6 +481,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                           folders.where((f) => f.totalQty > 0).toList();
                     } else if (widget.initialFilter == 'low') {
                       foldersList = folders.where((f) => f.alerts > 0).toList();
+                    } else if (widget.initialFilter == 'out_of_stock') {
+                      foldersList = folders.where((f) => f.outOfStock > 0).toList();
                     }
 
                     return RefreshIndicator(
@@ -641,6 +719,7 @@ class _FolderData {
   final int count;
   final int totalQty;
   final int alerts;
+  final int outOfStock;
   final String? sampleImage;
 
   const _FolderData({
@@ -648,6 +727,7 @@ class _FolderData {
     required this.count,
     required this.totalQty,
     required this.alerts,
+    required this.outOfStock,
     this.sampleImage,
   });
 }

@@ -206,7 +206,7 @@ export default function ProductsPage() {
   });
 
   const viewType = searchParams.get('view');
-  const isFilteredView = viewType === 'all' || viewType === 'in_stock';
+  const isFilteredView = viewType === 'all' || viewType === 'in_stock' || viewType === 'out_of_stock';
 
   const searchedProducts = useMemo(() => {
     if (query) {
@@ -223,6 +223,9 @@ export default function ProductsPage() {
     }
     if (viewType === 'in_stock') {
       return products.filter((p) => p.quantity > 0).sort(sortProductsByCode);
+    }
+    if (viewType === 'out_of_stock') {
+      return products.filter((p) => p.quantity === 0).sort(sortProductsByCode);
     }
     return [];
   }, [query, viewType, products]);
@@ -294,7 +297,7 @@ export default function ProductsPage() {
         <div className="card p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-slate-800 dark:text-white">
-              {viewType === 'in_stock' && !query ? 'In-Stock Products Only' : viewType === 'all' && !query ? 'All Products' : 'Search Results'} ({searchedProducts.length})
+              {viewType === 'in_stock' && !query ? 'In-Stock Products Only' : viewType === 'out_of_stock' && !query ? 'Out-of-Stock Products Only' : viewType === 'all' && !query ? 'All Products' : 'Search Results'} ({searchedProducts.length})
             </h2>
             {isFilteredView && (
               <button

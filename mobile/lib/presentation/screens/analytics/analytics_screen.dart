@@ -603,15 +603,32 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   Widget _buildFinancialValueCards(List<Product> products, List<Transaction> transactions) {
     final totalPriceValue = products.fold<double>(0.0, (sum, p) => sum + (p.price * p.quantity));
-    final inStockValue = products.where((p) => p.quantity > 0).fold<double>(0.0, (sum, p) => sum + (p.price * p.quantity));
     final outStockValue = products.where((p) => p.quantity == 0).fold<double>(0.0, (sum, p) => sum + (p.price * p.threshold));
 
+    double inStockValue = 0.0;
     double estimatedRevenue = 0.0;
     for (final t in transactions) {
-      if (t.isStockOut) {
-        final matchingProducts = products.where((p) => p.id == t.productId);
-        if (matchingProducts.isNotEmpty) {
-          estimatedRevenue += t.quantity * matchingProducts.first.price;
+      // Apply date filter
+      if (_selectedDate != null) {
+        final tDate = t.createdAt;
+        if (tDate.year != _selectedDate!.year ||
+            tDate.month != _selectedDate!.month ||
+            tDate.day != _selectedDate!.day) {
+          continue;
+        }
+      } else if (_selectedYear != null) {
+        if (t.createdAt.year != _selectedYear) {
+          continue;
+        }
+      }
+
+      final matchingProducts = products.where((p) => p.id == t.productId);
+      if (matchingProducts.isNotEmpty) {
+        final double prodPrice = matchingProducts.first.price;
+        if (t.isStockIn) {
+          inStockValue += t.quantity * prodPrice;
+        } else if (t.isStockOut) {
+          estimatedRevenue += t.quantity * prodPrice;
         }
       }
     }
@@ -646,9 +663,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             _buildFinancialCard(
               label: 'In Stock Value',
               value: AppFormatters.formatCurrency(inStockValue),
-              sub: 'Active stock value',
+              sub: 'Value of items stocked in',
               icon: Icons.check_circle_outline_rounded,
               color: AppTheme.success,
+              onTap: () => context.go('/products?filter=in_stock'),
             ),
             _buildFinancialCard(
               label: 'Out of Stock Value',
@@ -656,6 +674,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               sub: 'Replenishment value',
               icon: Icons.remove_circle_outline_rounded,
               color: AppTheme.danger,
+              onTap: () => context.go('/products?filter=out_of_stock'),
             ),
           ],
         ),
@@ -669,8 +688,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     required String sub,
     required IconData icon,
     required Color color,
+    VoidCallback? onTap,
   }) {
-    return Container(
+    final cardContent = Container(
       padding: const EdgeInsets.all(AppTheme.sp12),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
@@ -722,6 +742,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+          child: cardContent,
+        ),
+      );
+    }
+    return cardContent;
   }
 }
 
