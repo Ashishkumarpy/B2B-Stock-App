@@ -19,6 +19,53 @@ productsRouter.get('/', authRequired, async (req, res) => {
   return res.json({ data });
 });
 
+productsRouter.get('/:id/stock-distribution', authRequired, async (req, res) => {
+  const productId = req.params.id;
+  if (!productId) {
+    return res.status(400).json({ error: 'id parameter is required' });
+  }
+  
+  const [warehousesRes, stocksRes] = await Promise.all([
+    supabaseAdmin
+      .from('warehouses')
+      .select('id,name,location')
+      .eq('is_active', true),
+    supabaseAdmin
+      .from('warehouse_product_stocks')
+      .select('warehouse_id,color_name,quantity')
+      .eq('product_id', productId)
+      .gt('quantity', 0)
+      .limit(10000)
+  ]);
+
+  if (warehousesRes.error) {
+    return res.status(400).json({ error: warehousesRes.error.message });
+  }
+  if (stocksRes.error) {
+    return res.status(400).json({ error: stocksRes.error.message });
+  }
+
+  const warehouseMap = new Map(
+    (warehousesRes.data || []).map((w) => [String(w.id), w])
+  );
+
+  const distribution = (stocksRes.data || [])
+    .filter((row) => warehouseMap.has(String(row.warehouse_id)))
+    .map((row) => {
+      const w = warehouseMap.get(String(row.warehouse_id));
+      return {
+        warehouse_id: row.warehouse_id,
+        warehouse_name: w.name,
+        location: w.location || null,
+        color_name: row.color_name,
+        quantity: row.quantity
+      };
+    });
+
+  return res.json({ data: distribution });
+});
+
+
 productsRouter.post('/', authRequired, requireRole(['admin', 'manager']), async (req, res) => {
   const payload = req.body || {};
   const { data, error } = await supabaseAdmin.from('products').insert(payload).select('*').single();

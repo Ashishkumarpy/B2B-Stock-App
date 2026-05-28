@@ -80,11 +80,14 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   Set<String> _stockOutWarehouseIdsWithStock = <String>{};
   List<Map<String, dynamic>> _stockOutWarehouseStockRows = const [];
   List<Map<String, dynamic>> _stockOutColorRows = const [];
-  bool _isLoadingStockOutColors = false;
   bool _isLoadingStockOutWarehouses = false;
   bool _isSubmitting = false;
   Map<String, dynamic> _stockEntryPrefs = <String, dynamic>{};
   final Set<String> _prefetchedProductImageUrls = <String>{};
+
+  // Optimization: client-side stock distribution cache
+  List<Map<String, dynamic>> _productStockDistribution = const [];
+  String? _lastLoadedProductId;
 
   @override
   void initState() {
@@ -245,14 +248,13 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     }
   }
 
-  Future<void> _refreshStockOutWarehouses() async {
-    if (_type != TransactionType.stockOut || _selectedProduct == null) {
-      if (!mounted) return;
+  Future<void> _loadProductStockDistribution() async {
+    final product = _selectedProduct;
+    if (product == null) {
       setState(() {
-        _stockOutWarehouseIdsWithStock = <String>{};
+        _productStockDistribution = const [];
         _stockOutWarehouseStockRows = const [];
         _stockOutColorRows = const [];
-        _isLoadingStockOutWarehouses = false;
       });
       return;
     }
@@ -263,109 +265,161 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
     try {
       final client = ref.read(apiClientProvider);
-      final productId = Uri.encodeQueryComponent(_selectedProduct!.id);
-      final colorName = Uri.encodeQueryComponent(_selectedColor.trim());
-      final response = await client.get(
-        '/warehouses/stock-options?product_id=$productId&color_name=$colorName',
-      );
-      List list =
-          (response is Map ? response['data'] : null) as List? ?? const [];
-      if (list.isEmpty) {
-        // Fallback: show warehouses that have stock for this product in any color.
-        final fallbackResponse = await client.get(
-          '/warehouses/stock-options?product_id=$productId',
-        );
-        list = (fallbackResponse is Map ? fallbackResponse['data'] : null)
-                as List? ??
-            const [];
-      }
+      final productId = Uri.encodeQueryComponent(product.id);
+      final response = await client.get('/products/$productId/stock-distribution');
+      final list = (response is Map ? response['data'] : null) as List? ?? const [];
       final rows = list
           .whereType<Map>()
           .map((row) => Map<String, dynamic>.from(row))
           .toList();
-      final ids = list
-          .map((row) => (row as Map?)?['warehouse_id']?.toString() ?? '')
-          .where((id) => id.isNotEmpty)
-          .toSet();
+
       if (!mounted) return;
       setState(() {
-        _stockOutWarehouseStockRows = rows;
-        _stockOutWarehouseIdsWithStock = ids;
-        if (_selectedWarehouseId != null &&
-            !_stockOutWarehouseIdsWithStock.contains(_selectedWarehouseId)) {
-          _selectedWarehouseId = null;
-        }
+        _productStockDistribution = rows;
       });
-    } catch (_) {
+      _applyInMemoryFilters();
+    } catch (e) {
       if (!mounted) return;
       setState(() {
-        _stockOutWarehouseIdsWithStock = <String>{};
-        _stockOutWarehouseStockRows = const [];
-        _selectedWarehouseId = null;
+        _productStockDistribution = const [];
       });
+      _applyInMemoryFilters();
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoadingStockOutWarehouses = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingStockOutWarehouses = false;
+        });
+      }
     }
   }
 
-  Future<void> _refreshStockOutColors() async {
-    if (_type != TransactionType.stockOut ||
-        _selectedProduct == null ||
-        _selectedWarehouseId == null ||
-        _selectedWarehouseId!.trim().isEmpty) {
-      if (!mounted) return;
+  void _applyInMemoryFilters() {
+    if (_type != TransactionType.stockOut || _selectedProduct == null) {
       setState(() {
+        _stockOutWarehouseIdsWithStock = <String>{};
+        _stockOutWarehouseStockRows = const [];
         _stockOutColorRows = const [];
-        _isLoadingStockOutColors = false;
       });
       return;
     }
 
+    final targetColor = _selectedColor.trim().toLowerCase();
+    
+    // Group stocks by warehouse
+    final warehouseQtyMap = <String, int>{};
+    final warehouseDetailMap = <String, Map<String, dynamic>>{};
+    
+    for (final row in _productStockDistribution) {
+      final wid = row['warehouse_id']?.toString() ?? '';
+      if (wid.isEmpty) continue;
+      
+      final rowColor = (row['color_name']?.toString() ?? '').trim().toLowerCase();
+      
+      // If target color is selected and not default, match it
+      if (targetColor.isNotEmpty && targetColor != 'default' && rowColor != targetColor) {
+        continue;
+      }
+      
+      final qty = int.tryParse(row['quantity']?.toString() ?? '0') ?? 0;
+      if (qty <= 0) continue;
+      
+      warehouseQtyMap[wid] = (warehouseQtyMap[wid] ?? 0) + qty;
+      warehouseDetailMap[wid] = row;
+    }
+
+    final warehouseRows = warehouseQtyMap.entries.map((e) {
+      final detail = warehouseDetailMap[e.key]!;
+      return {
+        'warehouse_id': e.key,
+        'warehouse_name': detail['warehouse_name'] ?? 'Warehouse',
+        'location': detail['location'] ?? '',
+        'available_quantity': e.value,
+      };
+    }).toList();
+
+    warehouseRows.sort((a, b) => (b['available_quantity'] as int).compareTo(a['available_quantity'] as int));
+    final warehouseIds = warehouseRows.map((r) => r['warehouse_id'].toString()).toSet();
+
+    // Group available colors
+    final colorQtyMap = <String, int>{};
+    final colorNameMap = <String, String>{};
+    
+    for (final row in _productStockDistribution) {
+      final wid = row['warehouse_id']?.toString() ?? '';
+      if (_selectedWarehouseId != null && _selectedWarehouseId!.isNotEmpty && wid != _selectedWarehouseId) {
+        continue;
+      }
+      
+      final colorName = (row['color_name']?.toString() ?? '').trim();
+      if (colorName.isEmpty) continue;
+      
+      final key = colorName.toLowerCase();
+      final qty = int.tryParse(row['quantity']?.toString() ?? '0') ?? 0;
+      if (qty <= 0) continue;
+      
+      colorQtyMap[key] = (colorQtyMap[key] ?? 0) + qty;
+      colorNameMap[key] = colorName;
+    }
+
+    final colorRows = colorQtyMap.entries.map((e) {
+      return {
+        'color_name': colorNameMap[e.key] ?? e.key,
+        'available_quantity': e.value,
+      };
+    }).toList();
+
+    colorRows.sort((a, b) => (a['color_name'] as String).toLowerCase().compareTo((b['color_name'] as String).toLowerCase()));
+
     setState(() {
-      _isLoadingStockOutColors = true;
+      _stockOutWarehouseStockRows = warehouseRows;
+      _stockOutWarehouseIdsWithStock = warehouseIds;
+      _stockOutColorRows = colorRows;
+
+      if (_selectedWarehouseId != null && !warehouseIds.contains(_selectedWarehouseId)) {
+        _selectedWarehouseId = null;
+      }
+
+      final availableColorNames = colorRows.map((r) => r['color_name'].toString().trim().toLowerCase()).toSet();
+      if (_selectedWarehouseId != null && !availableColorNames.contains(_selectedColor.trim().toLowerCase())) {
+        _selectedColor = colorRows.isNotEmpty
+            ? (colorRows.first['color_name']?.toString() ?? 'Default')
+            : 'Default';
+      }
     });
-    try {
-      final client = ref.read(apiClientProvider);
-      final productId = Uri.encodeQueryComponent(_selectedProduct!.id);
-      final warehouseId =
-          Uri.encodeQueryComponent(_selectedWarehouseId!.trim());
-      final response = await client.get(
-        '/warehouses/$warehouseId/colors?product_id=$productId',
-      );
-      final list =
-          (response is Map ? response['data'] : null) as List? ?? const [];
-      final rows = list
-          .whereType<Map>()
-          .map((row) => Map<String, dynamic>.from(row))
-          .toList();
-      if (!mounted) return;
+  }
+
+  Future<void> _refreshStockOutWarehouses() async {
+    if (_type != TransactionType.stockOut || _selectedProduct == null) {
       setState(() {
-        _stockOutColorRows = rows;
-        final availableColorNames = rows
-            .map(
-                (x) => (x['color_name']?.toString() ?? '').trim().toLowerCase())
-            .where((x) => x.isNotEmpty)
-            .toSet();
-        if (!availableColorNames
-            .contains(_selectedColor.trim().toLowerCase())) {
-          _selectedColor = rows.isNotEmpty
-              ? (rows.first['color_name']?.toString() ?? 'Default')
-              : 'Default';
-        }
+        _stockOutWarehouseIdsWithStock = <String>{};
+        _stockOutWarehouseStockRows = const [];
+        _stockOutColorRows = const [];
+        _isLoadingStockOutWarehouses = false;
       });
-    } catch (_) {
-      if (!mounted) return;
+      return;
+    }
+
+    if (_lastLoadedProductId != _selectedProduct!.id) {
+      _lastLoadedProductId = _selectedProduct!.id;
+      await _loadProductStockDistribution();
+    } else {
+      _applyInMemoryFilters();
+    }
+  }
+
+  Future<void> _refreshStockOutColors() async {
+    if (_type != TransactionType.stockOut || _selectedProduct == null) {
       setState(() {
         _stockOutColorRows = const [];
       });
-    } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoadingStockOutColors = false;
-      });
+      return;
+    }
+
+    if (_lastLoadedProductId != _selectedProduct!.id) {
+      _lastLoadedProductId = _selectedProduct!.id;
+      await _loadProductStockDistribution();
+    } else {
+      _applyInMemoryFilters();
     }
   }
 

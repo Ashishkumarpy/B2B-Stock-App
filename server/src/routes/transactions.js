@@ -71,27 +71,36 @@ transactionsRouter.post(
     const userName = String(session.name || 'Mobile User').trim();
     const userEmail = String(session.email || '').trim();
 
-    let productQuery = await supabaseAdmin
-      .from('products')
-      .select('id,name,code,color_stocks,pcs_per_carton')
-      .eq('id', productId)
-      .maybeSingle();
-    if (
-      productQuery.error &&
-      String(productQuery.error.message || '')
-        .toLowerCase()
-        .includes("could not find the 'color_stocks' column")
-    ) {
-      productQuery = await supabaseAdmin
-        .from('products')
-        .select('id,name,code')
-        .eq('id', productId)
-        .maybeSingle();
-    }
-    const product = productQuery.data;
-    const productError = productQuery.error;
-    if (productError) return res.status(400).json({ error: productError.message });
+    // Run all initial entity lookups in a single parallel batch
+    const warehouseIdToQuery = (warehouseIdInput && warehouseIdInput.toLowerCase() !== 'default' && warehouseIdInput.trim() !== '') ? warehouseIdInput : null;
+    const workerIdInput = String(payload.worker_id || '').trim();
+
+    const [
+      productRes,
+      warehousesRes,
+      stocksRes,
+      explicitWorkerRes,
+      workerByUserIdRes,
+      workerByEmailRes
+    ] = await Promise.all([
+      // 1. Fetch Product
+      supabaseAdmin.from('products').select('id,name,code,color_stocks,pcs_per_carton').eq('id', productId).maybeSingle(),
+      // 2. Fetch Active Warehouses
+      supabaseAdmin.from('warehouses').select('id,name,is_active').eq('is_active', true).order('created_at', { ascending: true }),
+      // 3. Fetch Stocks for Product
+      supabaseAdmin.from('warehouse_product_stocks').select('warehouse_id,color_name,quantity').eq('product_id', productId).limit(1000),
+      // 4. Fetch Explicit Worker
+      workerIdInput ? supabaseAdmin.from('workers').select('id,name').eq('id', workerIdInput).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      // 5. Fetch Worker by session user identifier
+      (!workerIdInput && userId) ? supabaseAdmin.from('workers').select('id,name,user_id').or(`id.eq.${userId},user_id.eq.${userId}`).maybeSingle() : Promise.resolve({ data: null, error: null }),
+      // 6. Fetch Worker by session email
+      (!workerIdInput && userId && userEmail) ? supabaseAdmin.from('workers').select('id,name,user_id,email').eq('email', userEmail).maybeSingle() : Promise.resolve({ data: null, error: null })
+    ]);
+
+    if (productRes.error) return res.status(400).json({ error: productRes.error.message });
+    const product = productRes.data;
     if (!product) return res.status(400).json({ error: 'Invalid product_id' });
+
     const parsedProductPcs = Number(product?.pcs_per_carton);
     const defaultPcsPerCarton =
       Number.isFinite(parsedProductPcs) && parsedProductPcs > 0
@@ -103,15 +112,12 @@ transactionsRouter.post(
         ? Math.trunc(parsedPayloadPcs)
         : defaultPcsPerCarton;
 
-    const colorStocksRaw = Array.isArray(product.color_stocks)
-      ? product.color_stocks
-      : [];
+    const colorStocksRaw = Array.isArray(product.color_stocks) ? product.color_stocks : [];
     const matchingColor = colorStocksRaw.find((entry) => {
       const entryColor = String(entry?.color || '').trim();
       return entryColor.toLowerCase() === colorName.toLowerCase();
     });
     if (matchingColor) {
-      // Canonicalize casing so DB trigger and warehouse stock lookup match exact color_name.
       colorName = String(matchingColor.color || colorName).trim() || colorName;
     } else if (colorName.toLowerCase() === 'default') {
       colorName = 'Default';
@@ -120,329 +126,134 @@ transactionsRouter.post(
     if (type === 'stock_out' && colorName.toLowerCase() !== 'default') {
       if (!matchingColor) {
         return res.status(400).json({
-          error:
-            'Selected color is not available for this product. Please use an existing color.',
+          error: 'Selected color is not available for this product. Please use an existing color.',
         });
       }
       if (!Number.isFinite(matchingColorQty) || matchingColorQty < quantity) {
         return res.status(400).json({
-          error: `Insufficient ${colorName} stock. Available: ${Math.max(
-            0,
-            Math.trunc(matchingColorQty),
-          )}`,
+          error: `Insufficient ${colorName} stock. Available: ${Math.max(0, Math.trunc(matchingColorQty))}`,
         });
       }
     }
 
-    let warehouseId = warehouseIdInput;
-    if (warehouseId && (warehouseId.toLowerCase() === 'default' || warehouseId.trim() === '')) {
-      warehouseId = null;
-    }
+    if (warehousesRes.error) return res.status(400).json({ error: warehousesRes.error.message });
+    const activeWarehouses = warehousesRes.data || [];
+    const activeById = new Map(activeWarehouses.map((w) => [String(w.id), String(w.name || 'Warehouse')]));
+
+    let warehouseId = warehouseIdToQuery;
     let warehouseName = null;
+
     if (warehouseId) {
-      const byId = await supabaseAdmin
-        .from('warehouses')
-        .select('id,name,is_active')
-        .eq('id', warehouseId)
-        .maybeSingle();
-      if (byId.error) {
-        return res.status(400).json({ error: byId.error.message });
-      }
-      if (!byId.data || byId.data.is_active !== true) {
+      if (!activeById.has(warehouseId)) {
         return res.status(400).json({ error: 'Selected warehouse is invalid or inactive.' });
       }
-      warehouseName = String(byId.data.name || 'Warehouse');
+      warehouseName = activeById.get(warehouseId);
     } else {
-      // For stock-out without explicit warehouse, prefer auto-resolving warehouse that has stock.
       if (type === 'stock_out') {
-        const allColorStocksRes = await supabaseAdmin
-          .from('warehouse_product_stocks')
-          .select('warehouse_id,color_name,quantity')
-          .eq('product_id', productId)
-          .limit(1000);
-        if (allColorStocksRes.error) {
-          return res.status(400).json({ error: allColorStocksRes.error.message });
-        }
-
-        const sameColorRows = (allColorStocksRes.data || []).filter((row) => {
+        const sameColorRows = (stocksRes.data || []).filter((row) => {
           const rowColor = String(row?.color_name || '').trim().toLowerCase();
           const qty = Number(row?.quantity ?? 0);
           return rowColor === colorName.trim().toLowerCase() && Number.isFinite(qty) && qty >= quantity;
         });
 
-        const candidateWarehouseIds = [
-          ...new Set(
-            sameColorRows
-              .map((row) => String(row?.warehouse_id || '').trim())
-              .filter(Boolean),
-          ),
-        ];
+        const candidateWarehouseIds = [...new Set(sameColorRows.map((row) => String(row?.warehouse_id || '').trim()).filter(Boolean))];
+        const viableWarehouseIds = candidateWarehouseIds.filter((wid) => activeById.has(wid));
 
-        if (candidateWarehouseIds.length > 0) {
-          const activeWarehousesRes = await supabaseAdmin
-            .from('warehouses')
-            .select('id,name,is_active')
-            .in('id', candidateWarehouseIds);
-          if (activeWarehousesRes.error) {
-            return res.status(400).json({ error: activeWarehousesRes.error.message });
+        if (viableWarehouseIds.length === 1) {
+          warehouseId = viableWarehouseIds[0];
+          warehouseName = activeById.get(viableWarehouseIds[0]);
+          const canonical = sameColorRows.find((row) => String(row?.warehouse_id || '').trim() === viableWarehouseIds[0]);
+          if (canonical?.color_name) {
+            colorName = String(canonical.color_name).trim() || colorName;
           }
-          const activeById = new Map(
-            (activeWarehousesRes.data || [])
-              .filter((w) => w.is_active === true)
-              .map((w) => [String(w.id), String(w.name || 'Warehouse')]),
-          );
-
-          const viableWarehouseIds = candidateWarehouseIds.filter((wid) => activeById.has(wid));
-          if (viableWarehouseIds.length === 1) {
-            warehouseId = viableWarehouseIds[0];
-            warehouseName = activeById.get(viableWarehouseIds[0]) || 'Warehouse';
-            const canonical = sameColorRows.find(
-              (row) => String(row?.warehouse_id || '').trim() === viableWarehouseIds[0],
-            );
-            if (canonical?.color_name) {
-              colorName = String(canonical.color_name).trim() || colorName;
-            }
-          } else if (viableWarehouseIds.length > 1) {
-            const options = viableWarehouseIds
-              .map((wid) => activeById.get(wid) || wid)
-              .join(', ');
-            return res.status(400).json({
-              error: `Stock for ${colorName} is available in multiple warehouses (${options}). Please choose a warehouse explicitly.`,
-            });
-          }
+        } else if (viableWarehouseIds.length > 1) {
+          const options = viableWarehouseIds.map((wid) => activeById.get(wid) || wid).join(', ');
+          return res.status(400).json({
+            error: `Stock for ${colorName} is available in multiple warehouses (${options}). Please choose a warehouse explicitly.`,
+          });
         }
       }
 
-      // If not auto-resolved above, fall back to first active warehouse.
       if (!warehouseId) {
-        const firstWarehouse = await supabaseAdmin
-          .from('warehouses')
-          .select('id,name')
-          .eq('is_active', true)
-          .order('created_at', { ascending: true })
-          .limit(1)
-          .maybeSingle();
-        if (firstWarehouse.error) {
-          return res.status(400).json({ error: firstWarehouse.error.message });
+        if (activeWarehouses.length === 0) {
+          return res.status(400).json({ error: 'No active warehouse configured. Please add a warehouse first.' });
         }
-        if (!firstWarehouse.data) {
-          return res.status(400).json({ error: 'No warehouse configured. Please add a warehouse first.' });
-        }
-        warehouseId = String(firstWarehouse.data.id);
-        warehouseName = String(firstWarehouse.data.name || 'Warehouse');
+        warehouseId = String(activeWarehouses[0].id);
+        warehouseName = String(activeWarehouses[0].name || 'Warehouse');
       }
     }
 
     if (type === 'stock_out') {
-      const canonicalWarehouseColorRes = await supabaseAdmin
-        .from('warehouse_product_stocks')
-        .select('color_name,quantity')
-        .eq('warehouse_id', warehouseId)
-        .eq('product_id', productId)
-        .limit(200);
-      if (!canonicalWarehouseColorRes.error && Array.isArray(canonicalWarehouseColorRes.data) && canonicalWarehouseColorRes.data.length > 0) {
-        const sameColorMatches = canonicalWarehouseColorRes.data.filter((row) => {
+      const sameWarehouseRows = (stocksRes.data || []).filter((row) => String(row.warehouse_id) === warehouseId);
+      if (sameWarehouseRows.length > 0) {
+        const sameColorMatches = sameWarehouseRows.filter((row) => {
           const rowColor = String(row?.color_name || '').trim().toLowerCase();
           return rowColor === colorName.trim().toLowerCase();
         });
-        if (sameColorMatches.length === 0) {
-          // Continue with existing exact query + DB trigger validation below.
-        } else {
-        // Prefer the highest-quantity canonical row when duplicate color variants exist
-        // (e.g., "Black" and "black").
-        const stockMatch = sameColorMatches.reduce((best, row) => {
-          const bestQty = Number(best?.quantity ?? 0);
-          const rowQty = Number(row?.quantity ?? 0);
-          if (!Number.isFinite(bestQty)) return row;
-          if (!Number.isFinite(rowQty)) return best;
-          return rowQty > bestQty ? row : best;
-        }, sameColorMatches[0]);
-        const matchedColorName = String(stockMatch?.color_name || '').trim();
-        if (matchedColorName) {
-          colorName = matchedColorName;
-        }
-        const available = Number(stockMatch?.quantity ?? 0);
-        if (!Number.isFinite(available) || available < quantity) {
-          return res.status(400).json({
-            error: `Insufficient stock in ${warehouseName} for ${colorName}. Available: ${Math.max(
-              0,
-              Math.trunc(available),
-            )}`,
-          });
-        }
-        }
-      }
 
-      const stockRow = await supabaseAdmin
-        .from('warehouse_product_stocks')
-        .select('quantity')
-        .eq('warehouse_id', warehouseId)
-        .eq('product_id', productId)
-        .eq('color_name', colorName)
-        .maybeSingle();
-      if (stockRow.error) {
-        return res.status(400).json({ error: stockRow.error.message });
-      }
-      if (!stockRow.data) {
-        // Attempt a safe warehouse fallback when there is exactly one active warehouse
-        // with sufficient stock for this product/color.
-        const allColorStocksRes = await supabaseAdmin
-          .from('warehouse_product_stocks')
-          .select('warehouse_id,color_name,quantity')
-          .eq('product_id', productId)
-          .limit(1000);
-        if (allColorStocksRes.error) {
-          return res.status(400).json({ error: allColorStocksRes.error.message });
-        }
-        const sameColorRows = (allColorStocksRes.data || []).filter((row) => {
-          const rowColor = String(row?.color_name || '').trim().toLowerCase();
-          return rowColor === colorName.trim().toLowerCase();
-        });
-        const candidateWarehouseIds = [...new Set(sameColorRows
-          .map((row) => String(row?.warehouse_id || '').trim())
-          .filter(Boolean))];
-        if (candidateWarehouseIds.length > 0) {
-          const activeWarehousesRes = await supabaseAdmin
-            .from('warehouses')
-            .select('id,name,is_active')
-            .in('id', candidateWarehouseIds);
-          if (activeWarehousesRes.error) {
-            return res.status(400).json({ error: activeWarehousesRes.error.message });
+        if (sameColorMatches.length > 0) {
+          const stockMatch = sameColorMatches.reduce((best, row) => {
+            const bestQty = Number(best?.quantity ?? 0);
+            const rowQty = Number(row?.quantity ?? 0);
+            return rowQty > bestQty ? row : best;
+          }, sameColorMatches[0]);
+
+          const matchedColorName = String(stockMatch?.color_name || '').trim();
+          if (matchedColorName) {
+            colorName = matchedColorName;
           }
-          const activeById = new Map(
-            (activeWarehousesRes.data || [])
-              .filter((w) => w.is_active === true)
-              .map((w) => [String(w.id), String(w.name || 'Warehouse')]),
-          );
-          const viable = sameColorRows.filter((row) => {
-            const wid = String(row?.warehouse_id || '').trim();
-            const qty = Number(row?.quantity ?? 0);
-            return activeById.has(wid) && Number.isFinite(qty) && qty >= quantity;
-          });
-          const viableWarehouseIds = [...new Set(viable.map((row) => String(row.warehouse_id)))];
-          if (viableWarehouseIds.length === 1) {
-            const selectedWarehouseId = viableWarehouseIds[0];
-            warehouseId = selectedWarehouseId;
-            warehouseName = activeById.get(selectedWarehouseId) || warehouseName;
-            const canonical = viable.find((row) => String(row.warehouse_id) === selectedWarehouseId);
-            if (canonical?.color_name) {
-              colorName = String(canonical.color_name).trim() || colorName;
-            }
-          } else if (viableWarehouseIds.length > 1) {
-            const options = viableWarehouseIds
-              .map((wid) => activeById.get(wid) || wid)
-              .join(', ');
+          const available = Number(stockMatch?.quantity ?? 0);
+          if (!Number.isFinite(available) || available < quantity) {
             return res.status(400).json({
-              error: `Stock for ${colorName} is available in multiple warehouses (${options}). Please choose a warehouse explicitly.`,
-            });
-          } else {
-            const options = candidateWarehouseIds
-              .map((wid) => activeById.get(wid))
-              .filter(Boolean)
-              .join(', ');
-            return res.status(400).json({
-              error: options
-                ? `No sufficient stock in selected warehouse for ${colorName}. Available warehouse(s): ${options}.`
-                : `No stock found in selected warehouse for ${colorName}.`,
+              error: `Insufficient stock in ${warehouseName} for ${colorName}. Available: ${Math.max(0, Math.trunc(available))}`,
             });
           }
         } else {
           return res.status(400).json({
-            error: `No stock found in selected warehouse for ${colorName}.`,
+            error: `No stock found in warehouse ${warehouseName} for color ${colorName}.`,
           });
         }
-      }
-
-      const resolvedStockRow = await supabaseAdmin
-        .from('warehouse_product_stocks')
-        .select('quantity')
-        .eq('warehouse_id', warehouseId)
-        .eq('product_id', productId)
-        .eq('color_name', colorName)
-        .maybeSingle();
-      if (resolvedStockRow.error) {
-        return res.status(400).json({ error: resolvedStockRow.error.message });
-      }
-      if (!resolvedStockRow.data) {
+      } else {
         return res.status(400).json({
-          error: `No stock found in warehouse ${warehouseName} for color ${colorName}.`,
+          error: `No stock found in selected warehouse for ${colorName}.`,
         });
-      }
-      if (!stockRow.error && resolvedStockRow.data) {
-        const available = Number(resolvedStockRow.data.quantity ?? 0);
-        if (!Number.isFinite(available) || available < quantity) {
-          return res.status(400).json({
-            error: `Insufficient stock in ${warehouseName} for ${colorName}. Available: ${Math.max(
-              0,
-              Math.trunc(available),
-            )}`,
-          });
-        }
       }
     }
 
-    let workerId = String(payload.worker_id || '').trim() || null;
+    let workerId = workerIdInput || null;
     let workerName = userName;
 
     if (workerId) {
-      const { data: explicitWorker, error: workerErr } = await supabaseAdmin
-        .from('workers')
-        .select('id,name')
-        .eq('id', workerId)
-        .maybeSingle();
-      
+      const explicitWorker = explicitWorkerRes.data;
       if (explicitWorker) {
         workerName = explicitWorker.name;
       } else {
-        // Fallback to current user if worker_id is invalid
         workerId = null;
       }
     }
 
     if (!workerId && userId) {
-      // Worker OTP sessions use workers.id as session.sub (not users.id).
       if (sessionRole === 'worker' || (sessionRole === 'manager' && !userEmail)) {
-        const byWorkerId = await supabaseAdmin
-          .from('workers')
-          .select('id,name')
-          .eq('id', userId)
-          .maybeSingle();
-        if (byWorkerId.error || !byWorkerId.data) {
+        const byWorkerId = workerByUserIdRes.data;
+        if (!byWorkerId) {
           return res.status(400).json({
             error: 'Worker session is invalid. Please log in again.',
           });
         }
-        workerId = byWorkerId.data.id;
-        workerName = String(byWorkerId.data.name || userName || 'Worker');
+        workerId = byWorkerId.id;
+        workerName = String(byWorkerId.name || userName || 'Worker');
       } else {
-        // Admin sessions use users.id as session.sub.
-        let worker = null;
+        let worker = workerByUserIdRes.data;
         let hasWorkerUserIdColumn = true;
 
-        const byUser = await supabaseAdmin
-          .from('workers')
-          .select('id,name')
-          .eq('user_id', userId)
-          .maybeSingle();
-        if (!byUser.error && byUser.data) {
-          worker = byUser.data;
-        } else if (
-          byUser.error &&
-          String(byUser.error.message || '')
-            .toLowerCase()
-            .includes("could not find the 'user_id' column")
-        ) {
+        if (workerByUserIdRes.error && String(workerByUserIdRes.error.message || '').toLowerCase().includes("could not find the 'user_id' column")) {
           hasWorkerUserIdColumn = false;
         }
 
         if (!worker && userEmail) {
-          const byEmail = await supabaseAdmin
-            .from('workers')
-            .select(hasWorkerUserIdColumn ? 'id,name,user_id' : 'id,name')
-            .eq('email', userEmail)
-            .maybeSingle();
-          if (!byEmail.error && byEmail.data) {
-            worker = byEmail.data;
+          const byEmail = workerByEmailRes.data;
+          if (byEmail) {
+            worker = byEmail;
             if (hasWorkerUserIdColumn && !worker.user_id) {
               await supabaseAdmin
                 .from('workers')
