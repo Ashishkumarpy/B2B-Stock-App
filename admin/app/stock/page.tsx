@@ -185,14 +185,16 @@ export default function StockPage() {
     const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
     return adjusted.toISOString().slice(0, 10);
   });
+  const [exportRangeType, setExportRangeType] = useState<'daily' | 'all'>('daily');
 
   const exportStats = useMemo(() => {
-    const targetDateStr = exportDate;
-    const dayTxns = transactions.filter((t) => {
-      const dateObj = new Date(t.created_at);
-      const local = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000));
-      return local.toISOString().slice(0, 10) === targetDateStr;
-    });
+    const dayTxns = exportRangeType === 'all'
+      ? transactions
+      : transactions.filter((t) => {
+          const dateObj = new Date(t.created_at);
+          const local = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000));
+          return local.toISOString().slice(0, 10) === exportDate;
+        });
 
     const stockInTxns = dayTxns.filter((t) => t.type === 'stock_in');
     const stockOutTxns = dayTxns.filter((t) => t.type === 'stock_out');
@@ -207,18 +209,20 @@ export default function StockPage() {
       totalOutQty: totalStockOutQty,
       totalCount: dayTxns.length,
     };
-  }, [exportDate, transactions]);
+  }, [exportRangeType, exportDate, transactions]);
 
   const handleExportExcel = () => {
     try {
       const targetDateStr = exportDate; // YYYY-MM-DD
       
-      // Filter transactions that occurred on targetDate (local time zone)
-      const dayTransactions = transactions.filter((t) => {
-        const dateObj = new Date(t.created_at);
-        const local = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000));
-        return local.toISOString().slice(0, 10) === targetDateStr;
-      });
+      // Filter transactions based on export range selection
+      const dayTransactions = exportRangeType === 'all'
+        ? transactions
+        : transactions.filter((t) => {
+            const dateObj = new Date(t.created_at);
+            const local = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60 * 1000));
+            return local.toISOString().slice(0, 10) === targetDateStr;
+          });
 
       // Prepare In Stock (Incoming Stock In) data - only include active transactions
       const stockInAOA = products
@@ -287,10 +291,12 @@ export default function StockPage() {
         const wsIn = XLSX.utils.json_to_sheet([]);
         const wsOut = XLSX.utils.json_to_sheet([]);
 
+        const rangeLabel = exportRangeType === 'all' ? "All Time" : targetDateStr;
+
         // Format metadata headers inside the sheet itself for professional look
         XLSX.utils.sheet_add_aoa(wsIn, [
           ["ZENTORY B2B STOCK REPORT - STOCK IN (INCOMING)"],
-          [`Report Date: ${targetDateStr}`],
+          [`Report Range: ${rangeLabel}`],
           [`Generated on: ${new Date().toLocaleString('en-IN')}`],
           [`Total Quantity In: ${exportStats.totalInQty} pcs (${exportStats.totalInCount} transactions)`],
           [],
@@ -301,7 +307,7 @@ export default function StockPage() {
 
         XLSX.utils.sheet_add_aoa(wsOut, [
           ["ZENTORY B2B STOCK REPORT - STOCK OUT (OUTGOING)"],
-          [`Report Date: ${targetDateStr}`],
+          [`Report Range: ${rangeLabel}`],
           [`Generated on: ${new Date().toLocaleString('en-IN')}`],
           [`Total Quantity Out: ${exportStats.totalOutQty} pcs (${exportStats.totalOutCount} transactions)`],
           [],
@@ -333,7 +339,8 @@ export default function StockPage() {
         XLSX.utils.book_append_sheet(wb, wsIn, 'In stock');
         XLSX.utils.book_append_sheet(wb, wsOut, 'Stock out');
 
-        XLSX.writeFile(wb, `zentory_stock_report_${targetDateStr}.xlsx`);
+        const fileSuffix = exportRangeType === 'all' ? 'all_time' : targetDateStr;
+        XLSX.writeFile(wb, `zentory_stock_report_${fileSuffix}.xlsx`);
       });
 
       setShowExportModal(false);
@@ -1498,7 +1505,11 @@ export default function StockPage() {
                 <h2 className="flex items-center gap-2 text-xl font-bold">
                   <span>📥</span> Export Stock Report
                 </h2>
-                <p className="stock-muted mt-1 text-xs">Download daily transactions by product in Excel format</p>
+                <p className="stock-muted mt-1 text-xs">
+                  {exportRangeType === 'all'
+                    ? 'Download all time transactions by product in Excel format'
+                    : 'Download daily transactions by product in Excel format'}
+                </p>
               </div>
               <button 
                 onClick={() => setShowExportModal(false)} 
@@ -1509,46 +1520,77 @@ export default function StockPage() {
             </div>
 
             <div className="p-8 space-y-6">
-              {/* Date Input & Quick Selectors */}
+              {/* Range Selection Toggle */}
               <div className="space-y-3">
-                <label htmlFor="stock-export-date" className="stock-muted block text-xs font-semibold uppercase tracking-wider">Select Date</label>
-                <div className="flex gap-2">
-                  <input
-                    id="stock-export-date"
-                    name="stock-export-date"
-                    type="date"
-                    required
-                    value={exportDate}
-                    onChange={(e) => setExportDate(e.target.value)}
-                    className="stock-field flex-1 rounded-xl border px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
-                  />
+                <label className="stock-muted block text-xs font-semibold uppercase tracking-wider">Export Range</label>
+                <div className="stock-soft-control flex rounded-xl border p-1 w-fit">
                   <button
                     type="button"
-                    onClick={() => {
-                      const local = new Date();
-                      const offset = local.getTimezoneOffset();
-                      const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
-                      setExportDate(adjusted.toISOString().slice(0, 10));
-                    }}
-                    className="stock-soft-control rounded-xl border px-3.5 py-2.5 text-xs font-semibold active:scale-95 transition-all"
+                    onClick={() => setExportRangeType('daily')}
+                    className={`rounded-lg px-4 py-2 text-xs font-semibold transition active:scale-95 ${
+                      exportRangeType === 'daily'
+                        ? 'stock-segment-active-primary shadow-md'
+                        : 'stock-segment'
+                    }`}
                   >
-                    Today
+                    Daily Report
                   </button>
                   <button
                     type="button"
-                    onClick={() => {
-                      const local = new Date();
-                      local.setDate(local.getDate() - 1);
-                      const offset = local.getTimezoneOffset();
-                      const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
-                      setExportDate(adjusted.toISOString().slice(0, 10));
-                    }}
-                    className="stock-soft-control rounded-xl border px-3.5 py-2.5 text-xs font-semibold active:scale-95 transition-all"
+                    onClick={() => setExportRangeType('all')}
+                    className={`rounded-lg px-4 py-2 text-xs font-semibold transition active:scale-95 ${
+                      exportRangeType === 'all'
+                        ? 'stock-segment-active-primary shadow-md'
+                        : 'stock-segment'
+                    }`}
                   >
-                    Yesterday
+                    All Time Report
                   </button>
                 </div>
               </div>
+
+              {/* Date Input & Quick Selectors - only visible for daily report */}
+              {exportRangeType === 'daily' && (
+                <div className="space-y-3 animate-fadeIn">
+                  <label htmlFor="stock-export-date" className="stock-muted block text-xs font-semibold uppercase tracking-wider">Select Date</label>
+                  <div className="flex gap-2">
+                    <input
+                      id="stock-export-date"
+                      name="stock-export-date"
+                      type="date"
+                      required
+                      value={exportDate}
+                      onChange={(e) => setExportDate(e.target.value)}
+                      className="stock-field flex-1 rounded-xl border px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const local = new Date();
+                        const offset = local.getTimezoneOffset();
+                        const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
+                        setExportDate(adjusted.toISOString().slice(0, 10));
+                      }}
+                      className="stock-soft-control rounded-xl border px-3.5 py-2.5 text-xs font-semibold active:scale-95 transition-all"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const local = new Date();
+                        local.setDate(local.getDate() - 1);
+                        const offset = local.getTimezoneOffset();
+                        const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
+                        setExportDate(adjusted.toISOString().slice(0, 10));
+                      }}
+                      className="stock-soft-control rounded-xl border px-3.5 py-2.5 text-xs font-semibold active:scale-95 transition-all"
+                    >
+                      Yesterday
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Live Preview Stats */}
               <div className="space-y-3">
@@ -1591,7 +1633,11 @@ export default function StockPage() {
                 {exportStats.totalCount === 0 && (
                   <div className="stock-warning-soft flex animate-pulse items-start gap-2.5 rounded-xl border border-amber-500/20 p-3 text-xs leading-normal">
                     <span className="text-sm">⚠️</span>
-                    <p>No transactions found on this date. The report will generate empty tables for all products.</p>
+                    <p>
+                      {exportRangeType === 'all'
+                        ? 'No transactions found. The report will generate empty tables for all products.'
+                        : 'No transactions found on this date. The report will generate empty tables for all products.'}
+                    </p>
                   </div>
                 )}
               </div>
