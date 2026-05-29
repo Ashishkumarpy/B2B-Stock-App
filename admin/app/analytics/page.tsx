@@ -182,10 +182,13 @@ export default function AnalyticsPage() {
 
           {dateFilter === 'custom' && (
             <input
+              id="analytics-custom-date"
+              name="analytics-custom-date"
               type="date"
+              aria-label="Analytics custom date"
               value={customDate}
               onChange={(e) => setCustomDate(e.target.value)}
-              className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
             />
           )}
         </div>

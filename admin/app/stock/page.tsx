@@ -902,7 +902,10 @@ export default function StockPage() {
 
                   {dateFilter === 'custom' && (
                     <input
+                      id="stock-custom-date"
+                      name="stock-custom-date"
                       type="date"
+                      aria-label="Stock custom date"
                       value={customDate}
                       onChange={(e) => setCustomDate(e.target.value)}
                       className="stock-field rounded-lg border px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
@@ -1078,7 +1081,7 @@ export default function StockPage() {
 
               {/* Type Toggle */}
               <div>
-                <label className="stock-muted mb-2 block text-xs uppercase tracking-wider">Movement Type</label>
+                <div className="stock-muted mb-2 text-xs uppercase tracking-wider">Movement Type</div>
                 <div className="flex gap-3">
                   {(['stock_in', 'stock_out'] as TransactionType[]).map((t) => (
                     <button
@@ -1106,8 +1109,9 @@ export default function StockPage() {
 
               {/* Product */}
               <div>
-                <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Product *</label>
+                <label htmlFor="stock-product-picker" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Product *</label>
                 <button
+                  id="stock-product-picker"
                   type="button"
                   disabled={isEditingOlderThan12Hours}
                   onClick={() => setShowProductPicker(true)}
@@ -1138,8 +1142,10 @@ export default function StockPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Warehouse</label>
+                  <label htmlFor="stock-warehouse" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Warehouse</label>
                   <select
+                    id="stock-warehouse"
+                    name="stock-warehouse"
                     value={form.warehouse_id}
                     disabled={isEditingOlderThan12Hours}
                     onChange={(e) => handleWarehouseChange(e.target.value)}
@@ -1157,10 +1163,12 @@ export default function StockPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Color *</label>
+                  <label htmlFor="stock-color" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Color *</label>
                   {form.type === 'stock_out' ? (
                     <div className="relative">
                       <select
+                        id="stock-color"
+                        name="stock-color"
                         required
                         disabled={isEditingOlderThan12Hours}
                         value={form.color_name}
@@ -1186,6 +1194,8 @@ export default function StockPage() {
                   ) : (
                     <div className="relative">
                       <input
+                        id="stock-color"
+                        name="stock-color"
                         required
                         type="text"
                         disabled={isEditingOlderThan12Hours}
@@ -1219,8 +1229,10 @@ export default function StockPage() {
               <div className="grid gap-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Cartons</label>
+                    <label htmlFor="stock-cartons" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Cartons</label>
                     <input
+                      id="stock-cartons"
+                      name="stock-cartons"
                       type="number" min="0"
                       disabled={isEditingOlderThan12Hours}
                       value={form.cartons}
@@ -1234,8 +1246,10 @@ export default function StockPage() {
                     />
                   </div>
                   <div>
-                    <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Pcs / Carton</label>
+                    <label htmlFor="stock-pcs-per-carton" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Pcs / Carton</label>
                     <input
+                      id="stock-pcs-per-carton"
+                      name="stock-pcs-per-carton"
                       type="number" min="0"
                       disabled={isEditingOlderThan12Hours}
                       value={form.pcsPerCarton}
@@ -1249,8 +1263,10 @@ export default function StockPage() {
                     />
                   </div>
                   <div>
-                    <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Total Quantity *</label>
+                    <label htmlFor="stock-quantity" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Total Quantity *</label>
                     <input
+                      id="stock-quantity"
+                      name="stock-quantity"
                       type="number" required min="1"
                       disabled={isEditingOlderThan12Hours}
                       value={form.quantity || ''}
@@ -1261,8 +1277,10 @@ export default function StockPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Recorded By *</label>
+                  <label htmlFor="stock-worker" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Recorded By *</label>
                   <select
+                    id="stock-worker"
+                    name="stock-worker"
                     required
                     disabled={isEditingOlderThan12Hours}
                     value={form.worker_id}
@@ -1285,8 +1303,10 @@ export default function StockPage() {
               {/* Customer Name */}
               {form.type === 'stock_out' && (
                 <div>
-                  <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Customer Name (optional)</label>
+                  <label htmlFor="stock-customer-name" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Customer Name (optional)</label>
                   <input
+                    id="stock-customer-name"
+                    name="stock-customer-name"
                     type="text"
                     value={form.customer_name}
                     onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
@@ -1298,8 +1318,10 @@ export default function StockPage() {
 
               {/* Notes */}
               <div>
-                <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Notes (optional)</label>
+                <label htmlFor="stock-notes" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Notes (optional)</label>
                 <input
+                  id="stock-notes"
+                  name="stock-notes"
                   type="text"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
@@ -1487,9 +1509,11 @@ export default function StockPage() {
             <div className="p-8 space-y-6">
               {/* Date Input & Quick Selectors */}
               <div className="space-y-3">
-                <label className="stock-muted block text-xs font-semibold uppercase tracking-wider">Select Date</label>
+                <label htmlFor="stock-export-date" className="stock-muted block text-xs font-semibold uppercase tracking-wider">Select Date</label>
                 <div className="flex gap-2">
                   <input
+                    id="stock-export-date"
+                    name="stock-export-date"
                     type="date"
                     required
                     value={exportDate}
@@ -1526,7 +1550,7 @@ export default function StockPage() {
 
               {/* Live Preview Stats */}
               <div className="space-y-3">
-                <label className="stock-muted block text-xs font-semibold uppercase tracking-wider">Report Preview</label>
+                <div className="stock-muted text-xs font-semibold uppercase tracking-wider">Report Preview</div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   {/* Stock In Preview Card */}
