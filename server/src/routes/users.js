@@ -226,10 +226,35 @@ usersRouter.post('/', authRequired, requirePermission('perm_users'), async (req,
 
     // 4. Update corresponding worker phone number if provided
     if (phone) {
-      await supabaseAdmin
+      const normalized = normalizePhone(phone);
+      // Check if there is an existing worker with this phone number
+      const { data: existingWorker } = await supabaseAdmin
         .from('workers')
-        .update({ phone: normalizePhone(phone) })
-        .eq('user_id', authUser.id);
+        .select('id, user_id')
+        .eq('phone', normalized)
+        .maybeSingle();
+
+      if (existingWorker) {
+        if (existingWorker.user_id && existingWorker.user_id !== authUser.id) {
+          return res.status(400).json({ error: 'This phone number is already linked to another account.' });
+        }
+        // Link the existing worker record to the new user and delete the duplicate auto-created one
+        await supabaseAdmin
+          .from('workers')
+          .delete()
+          .eq('user_id', authUser.id)
+          .neq('id', existingWorker.id);
+
+        await supabaseAdmin
+          .from('workers')
+          .update({ user_id: authUser.id, name, email })
+          .eq('id', existingWorker.id);
+      } else {
+        await supabaseAdmin
+          .from('workers')
+          .update({ phone: normalized })
+          .eq('user_id', authUser.id);
+      }
     }
 
     // 5. Log the activity
@@ -324,10 +349,47 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
 
       // Update phone in workers table if provided
       if (phone !== undefined) {
-        await supabaseAdmin
-          .from('workers')
-          .update({ phone: normalizePhone(phone) })
-          .eq('user_id', id);
+        const normalized = normalizePhone(phone);
+        if (normalized) {
+          // Check if there is another worker with this phone number
+          const { data: existingWorker } = await supabaseAdmin
+            .from('workers')
+            .select('id, user_id')
+            .eq('phone', normalized)
+            .maybeSingle();
+
+          if (existingWorker) {
+            if (existingWorker.user_id && existingWorker.user_id !== id) {
+              return res.status(400).json({ error: 'This phone number is already linked to another account.' });
+            }
+            if (existingWorker.id !== id) {
+              // Delete the current user's worker record to avoid unique user_id constraint
+              await supabaseAdmin
+                .from('workers')
+                .delete()
+                .eq('user_id', id)
+                .neq('id', existingWorker.id);
+
+              // Update the existing worker record to be linked to this user
+              await supabaseAdmin
+                .from('workers')
+                .update({ user_id: id, name: name || existingUser.name, email: email || existingUser.email })
+                .eq('id', existingWorker.id);
+            }
+          } else {
+            // No worker with this phone, update the current user's worker
+            await supabaseAdmin
+              .from('workers')
+              .update({ phone: normalized })
+              .eq('user_id', id);
+          }
+        } else {
+          // If phone is cleared
+          await supabaseAdmin
+            .from('workers')
+            .update({ phone: null })
+            .eq('user_id', id);
+        }
       }
 
       // Update warehouse mappings
@@ -445,6 +507,14 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
       if (profileError) return res.status(400).json({ error: profileError.message });
 
       // 3. Link existing workers table row to authUser
+      // First, delete the auto-created worker record to avoid unique user_id constraint violation
+      await supabaseAdmin
+        .from('workers')
+        .delete()
+        .eq('user_id', authUser.id)
+        .neq('id', id);
+
+      // Now link the existing worker to authUser
       await supabaseAdmin
         .from('workers')
         .update({
