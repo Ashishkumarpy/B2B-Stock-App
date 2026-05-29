@@ -209,6 +209,14 @@ body {
 }
 
 /* Stock modals use explicit theme classes so light mode does not depend on broad utility overrides. */
+.stock-modal-overlay {
+  background: rgba(15, 23, 42, 0.22);
+}
+
+.dark .stock-modal-overlay {
+  background: rgba(0, 0, 0, 0.7);
+}
+
 .stock-modal-surface {
   background: var(--bg-surface);
   border-color: var(--border-color);
@@ -248,6 +256,25 @@ body {
 .stock-soft-control:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
+}
+
+.stock-modal-header {
+  background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.08), rgba(124, 58, 237, 0.08));
+  border-color: var(--border-color);
+}
+
+.dark .stock-modal-header {
+  background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.2), rgba(124, 58, 237, 0.16));
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.stock-quantity-pill {
+  background: rgba(var(--color-success-rgb), 0.1);
+  color: #047857;
+}
+
+.dark .stock-quantity-pill {
+  color: #6ee7b7;
 }
 
 .stock-success-soft {

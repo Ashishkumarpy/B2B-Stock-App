@@ -1064,7 +1064,7 @@ export default function StockPage() {
 
       {/* Record Stock Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+        <div className="stock-modal-overlay fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="stock-modal-surface rounded-2xl border p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
@@ -1186,7 +1186,7 @@ export default function StockPage() {
                         )}
                       </select>
                       {form.product_id && (
-                        <span className="absolute right-8 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded pointer-events-none">
+                        <span className="stock-quantity-pill absolute right-8 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-bold pointer-events-none">
                           Stock: {selectedColorQty}
                         </span>
                       )}
@@ -1211,7 +1211,7 @@ export default function StockPage() {
                         ))}
                       </datalist>
                       {form.product_id && (
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded">
+                        <span className="stock-quantity-pill absolute right-3 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-bold">
                           Stock: {selectedColorQty}
                         </span>
                       )}
@@ -1331,7 +1331,7 @@ export default function StockPage() {
               </div>
 
               {error && (
-                <p className="text-sm text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{error}</p>
+                <p className="stock-danger-soft rounded-lg px-3 py-2 text-sm">{error}</p>
               )}
 
               <div className="flex gap-3 pt-2">
@@ -1346,7 +1346,7 @@ export default function StockPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-6 py-3 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 transition"
+                  className="stock-soft-control rounded-xl border px-6 py-3 text-sm transition"
                 >
                   Cancel
                 </button>
@@ -1374,6 +1374,8 @@ export default function StockPage() {
               ←
             </button>
             <input
+              id="stock-product-search"
+              name="stock-product-search"
               type="text"
               autoFocus
               value={pickerSearch}
@@ -1414,9 +1416,9 @@ export default function StockPage() {
                       }}
                       className="stock-modal-panel text-left rounded-xl border p-4 transition hover:border-indigo-500/50 hover:bg-indigo-500/10"
                     >
-                      <p className="font-mono font-bold text-indigo-400 text-sm">{p.code}</p>
+                      <p className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-sm">{p.code}</p>
                       <p className="stock-muted mt-0.5 truncate text-[10px]">{p.name}</p>
-                      <p className="text-xs text-indigo-400 mt-2">{p.quantity} in stock</p>
+                      <p className="mt-2 text-xs text-indigo-700 dark:text-indigo-400">{p.quantity} in stock</p>
                     </button>
                   ))}
               </div>
@@ -1450,7 +1452,7 @@ export default function StockPage() {
                       }}
                       className="stock-modal-panel text-left rounded-xl border p-4 transition hover:border-indigo-500/50 hover:bg-indigo-500/10"
                     >
-                      <p className="font-mono font-bold text-indigo-400 text-sm">{p.code}</p>
+                      <p className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-sm">{p.code}</p>
                       <p className="stock-muted mt-0.5 truncate text-[10px]">{p.name}</p>
                       <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 mt-2 uppercase tracking-tight bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded inline-block">
                         Qty: {p.quantity}
@@ -1488,10 +1490,10 @@ export default function StockPage() {
 
       {/* Export Excel Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="stock-modal-overlay fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="stock-modal-surface rounded-3xl border w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300">
-            {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 px-8 py-6 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
+            {/* Header */}
+            <div className="stock-modal-header px-8 py-6 border-b flex items-center justify-between">
               <div>
                 <h2 className="flex items-center gap-2 text-xl font-bold">
                   <span>📥</span> Export Stock Report
