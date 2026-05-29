@@ -53,7 +53,12 @@ export function requirePermission(permission) {
         .maybeSingle();
 
       if (error || !user) {
-        return res.status(401).json({ error: 'User profile not found' });
+        if (error) {
+          console.error('[requirePermission] Database query failed:', error.message, error.details || '');
+        }
+        return res.status(401).json({ 
+          error: 'User profile not found. Database schema may be outdated. Please run the SQL migrations in supabase/user_management.sql' 
+        });
       }
 
       if (!user.is_active) {

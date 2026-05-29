@@ -12,6 +12,18 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS perm_reports BOOLEAN DEFAULT f
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS perm_users BOOLEAN DEFAULT false;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS perm_settings BOOLEAN DEFAULT false;
 
+-- Initialize existing users' permissions based on their current roles so they do not lose access
+UPDATE public.users
+SET 
+  is_active = COALESCE(is_active, true),
+  perm_products = COALESCE(perm_products, (role = 'admin')),
+  perm_inventory = COALESCE(perm_inventory, (role IN ('admin', 'manager', 'worker'))),
+  perm_orders = COALESCE(perm_orders, (role IN ('admin', 'manager'))),
+  perm_reports = COALESCE(perm_reports, (role IN ('admin', 'manager'))),
+  perm_users = COALESCE(perm_users, (role IN ('admin', 'manager'))),
+  perm_settings = COALESCE(perm_settings, (role = 'admin'));
+
+
 -- 2. Create user_warehouses Table (User-to-Warehouse Mapping)
 CREATE TABLE IF NOT EXISTS public.user_warehouses (
   user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
