@@ -5,7 +5,7 @@
 :root {
   --sidebar-w: 240px;
   --accent: #2563eb;
-  
+
   /* Brand colors as RGB triplets for dynamic alpha transparency */
   --color-primary-rgb: 37, 99, 235;
   --color-success-rgb: 16, 185, 129;
@@ -49,7 +49,7 @@
 
 .dark {
   --accent: #60a5fa;
-  
+
   /* Brand colors in Dark Mode */
   --color-primary-rgb: 96, 165, 250;
   --color-success-rgb: 16, 185, 129;
@@ -66,10 +66,10 @@
   /* Theme variables - Dark Mode */
   --bg-app: #0a0a0f;
   --bg-surface: #13131e;
-  --bg-card: rgba(255,255,255,0.03);
+  --bg-card: rgba(255, 255, 255, 0.03);
   --bg-input: rgba(255, 255, 255, 0.05);
-  --bg-hover: rgba(255,255,255,0.02);
-  --border-color: rgba(255,255,255,0.07);
+  --bg-hover: rgba(255, 255, 255, 0.02);
+  --border-color: rgba(255, 255, 255, 0.07);
   --border-input: rgba(255, 255, 255, 0.1);
   --text-primary: #f8fafc;
   --text-secondary: #9ca3af;
@@ -87,11 +87,13 @@
   --badge-gray-bg: #1f2937;
   --badge-gray-text: #9ca3af;
 
-  --sidebar-bg: rgba(15,15,25,0.95);
-  --sidebar-border: rgba(255,255,255,0.06);
+  --sidebar-bg: rgba(15, 15, 25, 0.95);
+  --sidebar-border: rgba(255, 255, 255, 0.06);
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
   -webkit-font-smoothing: antialiased;
@@ -120,10 +122,21 @@ body {
 }
 
 /* ── Stat card accent gradient ──────────────────────── */
-.stat-indigo { border-top: 2px solid var(--color-primary); }
-.stat-violet { border-top: 2px solid var(--color-purple); }
-.stat-sky    { border-top: 2px solid #38bdf8; }
-.stat-emerald{ border-top: 2px solid var(--color-success); }
+.stat-indigo {
+  border-top: 2px solid var(--color-primary);
+}
+
+.stat-violet {
+  border-top: 2px solid var(--color-purple);
+}
+
+.stat-sky {
+  border-top: 2px solid #38bdf8;
+}
+
+.stat-emerald {
+  border-top: 2px solid var(--color-success);
+}
 
 /* ── Table ─────────────────────────────────────────── */
 .data-table th {
@@ -135,13 +148,21 @@ body {
   border-bottom: 1px solid var(--border-color);
   transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
-.data-table td, .data-table th {
+
+.data-table td,
+.data-table th {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border-color);
   transition: border-color 0.2s;
 }
-.data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: var(--bg-hover); }
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tr:hover td {
+  background: var(--bg-hover);
+}
 
 /* ── Badges ─────────────────────────────────────────── */
 .badge {
@@ -153,11 +174,31 @@ body {
   text-transform: uppercase;
   transition: background-color 0.2s, color 0.2s;
 }
-.badge-green   { background: var(--badge-green-bg); color: var(--badge-green-text); }
-.badge-yellow  { background: var(--badge-yellow-bg); color: var(--badge-yellow-text); }
-.badge-red     { background: var(--badge-red-bg); color: var(--badge-red-text); }
-.badge-blue    { background: var(--badge-blue-bg); color: var(--badge-blue-text); }
-.badge-gray    { background: var(--badge-gray-bg); color: var(--badge-gray-text); }
+
+.badge-green {
+  background: var(--badge-green-bg);
+  color: var(--badge-green-text);
+}
+
+.badge-yellow {
+  background: var(--badge-yellow-bg);
+  color: var(--badge-yellow-text);
+}
+
+.badge-red {
+  background: var(--badge-red-bg);
+  color: var(--badge-red-text);
+}
+
+.badge-blue {
+  background: var(--badge-blue-bg);
+  color: var(--badge-blue-text);
+}
+
+.badge-gray {
+  background: var(--badge-gray-bg);
+  color: var(--badge-gray-text);
+}
 
 /* ── Gradient text ──────────────────────────────────── */
 .gradient-text {
@@ -168,7 +209,9 @@ body {
 }
 
 /* ── Form overrides ─────────────────────────────────── */
-input, select, textarea {
+input,
+select,
+textarea {
   color-scheme: light dark;
 }
 
@@ -176,7 +219,8 @@ input, select, textarea {
 html:not(.dark) {
   /* Text color overrides */
   .text-white, 
-  .text-gray-100 {
+  .text-gray-100,
+  .text-slate-100 {
     color: var(--text-primary) !important;
   }
 
@@ -188,6 +232,8 @@ html:not(.dark) {
   .text-gray-200, 
   .text-gray-300, 
   .text-gray-400, 
+  .text-slate-200,
+  .text-slate-300,
   .text-slate-400 {
     color: var(--text-secondary) !important;
   }
@@ -203,6 +249,7 @@ html:not(.dark) {
     color: var(--color-primary) !important;
   }
 
+  .text-emerald-300,
   .text-emerald-400 {
     color: var(--color-success) !important;
   }
@@ -211,6 +258,12 @@ html:not(.dark) {
   .text-red-300,
   .text-red-400 {
     color: var(--color-danger) !important;
+  }
+
+  .text-amber-200,
+  .text-amber-300,
+  .text-amber-400 {
+    color: var(--color-warning) !important;
   }
 
   /* Light mode high-contrast overrides for white-on-white text colors in detail pages */
@@ -230,8 +283,21 @@ html:not(.dark) {
     color: var(--color-danger) !important;
   }
 
-  /* Inside dark black overlays, preserve light text colors for readability */
-  [class*="bg-black/"] {
+  /* Inside solid colored backgrounds or badges, preserve light text colors for readability */
+  .badge,
+  [class*="bg-indigo"],
+  [class*="bg-emerald"],
+  [class*="bg-red"],
+  [class*="bg-blue"],
+  [class*="bg-purple"],
+  [class*="bg-amber"],
+  [class*="bg-rose"],
+  [class*="bg-green"],
+  [class*="bg-slate-600"],
+  [class*="bg-slate-700"],
+  [class*="bg-slate-800"],
+  [class*="bg-slate-900"],
+  [class*="bg-slate-950"] {
     &, & * {
       &.text-white,
       &[class*="text-white/"] {
@@ -246,6 +312,224 @@ html:not(.dark) {
       &.text-gray-300 {
         color: #cbd5e1 !important;
       }
+      &[class*="hover:text-white"]:hover {
+        color: #ffffff !important;
+      }
+    }
+  }
+
+  /* If the element itself has bg-black/ background, it is a dark panel/button, so preserve its light text */
+  [class*="bg-black/"] {
+    &.text-white,
+    &[class*="text-white/"] {
+      color: #ffffff !important;
+    }
+    &.text-gray-100 {
+      color: #f8fafc !important;
+    }
+    &.text-gray-200 {
+      color: #e2e8f0 !important;
+    }
+    &.text-gray-300 {
+      color: #cbd5e1 !important;
+    }
+  }
+
+  /* For children of bg-black/ elements, preserve their light text colors by default */
+  [class*="bg-black/"] * {
+    &.text-white,
+    &[class*="text-white/"] {
+      color: #ffffff !important;
+    }
+    &.text-gray-100 {
+      color: #f8fafc !important;
+    }
+    &.text-gray-200 {
+      color: #e2e8f0 !important;
+    }
+    &.text-gray-300 {
+      color: #cbd5e1 !important;
+    }
+  }
+
+  /* Inside modal cards (which are overridden to light backgrounds), override text colors back to dark */
+  .bg-\[\#0f1117\] *,
+  .bg-\[\#11131a\] *,
+  .bg-\[\#121826\] *,
+  .bg-\[\#0a0a0f\] *,
+  .bg-\[\#13131e\] *,
+  .bg-\[\#0b1020\] *,
+  .bg-\[\#111119\] * {
+    &.text-white,
+    &.text-gray-100,
+    &.text-slate-100 {
+      color: var(--text-primary) !important;
+    }
+    &[class*="text-white/"] {
+      color: var(--text-primary) !important;
+    }
+    &.text-gray-200, 
+    &.text-gray-300, 
+    &.text-gray-400, 
+    &.text-slate-200,
+    &.text-slate-300,
+    &.text-slate-400 {
+      color: var(--text-secondary) !important;
+    }
+    &.text-gray-500,
+    &.text-slate-500 {
+      color: var(--text-muted) !important;
+    }
+    &[class*="bg-white/5"] {
+      background-color: var(--bg-input) !important;
+    }
+    &[class*="bg-white/10"] {
+      background-color: var(--bg-input) !important;
+    }
+    &[class*="hover:bg-white/5"]:hover {
+      background-color: var(--bg-hover) !important;
+    }
+    &[class*="hover:bg-white/10"]:hover {
+      background-color: var(--bg-hover) !important;
+    }
+  }
+
+  /* Attribute selector fallback for dynamic background classnames (separated to prevent CSS parser failures) */
+  [class*="bg-["] *,
+  [class*="bg-\%5B"] *,
+  .bg-\%5B\#0f1117\%5D *,
+  .bg-\%5B\#11131a\%5D *,
+  .bg-\%5B\#121826\%5D *,
+  .bg-\%5B\#0a0a0f\%5D *,
+  .bg-\%5B\#13131e\%5D * {
+    &.text-white,
+    &.text-gray-100,
+    &.text-slate-100 {
+      color: var(--text-primary) !important;
+    }
+    &[class*="text-white/"] {
+      color: var(--text-primary) !important;
+    }
+    &.text-gray-200, 
+    &.text-gray-300, 
+    &.text-gray-400, 
+    &.text-slate-200,
+    &.text-slate-300,
+    &.text-slate-400 {
+      color: var(--text-secondary) !important;
+    }
+    &.text-gray-555, /* dummy */
+    &.text-gray-500,
+    &.text-slate-500 {
+      color: var(--text-muted) !important;
+    }
+    &[class*="bg-white/5"] {
+      background-color: var(--bg-input) !important;
+    }
+    &[class*="bg-white/10"] {
+      background-color: var(--bg-input) !important;
+    }
+    &[class*="hover:bg-white/5"]:hover {
+      background-color: var(--bg-hover) !important;
+    }
+    &[class*="hover:bg-white/10"]:hover {
+      background-color: var(--bg-hover) !important;
+    }
+  }
+
+  /* Nested dark overlay rules to restore white text color inside modals/pages (e.g. bg-black/35 or bg-black/40 overlay inside product folders) */
+  .bg-\[\#0f1117\] [class*="bg-black/"],
+  .bg-\[\#11131a\] [class*="bg-black/"],
+  .bg-\[\#121826\] [class*="bg-black/"],
+  .bg-\[\#0a0a0f\] [class*="bg-black/"],
+  .bg-\[\#13131e\] [class*="bg-black/"],
+  .card [class*="bg-black/"] {
+    &, & * {
+      &.text-white,
+      &[class*="text-white/"] {
+        color: #ffffff !important;
+      }
+      &.text-gray-100 {
+        color: #f8fafc !important;
+      }
+      &.text-gray-200 {
+        color: #e2e8f0 !important;
+      }
+      &.text-gray-300 {
+        color: #cbd5e1 !important;
+      }
+      &[class*="bg-white/5"] {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+      &[class*="bg-white/10"] {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+      }
+      &[class*="hover:bg-white/5"]:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+      &[class*="hover:bg-white/10"]:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+      }
+    }
+  }
+
+  [class*="bg-["] [class*="bg-black/"],
+  [class*="bg-\%5B"] [class*="bg-black/"] {
+    &, & * {
+      &.text-white,
+      &[class*="text-white/"] {
+        color: #ffffff !important;
+      }
+      &.text-gray-100 {
+        color: #f8fafc !important;
+      }
+      &.text-gray-200 {
+        color: #e2e8f0 !important;
+      }
+      &.text-gray-300 {
+        color: #cbd5e1 !important;
+      }
+      &[class*="bg-white/5"] {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+      &[class*="bg-white/10"] {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+      }
+      &[class*="hover:bg-white/5"]:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+      }
+      &[class*="hover:bg-white/10"]:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+      }
+    }
+  }
+
+  /* Restore transparent background colors for nested white opacity utilities inside dark containers */
+  [class*="bg-black/"] *,
+  [class*="bg-indigo"] *,
+  [class*="bg-emerald"] *,
+  [class*="bg-red"] *,
+  [class*="bg-blue"] *,
+  [class*="bg-purple"] *,
+  [class*="bg-amber"] *,
+  [class*="bg-rose"] *,
+  [class*="bg-green"] *,
+  [class*="bg-slate-600"] *,
+  [class*="bg-slate-700"] *,
+  [class*="bg-slate-800"] *,
+  [class*="bg-slate-900"] *,
+  [class*="bg-slate-950"] * {
+    &[class*="bg-white/5"] {
+      background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    &[class*="bg-white/10"] {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+    }
+    &[class*="hover:bg-white/5"]:hover {
+      background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+    &[class*="hover:bg-white/10"]:hover {
+      background-color: rgba(255, 255, 255, 0.1) !important;
     }
   }
 
@@ -259,7 +543,14 @@ html:not(.dark) {
   .bg-\[\#11131a\], 
   .bg-\[\#121826\], 
   .bg-\[\#0a0a0f\],
-  .bg-\[\#13131e\] {
+  .bg-\[\#13131e\],
+  [class*="bg-[#0f1117]"],
+  [class*="bg-[#11131a]"],
+  [class*="bg-[#121826]"],
+  [class*="bg-[#0a0a0f]"],
+  [class*="bg-[#13131e]"],
+  [class*="bg-[#0b1020]"],
+  [class*="bg-[#111119]"] {
     background-color: var(--bg-surface) !important;
   }
 
@@ -291,7 +582,10 @@ html:not(.dark) {
   }
 
   /* Modal wrapper backdrop override */
-  [class*="bg-black/70"] {
+  [class*="bg-black/50"],
+  [class*="bg-black/60"],
+  [class*="bg-black/70"],
+  [class*="bg-black/85"] {
     background-color: rgba(0, 0, 0, 0.4) !important;
   }
 

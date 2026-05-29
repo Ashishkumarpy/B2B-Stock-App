@@ -11,25 +11,57 @@ interface TopBarProps {
 }
 
 export default function TopBar({ name, email, role, initials, onSignOut }: TopBarProps) {
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const isDark = document.documentElement.classList.contains('dark');
-      setTheme(isDark ? 'dark' : 'light');
+      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
+      const currentTheme = savedTheme || 'system';
+      setTheme(currentTheme);
+
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => {
+        const activeTheme = localStorage.getItem('theme') || 'system';
+        if (activeTheme === 'system') {
+          if (mediaQuery.matches) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        }
+      };
+
+      mediaQuery.addEventListener('change', handleChange);
+      return () => {
+        mediaQuery.removeEventListener('change', handleChange);
+      };
     }
   }, []);
 
   const toggleTheme = () => {
-    const isDark = document.documentElement.classList.contains('dark');
-    if (isDark) {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-      setTheme('light');
+    let nextTheme: 'light' | 'dark' | 'system';
+    if (theme === 'system') {
+      nextTheme = 'light';
+    } else if (theme === 'light') {
+      nextTheme = 'dark';
     } else {
+      nextTheme = 'system';
+    }
+
+    setTheme(nextTheme);
+    localStorage.setItem('theme', nextTheme);
+
+    if (nextTheme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      if (mediaQuery.matches) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } else if (nextTheme === 'dark') {
       document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-      setTheme('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
   };
 
@@ -57,15 +89,32 @@ export default function TopBar({ name, email, role, initials, onSignOut }: TopBa
         <button
           type="button"
           onClick={toggleTheme}
-          className="rounded-lg border border-slate-200 dark:border-white/10 p-1.5 text-xs font-medium text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition flex items-center justify-center"
+          className="rounded-lg border border-slate-200 dark:border-white/10 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition flex items-center gap-1.5"
           title="Toggle Theme"
         >
-          {theme === 'dark' ? '☀️' : '🌙'}
+          {theme === 'light' && (
+            <>
+              <span>☀️</span>
+              <span>Light</span>
+            </>
+          )}
+          {theme === 'dark' && (
+            <>
+              <span>🌙</span>
+              <span>Dark</span>
+            </>
+          )}
+          {theme === 'system' && (
+            <>
+              <span>🖥️</span>
+              <span>Auto</span>
+            </>
+          )}
         </button>
         <button
           type="button"
           onClick={onSignOut}
-          className="rounded-lg border border-slate-200 dark:border-white/10 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-gray-300 transition hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-950 dark:hover:text-white"
+          className="rounded-lg border border-slate-200 dark:border-white/10 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-gray-300 transition hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-955 dark:hover:text-white"
         >
           Sign Out
         </button>
