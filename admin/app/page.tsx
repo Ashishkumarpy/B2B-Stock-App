@@ -39,6 +39,13 @@ interface WarehouseSummary {
   color_count: number;
 }
 
+function formatLocalDateKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function DashboardPage() {
   useRequireAuth();
   const router = useRouter();
@@ -193,15 +200,16 @@ export default function DashboardPage() {
     return products.filter((p) => p.category === catName).length;
   };
 
-  // SVGs Chart Data Generation (Last 7 Days)
-  const netSevenDays = useMemo(() => {
+  // Chart data generation (last 7 local days)
+  const stockMovementSevenDays = useMemo(() => {
     const now = new Date();
     const points = Array.from({ length: 7 }).map((_, index) => {
       const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (6 - index));
       return {
-        key: date.toISOString().slice(0, 10),
+        key: formatLocalDateKey(date),
         label: new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short' }).format(date),
-        value: 0,
+        stockIn: 0,
+        stockOut: 0,
       };
     });
     
@@ -210,30 +218,40 @@ export default function DashboardPage() {
     for (const txn of transactions) {
       const txDate = new Date(txn.created_at);
       if (isNaN(txDate.getTime())) continue;
-      const key = new Date(txDate.getFullYear(), txDate.getMonth(), txDate.getDate()).toISOString().slice(0, 10);
+      const key = formatLocalDateKey(txDate);
       const point = pointMap.get(key);
       if (!point) continue;
-      point.value += txn.type === 'stock_in' ? txn.quantity : -txn.quantity;
+      if (txn.type === 'stock_in') {
+        point.stockIn += txn.quantity || 0;
+      } else {
+        point.stockOut += txn.quantity || 0;
+      }
     }
     return points;
   }, [transactions]);
 
-  const maxY = Math.max(10, ...netSevenDays.map((point) => Math.abs(point.value)));
-  const ySpan = maxY * 2; // symmetric span around zero
+  const maxMovement = Math.max(
+    1,
+    ...stockMovementSevenDays.flatMap((point) => [point.stockIn, point.stockOut])
+  );
 
-  const chartPoints = useMemo(() => {
-    return netSevenDays
-      .map((point, index) => {
-        const x = (index / Math.max(netSevenDays.length - 1, 1)) * 100;
-        // zero line is at Y = 50. values mapped proportionally
-        const y = 50 - (point.value / maxY) * 40; // max height is 90, min is 10
-        return { x, y, value: point.value, label: point.label };
-      });
-  }, [netSevenDays, maxY]);
-
-  const polylinePointsStr = useMemo(() => {
-    return chartPoints.map((p) => `${p.x},${p.y}`).join(' ');
-  }, [chartPoints]);
+  const chartBars = useMemo(() => {
+    return stockMovementSevenDays.map((point, index) => {
+      const groupX = 8 + index * 14;
+      const inHeight = (point.stockIn / maxMovement) * 70;
+      const outHeight = (point.stockOut / maxMovement) * 70;
+      return {
+        ...point,
+        net: point.stockIn - point.stockOut,
+        inX: groupX,
+        outX: groupX + 4.2,
+        inY: 86 - inHeight,
+        outY: 86 - outHeight,
+        inHeight: point.stockIn > 0 ? Math.max(inHeight, 2) : 0,
+        outHeight: point.stockOut > 0 ? Math.max(outHeight, 2) : 0,
+      };
+    });
+  }, [stockMovementSevenDays, maxMovement]);
 
   const sortedWarehouses = useMemo(() => {
     const list = [...warehouseSummary];
@@ -469,7 +487,7 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Stock Movement SVG Line Chart */}
+          {/* Stock Movement SVG Chart */}
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">
@@ -497,62 +515,80 @@ export default function DashboardPage() {
                   <svg
                     viewBox="0 0 100 100"
                     className="h-44 w-full overflow-visible"
-                    preserveAspectRatio="none"
+                    role="img"
+                    aria-label="Daily stock in and stock out for the last 7 days"
                   >
-                    {/* Zero baseline */}
-                    <line
-                      x1="0"
-                      y1="50"
-                      x2="100"
-                      y2="50"
-                      stroke="currentColor"
-                      className="text-slate-200 dark:text-white/10"
-                      strokeWidth="0.5"
-                      strokeDasharray="3 3"
-                    />
-                    {/* Graph line */}
-                    <polyline
-                      fill="none"
-                      stroke="var(--color-primary)"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      points={polylinePointsStr}
-                    />
-                    {/* Point dots */}
-                    {chartPoints.map((pt, i) => (
-                      <circle
-                        key={i}
-                        cx={pt.x}
-                        cy={pt.y}
-                        r="2.5"
-                        style={{
-                          fill: 'var(--color-primary)',
-                          stroke: 'var(--bg-surface)',
-                        }}
-                        strokeWidth="1.5"
+                    {[16, 51, 86].map((y) => (
+                      <line
+                        key={y}
+                        x1="4"
+                        y1={y}
+                        x2="98"
+                        y2={y}
+                        stroke="currentColor"
+                        className="text-slate-200 dark:text-white/10"
+                        strokeWidth="0.5"
+                        strokeDasharray={y === 86 ? '0' : '3 3'}
                       />
                     ))}
+
+                    {chartBars.map((bar) => (
+                      <g key={bar.key}>
+                        <title>
+                          {`${bar.label}: In ${bar.stockIn}, Out ${bar.stockOut}, Net ${bar.net >= 0 ? '+' : ''}${bar.net}`}
+                        </title>
+                        <rect
+                          x={bar.inX}
+                          y={bar.inY}
+                          width="3.6"
+                          height={bar.inHeight}
+                          rx="1.4"
+                          className="fill-emerald-500 dark:fill-emerald-400"
+                        />
+                        <rect
+                          x={bar.outX}
+                          y={bar.outY}
+                          width="3.6"
+                          height={bar.outHeight}
+                          rx="1.4"
+                          className="fill-rose-500 dark:fill-rose-400"
+                        />
+                      </g>
+                    ))}
                   </svg>
+
+                  <div className="mt-2 flex items-center gap-4 text-[10px] font-semibold text-slate-500 dark:text-gray-400">
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-sm bg-emerald-500 dark:bg-emerald-400" />
+                      Stock In
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-sm bg-rose-500 dark:bg-rose-400" />
+                      Stock Out
+                    </span>
+                  </div>
                   
                   {/* Chart X axis */}
                   <div className="mt-4 w-full grid grid-cols-7 gap-1 text-center text-[9px] font-semibold text-slate-400 dark:text-gray-500">
-                    {netSevenDays.map((p, i) => (
-                      <div key={i} className="flex flex-col items-center">
+                    {stockMovementSevenDays.map((p) => {
+                      const net = p.stockIn - p.stockOut;
+                      return (
+                      <div key={p.key} className="flex flex-col items-center">
                         <p>{p.label}</p>
                         <p
                           className={
-                            p.value > 0
+                            net > 0
                               ? 'text-emerald-500'
-                              : p.value < 0
+                              : net < 0
                               ? 'text-red-500'
                               : 'text-slate-400'
                           }
                         >
-                          {p.value > 0 ? `+${p.value}` : p.value}
+                          {net > 0 ? `+${net}` : net}
                         </p>
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 </>
               )}
