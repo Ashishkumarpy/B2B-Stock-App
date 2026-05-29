@@ -247,6 +247,11 @@ body {
   color: var(--text-secondary);
 }
 
+.stock-toolbar {
+  background: var(--bg-input);
+  border-color: var(--border-color);
+}
+
 .stock-soft-control {
   background: var(--bg-input);
   border-color: var(--border-color);
@@ -254,6 +259,16 @@ body {
 }
 
 .stock-soft-control:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.stock-icon-control {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.stock-icon-control:hover {
   background: var(--bg-hover);
   color: var(--text-primary);
 }
@@ -275,6 +290,90 @@ body {
 
 .dark .stock-quantity-pill {
   color: #6ee7b7;
+}
+
+.stock-primary-badge {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  color: #1d4ed8;
+}
+
+.stock-primary-link {
+  color: #1d4ed8;
+}
+
+.stock-primary-link:hover {
+  color: #1e40af;
+}
+
+.dark .stock-primary-badge,
+.dark .stock-primary-link {
+  color: #93c5fd;
+}
+
+.stock-edit-action {
+  background: rgba(var(--color-primary-rgb), 0.1);
+  border-color: rgba(var(--color-primary-rgb), 0.35);
+  color: #1d4ed8;
+}
+
+.stock-edit-action:hover {
+  background: rgba(var(--color-primary-rgb), 0.16);
+}
+
+.dark .stock-edit-action {
+  color: #bfdbfe;
+}
+
+.stock-segment {
+  color: var(--text-secondary);
+}
+
+.stock-segment:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.stock-segment-active-primary {
+  background: var(--color-primary);
+  color: #ffffff;
+}
+
+.stock-segment-active-success {
+  background: #059669;
+  color: #ffffff;
+}
+
+.stock-segment-active-danger {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.stock-success-badge {
+  background: rgba(var(--color-success-rgb), 0.16);
+  color: #047857;
+}
+
+.stock-danger-badge {
+  background: rgba(var(--color-danger-rgb), 0.14);
+  color: #b91c1c;
+}
+
+.stock-success-value {
+  color: #047857;
+}
+
+.stock-danger-value {
+  color: #b91c1c;
+}
+
+.dark .stock-success-badge,
+.dark .stock-success-value {
+  color: #d1fae5;
+}
+
+.dark .stock-danger-badge,
+.dark .stock-danger-value {
+  color: #ffe4e6;
 }
 
 .stock-success-soft {

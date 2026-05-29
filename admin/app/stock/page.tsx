@@ -837,22 +837,22 @@ export default function StockPage() {
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold">Stock Entries</h1>
             <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold border ${realtimeStatus === 'connected'
-                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                ? 'stock-success-soft border-emerald-500/20'
                 : realtimeStatus === 'error'
-                  ? 'bg-red-500/10 text-red-400 border-red-500/20'
-                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                  ? 'stock-danger-soft border-red-500/20'
+                  : 'stock-warning-soft border-amber-500/20'
               }`}>
               <div className={`w-1.5 h-1.5 rounded-full ${realtimeStatus === 'connected' ? 'bg-emerald-500 animate-pulse' : realtimeStatus === 'error' ? 'bg-red-500' : 'bg-amber-500'
                 }`} />
               {realtimeStatus === 'connected' ? 'LIVE' : realtimeStatus === 'error' ? 'OFFLINE' : 'CONNECTING'}
             </div>
           </div>
-          <p className="text-slate-400 dark:text-gray-500 text-sm">{transactions.length} transactions recorded</p>
+          <p className="stock-secondary text-sm">{transactions.length} transactions recorded</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowExportModal(true)}
-            className="border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-gray-200 text-sm font-semibold px-5 py-2.5 rounded-xl transition active:scale-95 flex items-center gap-2"
+            className="stock-soft-control flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition active:scale-95"
           >
             <span>📥</span> Export to Excel
           </button>
@@ -868,33 +868,33 @@ export default function StockPage() {
       {/* Table */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">Loading transactions…</div>
+          <div className="stock-secondary p-12 text-center text-sm">Loading transactions…</div>
         ) : transactions.length === 0 ? (
-          <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">No stock entries yet. Click "+ Record Stock" to log the first transaction.</div>
+          <div className="stock-secondary p-12 text-center text-sm">No stock entries yet. Click "+ Record Stock" to log the first transaction.</div>
         ) : (
           <>
             {/* Filter Toolbar */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02]">
+            <div className="stock-toolbar flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b p-5">
               <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                 {/* Date Filter */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-slate-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Date:</span>
-                  <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10">
+                  <span className="stock-secondary text-xs font-bold uppercase tracking-wider">Date:</span>
+                  <div className="stock-soft-control flex rounded-xl border p-1">
                     <button
                       onClick={() => setDateFilter('all')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${dateFilter === 'all' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
                     >
                       All Time
                     </button>
                     <button
                       onClick={() => setDateFilter('today')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${dateFilter === 'today' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
                     >
                       Today
                     </button>
                     <button
                       onClick={() => setDateFilter('custom')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${dateFilter === 'custom' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
                     >
                       Choose Date
                     </button>
@@ -915,23 +915,23 @@ export default function StockPage() {
 
                 {/* Type Filter */}
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Type:</span>
-                  <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10">
+                  <span className="stock-secondary text-xs font-bold uppercase tracking-wider">Type:</span>
+                  <div className="stock-soft-control flex rounded-xl border p-1">
                     <button
                       onClick={() => setTypeFilter('both')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
                     >
                       All Types
                     </button>
                     <button
                       onClick={() => setTypeFilter('stock_in')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'stock-segment-active-success shadow-md' : 'stock-segment'}`}
                     >
                       Stock In
                     </button>
                     <button
                       onClick={() => setTypeFilter('stock_out')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'bg-red-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
+                      className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'stock-segment-active-danger shadow-md' : 'stock-segment'}`}
                     >
                       Stock Out
                     </button>
@@ -939,13 +939,13 @@ export default function StockPage() {
                 </div>
               </div>
 
-              <div className="text-xs text-slate-400 dark:text-gray-500 font-medium">
+              <div className="stock-secondary text-xs font-medium">
                 Showing {filteredTransactions.length} of {transactions.length} entries
               </div>
             </div>
 
             {filteredTransactions.length === 0 ? (
-              <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">
+              <div className="stock-secondary p-12 text-center text-sm">
                 No entries found for the selected filter criteria.
               </div>
             ) : (
@@ -967,8 +967,8 @@ export default function StockPage() {
                 <tbody>
                   {filteredTransactions.map((t, idx) => (
                     <tr key={t.id}>
-                      <td className="text-slate-400 dark:text-gray-500 font-mono text-xs w-12">{idx + 1}</td>
-                      <td className="text-slate-900 dark:text-white font-medium">{t.worker_name}</td>
+                      <td className="stock-muted font-mono text-xs w-12">{idx + 1}</td>
+                      <td className="font-medium">{t.worker_name}</td>
                       <td>
                         <span className={`badge ${t.type === 'stock_in' ? 'badge-green' : 'badge-red'}`}>
                           {t.type === 'stock_in' ? 'Stock In' : 'Stock Out'}
@@ -979,26 +979,26 @@ export default function StockPage() {
                           <button
                             type="button"
                             onClick={() => router.push(`/products/${encodeURIComponent(t.product_id)}`)}
-                            className="font-mono text-sm font-bold text-indigo-400 hover:underline text-left"
+                            className="stock-primary-link text-left font-mono text-sm font-bold hover:underline"
                           >
                             {t.product_code}
                           </button>
-                          <span className="text-[10px] text-slate-400 dark:text-gray-500 max-w-[200px] truncate leading-tight mt-0.5">
+                          <span className="stock-muted mt-0.5 max-w-[200px] truncate text-[10px] leading-tight">
                             {t.product_name}
                           </span>
                         </div>
                       </td>
-                      <td className="text-slate-600 dark:text-gray-300">{t.color_name || 'Default'}</td>
-                      <td className="text-slate-600 dark:text-gray-300 max-w-[180px] truncate">{t.warehouse_name || 'Main Warehouse'}</td>
+                      <td className="stock-secondary">{t.color_name || 'Default'}</td>
+                      <td className="stock-secondary max-w-[180px] truncate">{t.warehouse_name || 'Main Warehouse'}</td>
                       <td className="text-right py-2">
                         <div className="flex flex-col items-end justify-center">
-                          <span className={`font-mono font-bold text-sm ${t.type === 'stock_in' ? 'text-emerald-400' : 'text-red-400'}`}>
+                          <span className={`font-mono font-bold text-sm ${t.type === 'stock_in' ? 'stock-success-value' : 'stock-danger-value'}`}>
                             {t.type === 'stock_in' ? '+' : '-'}{t.quantity}
                           </span>
                           {(() => {
                             if (t.cartons && t.pcs_per_carton) {
                               return (
-                                <span className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
+                                <span className="stock-muted mt-0.5 whitespace-nowrap text-[10px] leading-tight">
                                   {t.cartons} ctn × {t.pcs_per_carton}
                                 </span>
                               );
@@ -1006,7 +1006,7 @@ export default function StockPage() {
                             const parsed = parseCartonFromNotes(t.notes);
                             if (parsed) {
                               return (
-                                <span className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
+                                <span className="stock-muted mt-0.5 whitespace-nowrap text-[10px] leading-tight">
                                   {parsed.cartons} ctn × {parsed.pcsPerCarton}
                                 </span>
                               );
@@ -1015,8 +1015,8 @@ export default function StockPage() {
                           })()}
                         </div>
                       </td>
-                      <td className="text-slate-400 dark:text-gray-500 text-xs max-w-[140px] truncate">{t.notes || '—'}</td>
-                      <td className="text-slate-400 dark:text-gray-500 text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="stock-muted max-w-[140px] truncate text-xs">{t.notes || '—'}</td>
+                      <td className="stock-muted text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                       <td>
                         <button
                           type="button"
@@ -1048,7 +1048,7 @@ export default function StockPage() {
                             if (customer) params.set('customer', customer);
                             router.push(`/stock?${params.toString()}`);
                           }}
-                          className="rounded-md border border-indigo-400/40 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
+                          className="stock-edit-action rounded-md border px-2.5 py-1 text-xs font-semibold"
                         >
                           Edit
                         </button>
@@ -1068,12 +1068,12 @@ export default function StockPage() {
           <div className="stock-modal-surface rounded-2xl border p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white text-2xl leading-none">×</button>
+              <button onClick={() => setShowModal(false)} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">×</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {isEditingOlderThan12Hours && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-3 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-300 leading-normal">
+                <div className="stock-warning-soft flex items-start gap-2.5 rounded-xl border border-amber-500/20 p-3 text-xs leading-normal">
                   <span className="text-sm">ℹ️</span>
                   <p>This transaction was recorded more than 12 hours ago. Only the customer name and notes can be edited.</p>
                 </div>
@@ -1096,9 +1096,9 @@ export default function StockPage() {
                       }}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition ${form.type === t
                           ? t === 'stock_in'
-                            ? 'bg-emerald-50 dark:bg-emerald-600/20 border-emerald-500 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-red-50 dark:bg-red-600/20 border-red-500 text-red-700 dark:text-red-300'
-                          : 'border-slate-200 dark:border-white/10 text-slate-500 dark:text-gray-500 hover:bg-slate-100 dark:hover:bg-white/5'
+                            ? 'stock-success-soft border-emerald-500/30'
+                            : 'stock-danger-soft border-red-500/30'
+                          : 'stock-soft-control'
                         } ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {t === 'stock_in' ? '↑ Stock In' : '↓ Stock Out'}
@@ -1131,7 +1131,7 @@ export default function StockPage() {
                   )}
                   <div className="flex items-center gap-3">
                     {selectedProduct && (
-                      <span className="bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider">
+                      <span className="stock-primary-badge rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider">
                         Available: {selectedProduct.quantity}
                       </span>
                     )}
@@ -1502,7 +1502,7 @@ export default function StockPage() {
               </div>
               <button 
                 onClick={() => setShowExportModal(false)} 
-                className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white text-2xl leading-none w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center transition-all"
+                className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none transition-all"
               >
                 ×
               </button>
@@ -1558,15 +1558,15 @@ export default function StockPage() {
                   {/* Stock In Preview Card */}
                   <div className="stock-success-soft flex flex-col justify-between rounded-2xl border border-emerald-500/20 p-4">
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 rounded">
+                      <span className="stock-success-badge rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                         Sheet 1: In stock
                       </span>
-                      <p className="mt-3 text-2xl font-black text-emerald-700 dark:text-emerald-100 font-mono">
+                      <p className="stock-success-value mt-3 text-2xl font-black font-mono">
                         +{exportStats.totalInQty}
-                        <span className="text-xs font-normal text-slate-500 dark:text-gray-400 ml-1">pcs</span>
+                        <span className="stock-muted ml-1 text-xs font-normal">pcs</span>
                       </p>
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-2 font-medium">
+                    <p className="stock-muted mt-2 text-[10px] font-medium">
                       {exportStats.totalInCount} entries recorded
                     </p>
                   </div>
@@ -1574,15 +1574,15 @@ export default function StockPage() {
                   {/* Stock Out Preview Card */}
                   <div className="stock-danger-soft flex flex-col justify-between rounded-2xl border border-rose-500/20 p-4">
                     <div>
-                      <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider bg-rose-100 dark:bg-rose-500/10 px-2 py-0.5 rounded">
+                      <span className="stock-danger-badge rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">
                         Sheet 2: Stock out
                       </span>
-                      <p className="mt-3 text-2xl font-black text-rose-700 dark:text-rose-100 font-mono">
+                      <p className="stock-danger-value mt-3 text-2xl font-black font-mono">
                         -{exportStats.totalOutQty}
-                        <span className="text-xs font-normal text-slate-500 dark:text-gray-400 ml-1">pcs</span>
+                        <span className="stock-muted ml-1 text-xs font-normal">pcs</span>
                       </p>
                     </div>
-                    <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-2 font-medium">
+                    <p className="stock-muted mt-2 text-[10px] font-medium">
                       {exportStats.totalOutCount} entries recorded
                     </p>
                   </div>
