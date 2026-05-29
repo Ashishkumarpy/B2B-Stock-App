@@ -46,19 +46,44 @@ export function requirePermission(permission) {
       const userId = req.session?.sub;
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-      const { data: user, error } = await supabaseAdmin
+      let { data: user, error } = await supabaseAdmin
         .from('users')
         .select('role, is_active, perm_products, perm_inventory, perm_orders, perm_reports, perm_users, perm_settings')
         .eq('id', userId)
         .maybeSingle();
 
-      if (error || !user) {
-        if (error) {
-          console.error('[requirePermission] Database query failed:', error.message, error.details || '');
-        }
+      if (error) {
+        console.error('[requirePermission] Database query failed:', error.message, error.details || '');
         return res.status(401).json({ 
-          error: 'User profile not found. Database schema may be outdated. Please run the SQL migrations in supabase/user_management.sql' 
+          error: 'User profile look up failed. Database schema may be outdated.' 
         });
+      }
+
+      if (!user) {
+        // Fallback: Check if they are in the workers table (SMS OTP logins)
+        const { data: worker, error: workerErr } = await supabaseAdmin
+          .from('workers')
+          .select('role, is_active')
+          .eq('id', userId)
+          .maybeSingle();
+
+        if (workerErr || !worker) {
+          return res.status(401).json({ 
+            error: 'User/Worker profile not found.' 
+          });
+        }
+
+        const isManager = worker.role === 'manager';
+        user = {
+          role: worker.role,
+          is_active: worker.is_active ?? true,
+          perm_products: false,
+          perm_inventory: true,
+          perm_orders: isManager,
+          perm_reports: isManager,
+          perm_users: isManager,
+          perm_settings: false
+        };
       }
 
       if (!user.is_active) {
@@ -75,6 +100,7 @@ export function requirePermission(permission) {
 
       return next();
     } catch (e) {
+      console.error('[requirePermission] Unhandled exception:', e);
       return res.status(500).json({ error: 'Permission check failed' });
     }
   };
@@ -250,7 +276,7 @@ export async function verifyWorkerOtp(phoneRaw, otpRaw) {
 
   const { data: worker, error: workerError } = await supabaseAdmin
     .from('workers')
-    .select('id,name,phone,role,is_active,can_access_stock')
+    .select('id,user_id,email,name,phone,role,is_active,can_access_stock')
     .eq('id', challenge.worker_id)
     .maybeSingle();
   if (workerError) throw workerError;
@@ -270,11 +296,12 @@ export async function verifyWorkerOtp(phoneRaw, otpRaw) {
 
   return {
     user: {
-      id: worker.id,
+      id: worker.user_id || worker.id,
+      worker_id: worker.id,
       name: worker.name || 'Worker',
       phone: worker.phone || phone,
       role,
-      email: null
+      email: worker.email || null
     }
   };
 }

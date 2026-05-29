@@ -39,11 +39,11 @@ workersRouter.get('/', authRequired, requirePermission('perm_users'), async (req
   if (sessionRole === 'manager') {
     if (!sessionUserId) return res.status(401).json({ error: 'Unauthorized' });
 
-    // 1. Fetch warehouses assigned to this manager
+    // 1. Fetch warehouses assigned to this manager (either via user_id or worker_id)
     const { data: managerWarehouses, error: mwError } = await supabaseAdmin
       .from('user_warehouses')
       .select('warehouse_id')
-      .eq('user_id', sessionUserId);
+      .or(`user_id.eq.${sessionUserId},worker_id.eq.${sessionUserId}`);
 
     if (mwError) return res.status(500).json({ error: mwError.message });
     const warehouseIds = (managerWarehouses ?? []).map(mw => mw.warehouse_id);
@@ -52,25 +52,37 @@ workersRouter.get('/', authRequired, requirePermission('perm_users'), async (req
       return res.json({ data: [] });
     }
 
-    // 2. Fetch all user assignments for these warehouses
-    const { data: userAssignments, error: uaError } = await supabaseAdmin
+    // 2. Fetch all user/worker assignments for these warehouses
+    const { data: assignments, error: uaError } = await supabaseAdmin
       .from('user_warehouses')
-      .select('user_id')
+      .select('user_id, worker_id')
       .in('warehouse_id', warehouseIds);
 
     if (uaError) return res.status(500).json({ error: uaError.message });
-    const workerUserIds = [...new Set((userAssignments ?? []).map(ua => ua.user_id))];
+    
+    const workerUserIds = [...new Set((assignments ?? []).map(ua => ua.user_id).filter(Boolean))];
+    const workerIds = [...new Set((assignments ?? []).map(ua => ua.worker_id).filter(Boolean))];
 
-    if (workerUserIds.length === 0) {
+    if (workerUserIds.length === 0 && workerIds.length === 0) {
       return res.json({ data: [] });
     }
 
-    // 3. Fetch workers belonging to these user accounts
-    const { data, error } = await supabaseAdmin
-      .from('workers')
-      .select('*')
-      .in('user_id', workerUserIds)
-      .order('created_at', { ascending: false });
+    // 3. Fetch workers belonging to these user accounts or matching the worker IDs directly
+    let query = supabaseAdmin.from('workers').select('*');
+    
+    const orConditions = [];
+    if (workerUserIds.length > 0) {
+      orConditions.push(`user_id.in.(${workerUserIds.join(',')})`);
+    }
+    if (workerIds.length > 0) {
+      orConditions.push(`id.in.(${workerIds.join(',')})`);
+    }
+
+    if (orConditions.length > 0) {
+      query = query.or(orConditions.join(','));
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
     return res.json({ data });
@@ -147,10 +159,10 @@ workersRouter.put('/:id', authRequired, requirePermission('perm_users'), async (
   }
 
   // Warehouse check for managers
-  if (sessionRole === 'manager' && existingWorker.user_id) {
+  if (sessionRole === 'manager') {
     const { data: shares } = await supabaseAdmin.rpc('share_warehouse', {
       user_a: sessionUserId,
-      user_b: existingWorker.user_id
+      user_b: existingWorker.user_id || existingWorker.id
     });
     if (!shares) {
       return res.status(403).json({ error: 'Forbidden: Worker does not belong to your assigned warehouses.' });
@@ -223,10 +235,10 @@ workersRouter.delete('/:id', authRequired, requirePermission('perm_users'), asyn
   }
 
   // Warehouse check for managers
-  if (sessionRole === 'manager' && existingWorker.user_id) {
+  if (sessionRole === 'manager') {
     const { data: shares } = await supabaseAdmin.rpc('share_warehouse', {
       user_a: sessionUserId,
-      user_b: existingWorker.user_id
+      user_b: existingWorker.user_id || existingWorker.id
     });
     if (!shares) {
       return res.status(403).json({ error: 'Forbidden: Worker does not belong to your assigned warehouses.' });

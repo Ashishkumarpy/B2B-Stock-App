@@ -168,8 +168,10 @@ authRouter.post('/worker/verify-otp', async (req, res) => {
     });
 
     // Write to login history and activity logs
+    const isPhoneOnly = result.user.id === result.user.worker_id;
     await supabaseAdmin.from('login_history').insert({
-      user_id: result.user.id,
+      user_id: isPhoneOnly ? null : result.user.id,
+      worker_id: result.user.worker_id,
       email: result.user.email || '',
       ip_address: req.ip || req.headers['x-forwarded-for'] || '',
       user_agent: req.headers['user-agent'] || '',
@@ -178,6 +180,7 @@ authRouter.post('/worker/verify-otp', async (req, res) => {
 
     await logActivity({
       actorId: result.user.id,
+      workerActorId: result.user.worker_id,
       actorName: result.user.name,
       actionType: 'login',
       description: `Worker ${result.user.name} logged in via OTP`,

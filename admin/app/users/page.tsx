@@ -8,10 +8,12 @@ import { useRequireAuth } from '../../lib/use_require_auth';
 interface User {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   role: 'admin' | 'manager' | 'worker' | 'customer';
   is_active: boolean;
   created_at: string;
+  is_phone_only: boolean;
   permissions: {
     perm_products: boolean;
     perm_inventory: boolean;
@@ -88,6 +90,7 @@ export default function UsersPage() {
     name: '',
     email: '',
     password: '', // Only for create
+    phone: '',
     role: 'worker' as User['role'],
     is_active: true,
     permissions: {
@@ -184,7 +187,8 @@ export default function UsersPage() {
     return users.filter(u => {
       const matchesSearch =
         u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        u.email.toLowerCase().includes(searchQuery.toLowerCase());
+        (u.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+        (u.phone || '').includes(searchQuery);
       
       const matchesRole = roleFilter === 'all' || u.role === roleFilter;
       
@@ -263,6 +267,7 @@ export default function UsersPage() {
       name: '',
       email: '',
       password: '',
+      phone: '',
       role: 'worker',
       is_active: true,
       permissions: {
@@ -284,8 +289,9 @@ export default function UsersPage() {
     setEditingUser(user);
     setFormState({
       name: user.name,
-      email: user.email,
-      password: '', // Leave blank (not updating password in patch directly)
+      email: user.email || '',
+      password: '', // Leave blank (not updating password in patch directly unless upgrading)
+      phone: user.phone || '',
       role: user.role,
       is_active: user.is_active,
       permissions: { ...user.permissions },
@@ -298,8 +304,20 @@ export default function UsersPage() {
   // Handle Save
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.name || !formState.email) {
-      setSaveError('Name and Email are required.');
+    if (!formState.name) {
+      setSaveError('Name is required.');
+      return;
+    }
+    
+    // Only require email if they are not phone-only OR if upgrading them
+    const isUpgrading = editingUser?.is_phone_only && formState.email;
+    const requiresEmail = !editingUser?.is_phone_only || isUpgrading;
+    if (requiresEmail && !formState.email) {
+      setSaveError('Email is required.');
+      return;
+    }
+    if (isUpgrading && !formState.password) {
+      setSaveError('Password is required to upgrade phone-only account to email account.');
       return;
     }
     if (!editingUser && !formState.password) {
@@ -319,8 +337,12 @@ export default function UsersPage() {
           is_active: formState.is_active,
           permissions: formState.permissions,
           warehouses: formState.warehouses,
-          email: formState.email
+          email: formState.email,
+          phone: formState.phone
         };
+        if (isUpgrading) {
+          payload.password = formState.password;
+        }
         const res = await serverPatch(`/users/${editingUser.id}`, payload);
         const updatedUser = (res as any).data as User;
 
@@ -574,7 +596,12 @@ export default function UsersPage() {
                           {u.name}
                         </button>
                       </td>
-                      <td className="text-xs text-slate-600 dark:text-gray-400 font-mono">{u.email}</td>
+                      <td className="text-xs text-slate-600 dark:text-gray-400 font-mono">
+                        {u.email || (u.phone ? `📱 ${u.phone}` : 'No Email/Phone')}
+                        {u.is_phone_only && (
+                          <span className="ml-2 badge badge-gray text-[9px] scale-90">Phone Only</span>
+                        )}
+                      </td>
                       <td>{renderRoleBadge(u.role)}</td>
                       <td className="text-xs text-slate-600 dark:text-gray-400 max-w-[200px] truncate">
                         {getWarehouseNames(u.warehouses)}
@@ -800,10 +827,23 @@ export default function UsersPage() {
 
               {/* Basic Fields */}
               <div className="grid grid-cols-2 gap-4 text-sm bg-white/5 border border-white/5 rounded-2xl p-4">
-                <div>
-                  <span className="text-xs text-slate-400 dark:text-gray-500 block uppercase font-bold">Email Address</span>
-                  <span className="text-white font-medium">{selectedUser.email}</span>
-                </div>
+                {selectedUser.email ? (
+                  <div>
+                    <span className="text-xs text-slate-400 dark:text-gray-500 block uppercase font-bold">Email Address</span>
+                    <span className="text-white font-medium">{selectedUser.email}</span>
+                  </div>
+                ) : (
+                  <div>
+                    <span className="text-xs text-slate-400 dark:text-gray-500 block uppercase font-bold">Email Address</span>
+                    <span className="text-slate-500 italic">None (Phone OTP only)</span>
+                  </div>
+                )}
+                {selectedUser.phone && (
+                  <div>
+                    <span className="text-xs text-slate-400 dark:text-gray-500 block uppercase font-bold">Phone Number</span>
+                    <span className="text-white font-medium font-mono">{selectedUser.phone}</span>
+                  </div>
+                )}
                 <div>
                   <span className="text-xs text-slate-400 dark:text-gray-500 block uppercase font-bold">Access Role</span>
                   <span className="mt-1 block">{renderRoleBadge(selectedUser.role)}</span>
@@ -923,20 +963,24 @@ export default function UsersPage() {
                   </div>
 
                   <div>
-                    <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">Email Address</label>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                      Email Address {editingUser?.is_phone_only && '(Optional for Upgrade)'}
+                    </label>
                     <input
                       type="email"
                       placeholder="e.g. user@zentory.com"
                       value={formState.email}
                       onChange={(e) => setFormState(prev => ({ ...prev, email: e.target.value }))}
                       className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
-                      required
+                      required={!editingUser?.is_phone_only}
                     />
                   </div>
 
-                  {!editingUser && (
+                  {(!editingUser || (editingUser.is_phone_only && formState.email)) && (
                     <div>
-                      <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">Password</label>
+                      <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">
+                        Password {editingUser?.is_phone_only && '(Required for Upgrade)'}
+                      </label>
                       <input
                         type="password"
                         placeholder="Secure password (min 6 chars)"
@@ -944,10 +988,21 @@ export default function UsersPage() {
                         onChange={(e) => setFormState(prev => ({ ...prev, password: e.target.value }))}
                         className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
                         minLength={6}
-                        required
+                        required={!editingUser || !!(editingUser.is_phone_only && formState.email)}
                       />
                     </div>
                   )}
+
+                  <div>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">Phone Number (For OTP / Workers)</label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. +919999999999"
+                      value={formState.phone}
+                      onChange={(e) => setFormState(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
+                    />
+                  </div>
 
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">Primary System Role</label>
