@@ -208,6 +208,75 @@ body {
   background-clip: text;
 }
 
+/* Stock modals use explicit theme classes so light mode does not depend on broad utility overrides. */
+.stock-modal-surface {
+  background: var(--bg-surface);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.stock-modal-panel {
+  background: var(--bg-card);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.stock-field {
+  background: var(--bg-input) !important;
+  border-color: var(--border-input) !important;
+  color: var(--text-primary) !important;
+}
+
+.stock-field::placeholder {
+  color: var(--text-muted);
+}
+
+.stock-muted {
+  color: var(--text-muted);
+}
+
+.stock-secondary {
+  color: var(--text-secondary);
+}
+
+.stock-soft-control {
+  background: var(--bg-input);
+  border-color: var(--border-color);
+  color: var(--text-secondary);
+}
+
+.stock-soft-control:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.stock-success-soft {
+  background: rgba(var(--color-success-rgb), 0.1);
+  color: #047857;
+}
+
+.stock-danger-soft {
+  background: rgba(var(--color-danger-rgb), 0.1);
+  color: #b91c1c;
+}
+
+.stock-warning-soft {
+  background: rgba(var(--color-warning-rgb), 0.12);
+  color: #92400e;
+}
+
+.dark .stock-success-soft {
+  color: #d1fae5;
+}
+
+.dark .stock-danger-soft {
+  color: #ffe4e6;
+}
+
+.dark .stock-warning-soft {
+  color: #fcd34d;
+}
+
 /* ── Form overrides ─────────────────────────────────── */
 input,
 select,

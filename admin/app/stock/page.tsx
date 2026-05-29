@@ -905,7 +905,7 @@ export default function StockPage() {
                       type="date"
                       value={customDate}
                       onChange={(e) => setCustomDate(e.target.value)}
-                      className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                      className="stock-field rounded-lg border px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
                     />
                   )}
                 </div>
@@ -1062,7 +1062,7 @@ export default function StockPage() {
       {/* Record Stock Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/10 rounded-2xl p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
+          <div className="stock-modal-surface rounded-2xl border p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
               <button onClick={() => setShowModal(false)} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white text-2xl leading-none">×</button>
@@ -1078,7 +1078,7 @@ export default function StockPage() {
 
               {/* Type Toggle */}
               <div>
-                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Movement Type</label>
+                <label className="stock-muted mb-2 block text-xs uppercase tracking-wider">Movement Type</label>
                 <div className="flex gap-3">
                   {(['stock_in', 'stock_out'] as TransactionType[]).map((t) => (
                     <button
@@ -1106,24 +1106,24 @@ export default function StockPage() {
 
               {/* Product */}
               <div>
-                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Product *</label>
+                <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Product *</label>
                 <button
                   type="button"
                   disabled={isEditingOlderThan12Hours}
                   onClick={() => setShowProductPicker(true)}
-                  className={`w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-left text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 flex justify-between items-center ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`stock-field w-full rounded-lg border px-3 py-2.5 text-sm text-left focus:outline-none focus:border-indigo-500 flex justify-between items-center ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {form.product_id ? (
                     <div className="flex flex-col">
                       <span className="font-mono font-bold text-indigo-500 text-sm">
                         {productById.get(form.product_id)?.code}
                       </span>
-                      <span className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight">
+                      <span className="stock-muted text-[10px] leading-tight">
                         {productById.get(form.product_id)?.name}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-slate-500 dark:text-gray-400">Choose product from folders...</span>
+                    <span className="stock-muted">Choose product from folders...</span>
                   )}
                   <div className="flex items-center gap-3">
                     {selectedProduct && (
@@ -1131,19 +1131,19 @@ export default function StockPage() {
                         Available: {selectedProduct.quantity}
                       </span>
                     )}
-                    <span className="text-slate-500 dark:text-gray-400 text-xs">▼</span>
+                    <span className="stock-muted text-xs">▼</span>
                   </div>
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Warehouse</label>
+                  <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Warehouse</label>
                   <select
                     value={form.warehouse_id}
                     disabled={isEditingOlderThan12Hours}
                     onChange={(e) => handleWarehouseChange(e.target.value)}
-                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {filteredWarehouseOptions.length === 0 ? (
                       <option value="" className="bg-white dark:bg-[#0f1117]">No warehouse with stock</option>
@@ -1157,7 +1157,7 @@ export default function StockPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Color *</label>
+                  <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Color *</label>
                   {form.type === 'stock_out' ? (
                     <div className="relative">
                       <select
@@ -1165,7 +1165,7 @@ export default function StockPage() {
                         disabled={isEditingOlderThan12Hours}
                         value={form.color_name}
                         onChange={(e) => handleColorChange(e.target.value)}
-                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {colorSuggestions.length === 0 ? (
                           <option value="" className="bg-white dark:bg-[#0f1117]">No colors in stock</option>
@@ -1192,7 +1192,7 @@ export default function StockPage() {
                         list="color-suggestions"
                         value={form.color_name}
                         onChange={(e) => handleColorChange(e.target.value)}
-                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="e.g. Black"
                       />
                       <datalist id="color-suggestions">
@@ -1208,7 +1208,7 @@ export default function StockPage() {
                     </div>
                   )}
                   {availableColors.length > 0 && (
-                    <p className="mt-1 text-[11px] text-slate-400 dark:text-gray-500">
+                    <p className="stock-muted mt-1 text-[11px]">
                       Available: {availableColors.map((c) => `${c.color} (${c.quantity})`).join(', ')}
                     </p>
                   )}
@@ -1219,7 +1219,7 @@ export default function StockPage() {
               <div className="grid gap-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Cartons</label>
+                    <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Cartons</label>
                     <input
                       type="number" min="0"
                       disabled={isEditingOlderThan12Hours}
@@ -1229,12 +1229,12 @@ export default function StockPage() {
                         const p = Number(form.pcsPerCarton) || 0;
                         setForm({ ...form, cartons: e.target.value, quantity: c * p || 0 });
                       }}
-                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 5"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Pcs / Carton</label>
+                    <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Pcs / Carton</label>
                     <input
                       type="number" min="0"
                       disabled={isEditingOlderThan12Hours}
@@ -1244,24 +1244,24 @@ export default function StockPage() {
                         const c = Number(form.cartons) || 0;
                         setForm({ ...form, pcsPerCarton: e.target.value, quantity: c * p || 0 });
                       }}
-                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 20"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Total Quantity *</label>
+                    <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Total Quantity *</label>
                     <input
                       type="number" required min="1"
                       disabled={isEditingOlderThan12Hours}
                       value={form.quantity || ''}
                       onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
-                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 100"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Recorded By *</label>
+                  <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Recorded By *</label>
                   <select
                     required
                     disabled={isEditingOlderThan12Hours}
@@ -1270,7 +1270,7 @@ export default function StockPage() {
                       const w = workers.find(w => w.id === e.target.value);
                       setForm({ ...form, worker_id: e.target.value, worker_name: w?.name || '' });
                     }}
-                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="" disabled className="bg-white dark:bg-[#0f1117]">Select Worker...</option>
                     {workers.map((w) => (
@@ -1285,12 +1285,12 @@ export default function StockPage() {
               {/* Customer Name */}
               {form.type === 'stock_out' && (
                 <div>
-                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Customer Name (optional)</label>
+                  <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Customer Name (optional)</label>
                   <input
                     type="text"
                     value={form.customer_name}
                     onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
-                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                    className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
                     placeholder="Enter customer name"
                   />
                 </div>
@@ -1298,12 +1298,12 @@ export default function StockPage() {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Notes (optional)</label>
+                <label className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Notes (optional)</label>
                 <input
                   type="text"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
                   placeholder="Reason, batch number, etc."
                 />
               </div>
@@ -1336,7 +1336,7 @@ export default function StockPage() {
 
       {/* Product Picker Modal */}
       {showProductPicker && (
-        <div className="fixed inset-0 bg-white dark:bg-[#0f1117] z-[60] flex flex-col p-4 md:p-8 overflow-hidden">
+        <div className="stock-modal-surface fixed inset-0 z-[60] flex flex-col p-4 md:p-8 overflow-hidden">
           <div className="flex items-center gap-4 mb-6">
             <button
               type="button"
@@ -1347,7 +1347,7 @@ export default function StockPage() {
                   setPickerSearch('');
                 }
               }}
-              className="p-2 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-white flex items-center justify-center min-w-[40px]"
+              className="stock-soft-control flex min-w-[40px] items-center justify-center rounded-lg border p-2"
             >
               ←
             </button>
@@ -1357,7 +1357,7 @@ export default function StockPage() {
               value={pickerSearch}
               onChange={(e) => setPickerSearch(e.target.value)}
               placeholder="Search products by name or code..."
-              className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              className="stock-field flex-1 rounded-xl border px-4 py-3 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
@@ -1390,10 +1390,10 @@ export default function StockPage() {
                         setPickerSearch('');
                         setPickerCategory(null);
                       }}
-                      className="text-left bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/10 transition"
+                      className="stock-modal-panel text-left rounded-xl border p-4 transition hover:border-indigo-500/50 hover:bg-indigo-500/10"
                     >
                       <p className="font-mono font-bold text-indigo-400 text-sm">{p.code}</p>
-                      <p className="text-[10px] text-slate-400 dark:text-gray-500 truncate mt-0.5">{p.name}</p>
+                      <p className="stock-muted mt-0.5 truncate text-[10px]">{p.name}</p>
                       <p className="text-xs text-indigo-400 mt-2">{p.quantity} in stock</p>
                     </button>
                   ))}
@@ -1426,10 +1426,10 @@ export default function StockPage() {
                         setPickerSearch('');
                         setPickerCategory(null);
                       }}
-                      className="text-left bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/10 transition"
+                      className="stock-modal-panel text-left rounded-xl border p-4 transition hover:border-indigo-500/50 hover:bg-indigo-500/10"
                     >
                       <p className="font-mono font-bold text-indigo-400 text-sm">{p.code}</p>
-                      <p className="text-[10px] text-slate-400 dark:text-gray-500 truncate mt-0.5">{p.name}</p>
+                      <p className="stock-muted mt-0.5 truncate text-[10px]">{p.name}</p>
                       <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 mt-2 uppercase tracking-tight bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded inline-block">
                         Qty: {p.quantity}
                       </p>
@@ -1450,12 +1450,12 @@ export default function StockPage() {
                     key={name}
                     type="button"
                     onClick={() => setPickerCategory(name)}
-                    className="aspect-square bg-slate-50 dark:bg-[#121826] border border-slate-200 dark:border-white/10 rounded-2xl flex flex-col items-center justify-center p-4 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition relative overflow-hidden group"
+                    className="stock-modal-panel group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border p-4 transition hover:border-indigo-500/40 hover:bg-indigo-500/5"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition" />
                     <span className="text-4xl mb-2 opacity-80">📁</span>
-                    <p className="text-sm font-semibold text-slate-900 dark:text-white text-center line-clamp-2">{name}</p>
-                    <span className="mt-2 text-[10px] uppercase tracking-wider text-slate-600 dark:text-gray-500 bg-slate-200 dark:bg-black/40 px-2 py-0.5 rounded-full">{count} items</span>
+                    <p className="line-clamp-2 text-center text-sm font-semibold">{name}</p>
+                    <span className="stock-soft-control mt-2 rounded-full border-0 px-2 py-0.5 text-[10px] uppercase tracking-wider">{count} items</span>
                   </button>
                 ))}
               </div>
@@ -1467,14 +1467,14 @@ export default function StockPage() {
       {/* Export Excel Modal */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300">
+          <div className="stock-modal-surface rounded-3xl border w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300">
             {/* Header with gradient */}
             <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 px-8 py-6 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-slate-950 dark:text-white flex items-center gap-2">
+                <h2 className="flex items-center gap-2 text-xl font-bold">
                   <span>📥</span> Export Stock Report
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">Download daily transactions by product in Excel format</p>
+                <p className="stock-muted mt-1 text-xs">Download daily transactions by product in Excel format</p>
               </div>
               <button 
                 onClick={() => setShowExportModal(false)} 
@@ -1487,14 +1487,14 @@ export default function StockPage() {
             <div className="p-8 space-y-6">
               {/* Date Input & Quick Selectors */}
               <div className="space-y-3">
-                <label className="block text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Select Date</label>
+                <label className="stock-muted block text-xs font-semibold uppercase tracking-wider">Select Date</label>
                 <div className="flex gap-2">
                   <input
                     type="date"
                     required
                     value={exportDate}
                     onChange={(e) => setExportDate(e.target.value)}
-                    className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
+                    className="stock-field flex-1 rounded-xl border px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
                   />
                   <button
                     type="button"
@@ -1504,7 +1504,7 @@ export default function StockPage() {
                       const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
                       setExportDate(adjusted.toISOString().slice(0, 10));
                     }}
-                    className="bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 dark:text-gray-200 font-semibold active:scale-95 transition-all"
+                    className="stock-soft-control rounded-xl border px-3.5 py-2.5 text-xs font-semibold active:scale-95 transition-all"
                   >
                     Today
                   </button>
@@ -1517,7 +1517,7 @@ export default function StockPage() {
                       const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
                       setExportDate(adjusted.toISOString().slice(0, 10));
                     }}
-                    className="bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 dark:text-gray-200 font-semibold active:scale-95 transition-all"
+                    className="stock-soft-control rounded-xl border px-3.5 py-2.5 text-xs font-semibold active:scale-95 transition-all"
                   >
                     Yesterday
                   </button>
@@ -1526,11 +1526,11 @@ export default function StockPage() {
 
               {/* Live Preview Stats */}
               <div className="space-y-3">
-                <label className="block text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Report Preview</label>
+                <label className="stock-muted block text-xs font-semibold uppercase tracking-wider">Report Preview</label>
                 
                 <div className="grid grid-cols-2 gap-4">
                   {/* Stock In Preview Card */}
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/5 p-4 flex flex-col justify-between">
+                  <div className="stock-success-soft flex flex-col justify-between rounded-2xl border border-emerald-500/20 p-4">
                     <div>
                       <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 rounded">
                         Sheet 1: In stock
@@ -1546,7 +1546,7 @@ export default function StockPage() {
                   </div>
 
                   {/* Stock Out Preview Card */}
-                  <div className="rounded-2xl border border-rose-500/20 bg-rose-50 dark:bg-rose-500/5 p-4 flex flex-col justify-between">
+                  <div className="stock-danger-soft flex flex-col justify-between rounded-2xl border border-rose-500/20 p-4">
                     <div>
                       <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider bg-rose-100 dark:bg-rose-500/10 px-2 py-0.5 rounded">
                         Sheet 2: Stock out
@@ -1563,7 +1563,7 @@ export default function StockPage() {
                 </div>
 
                 {exportStats.totalCount === 0 && (
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-3 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-300 leading-normal animate-pulse">
+                  <div className="stock-warning-soft flex animate-pulse items-start gap-2.5 rounded-xl border border-amber-500/20 p-3 text-xs leading-normal">
                     <span className="text-sm">⚠️</span>
                     <p>No transactions found on this date. The report will generate empty tables for all products.</p>
                   </div>
@@ -1581,7 +1581,7 @@ export default function StockPage() {
                 <button
                   type="button"
                   onClick={() => setShowExportModal(false)}
-                  className="px-6 py-3 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition active:scale-95 duration-150"
+                  className="stock-soft-control rounded-xl border px-6 py-3 text-sm transition active:scale-95 duration-150"
                 >
                   Cancel
                 </button>
