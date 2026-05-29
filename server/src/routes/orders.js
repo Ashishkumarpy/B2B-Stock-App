@@ -1,10 +1,11 @@
 import express from 'express';
 import { supabaseAdmin } from '../supabase.js';
-import { authRequired, requireRole } from '../auth.js';
+import { authRequired, requirePermission } from '../auth.js';
+import { logActivity } from '../activity_logger.js';
 
 export const ordersRouter = express.Router();
 
-ordersRouter.get('/', authRequired, requireRole(['admin']), async (_req, res) => {
+ordersRouter.get('/', authRequired, requirePermission('perm_orders'), async (_req, res) => {
   const { data, error } = await supabaseAdmin
     .from('orders')
     .select('*')
@@ -13,7 +14,7 @@ ordersRouter.get('/', authRequired, requireRole(['admin']), async (_req, res) =>
   return res.json({ data });
 });
 
-ordersRouter.patch('/:id', authRequired, requireRole(['admin']), async (req, res) => {
+ordersRouter.patch('/:id', authRequired, requirePermission('perm_orders'), async (req, res) => {
   const id = req.params.id;
   const payload = req.body || {};
   const { data, error } = await supabaseAdmin
@@ -23,6 +24,23 @@ ordersRouter.patch('/:id', authRequired, requireRole(['admin']), async (req, res
     .select('*')
     .single();
   if (error) return res.status(400).json({ error: error.message });
+
+  if (payload.status) {
+    const isDispatched = payload.status === 'shipped';
+    await logActivity({
+      actorId: req.session.sub,
+      actorName: req.session.name,
+      actionType: isDispatched ? 'order_dispatch' : 'order_status_update',
+      description: isDispatched
+        ? `Dispatched order for ${data.customer_name} (Total: $${data.total})`
+        : `Updated order status for ${data.customer_name} to ${payload.status}`,
+      metadata: {
+        order_id: id,
+        status: payload.status,
+        customer: data.customer_name
+      }
+    });
+  }
+
   return res.json({ data });
 });
-

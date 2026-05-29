@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabaseAdmin } from '../supabase.js';
-import { authRequired, requireRole } from '../auth.js';
+import { authRequired, requirePermission } from '../auth.js';
+import { logActivity } from '../activity_logger.js';
 
 export const workersRouter = express.Router();
 
@@ -21,11 +22,12 @@ function badRequestFromDbError(error, fallback = 'Request failed') {
   return message;
 }
 
-workersRouter.get('/', authRequired, async (req, res) => {
-  const role = String(req.session?.role || '').trim();
-  const subjectId = String(req.session?.sub || '').trim();
+// Get all workers (filtered by warehouse scope for managers)
+workersRouter.get('/', authRequired, requirePermission('perm_users'), async (req, res) => {
+  const sessionRole = String(req.session?.role || '').trim();
+  const sessionUserId = String(req.session?.sub || '').trim();
 
-  if (role === 'admin') {
+  if (sessionRole === 'admin') {
     const { data, error } = await supabaseAdmin
       .from('workers')
       .select('*')
@@ -34,22 +36,52 @@ workersRouter.get('/', authRequired, async (req, res) => {
     return res.json({ data });
   }
 
-  if (role === 'worker' || role === 'manager') {
-    if (!subjectId) return res.status(401).json({ error: 'Unauthorized' });
+  if (sessionRole === 'manager') {
+    if (!sessionUserId) return res.status(401).json({ error: 'Unauthorized' });
+
+    // 1. Fetch warehouses assigned to this manager
+    const { data: managerWarehouses, error: mwError } = await supabaseAdmin
+      .from('user_warehouses')
+      .select('warehouse_id')
+      .eq('user_id', sessionUserId);
+
+    if (mwError) return res.status(500).json({ error: mwError.message });
+    const warehouseIds = (managerWarehouses ?? []).map(mw => mw.warehouse_id);
+
+    if (warehouseIds.length === 0) {
+      return res.json({ data: [] });
+    }
+
+    // 2. Fetch all user assignments for these warehouses
+    const { data: userAssignments, error: uaError } = await supabaseAdmin
+      .from('user_warehouses')
+      .select('user_id')
+      .in('warehouse_id', warehouseIds);
+
+    if (uaError) return res.status(500).json({ error: uaError.message });
+    const workerUserIds = [...new Set((userAssignments ?? []).map(ua => ua.user_id))];
+
+    if (workerUserIds.length === 0) {
+      return res.json({ data: [] });
+    }
+
+    // 3. Fetch workers belonging to these user accounts
     const { data, error } = await supabaseAdmin
       .from('workers')
       .select('*')
-      .eq('id', subjectId)
-      .maybeSingle();
+      .in('user_id', workerUserIds)
+      .order('created_at', { ascending: false });
+
     if (error) return res.status(500).json({ error: error.message });
-    if (!data) return res.status(404).json({ error: 'Worker profile not found' });
-    return res.json({ data: [data] });
+    return res.json({ data });
   }
 
+  // Workers cannot manage users
   return res.status(403).json({ error: 'Forbidden' });
 });
 
-workersRouter.post('/', authRequired, requireRole(['admin']), async (req, res) => {
+// Create a worker profile
+workersRouter.post('/', authRequired, requirePermission('perm_users'), async (req, res) => {
   const payload = req.body || {};
   const name = String(payload.name || '').trim();
   const phone = normalizePhone(payload.phone);
@@ -80,14 +112,51 @@ workersRouter.post('/', authRequired, requireRole(['admin']), async (req, res) =
     .insert(sanitized)
     .select('*')
     .single();
+
   if (error) {
     return res.status(400).json({ error: badRequestFromDbError(error, 'Failed to create worker') });
   }
+
+  // Log activity
+  await logActivity({
+    actorId: req.session.sub,
+    actorName: req.session.name,
+    actionType: 'worker_create',
+    description: `Created worker profile for ${name} (${phone})`,
+    metadata: { worker_id: data.id, role: data.role }
+  });
+
   return res.json({ data });
 });
 
-workersRouter.put('/:id', authRequired, requireRole(['admin']), async (req, res) => {
+// Update a worker profile (restricted by warehouse scope for managers)
+workersRouter.put('/:id', authRequired, requirePermission('perm_users'), async (req, res) => {
   const id = req.params.id;
+  const sessionRole = String(req.session?.role || '').trim();
+  const sessionUserId = String(req.session?.sub || '').trim();
+
+  // Load existing worker profile
+  const { data: existingWorker, error: loadError } = await supabaseAdmin
+    .from('workers')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (loadError || !existingWorker) {
+    return res.status(404).json({ error: 'Worker not found' });
+  }
+
+  // Warehouse check for managers
+  if (sessionRole === 'manager' && existingWorker.user_id) {
+    const { data: shares } = await supabaseAdmin.rpc('share_warehouse', {
+      user_a: sessionUserId,
+      user_b: existingWorker.user_id
+    });
+    if (!shares) {
+      return res.status(403).json({ error: 'Forbidden: Worker does not belong to your assigned warehouses.' });
+    }
+  }
+
   const payload = req.body || {};
   const name = String(payload.name || '').trim();
   const phone = normalizePhone(payload.phone);
@@ -119,14 +188,50 @@ workersRouter.put('/:id', authRequired, requireRole(['admin']), async (req, res)
     .eq('id', id)
     .select('*')
     .single();
+
   if (error) {
     return res.status(400).json({ error: badRequestFromDbError(error, 'Failed to update worker') });
   }
+
+  // Log activity
+  await logActivity({
+    actorId: req.session.sub,
+    actorName: req.session.name,
+    actionType: 'worker_edit',
+    description: `Updated worker profile for ${name}`,
+    metadata: { worker_id: id }
+  });
+
   return res.json({ data });
 });
 
-workersRouter.delete('/:id', authRequired, requireRole(['admin']), async (req, res) => {
+// Delete a worker profile (restricted by warehouse scope for managers)
+workersRouter.delete('/:id', authRequired, requirePermission('perm_users'), async (req, res) => {
   const id = req.params.id;
+  const sessionRole = String(req.session?.role || '').trim();
+  const sessionUserId = String(req.session?.sub || '').trim();
+
+  // Load existing worker profile
+  const { data: existingWorker, error: loadError } = await supabaseAdmin
+    .from('workers')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (loadError || !existingWorker) {
+    return res.status(404).json({ error: 'Worker not found' });
+  }
+
+  // Warehouse check for managers
+  if (sessionRole === 'manager' && existingWorker.user_id) {
+    const { data: shares } = await supabaseAdmin.rpc('share_warehouse', {
+      user_a: sessionUserId,
+      user_b: existingWorker.user_id
+    });
+    if (!shares) {
+      return res.status(403).json({ error: 'Forbidden: Worker does not belong to your assigned warehouses.' });
+    }
+  }
 
   // Unlink transactions to prevent them from being deleted (preserve history)
   await supabaseAdmin
@@ -136,5 +241,15 @@ workersRouter.delete('/:id', authRequired, requireRole(['admin']), async (req, r
 
   const { error } = await supabaseAdmin.from('workers').delete().eq('id', id);
   if (error) return res.status(400).json({ error: error.message });
+
+  // Log activity
+  await logActivity({
+    actorId: req.session.sub,
+    actorName: req.session.name,
+    actionType: 'worker_delete',
+    description: `Deleted worker profile ${existingWorker.name}`,
+    metadata: { worker_id: id, name: existingWorker.name }
+  });
+
   return res.json({ ok: true });
 });

@@ -1,11 +1,12 @@
 import express from 'express';
 import { supabaseAdmin } from '../supabase.js';
-import { authRequired, requireRole } from '../auth.js';
+import { authRequired, requirePermission } from '../auth.js';
 import { sendStockTransactionPush } from '../notifications/push_service.js';
+import { logActivity } from '../activity_logger.js';
 
 export const transactionsRouter = express.Router();
 
-transactionsRouter.get('/', authRequired, async (req, res) => {
+transactionsRouter.get('/', authRequired, requirePermission('perm_inventory'), async (req, res) => {
   const limit = parseInt(req.query.limit) || 1000;
   const page = parseInt(req.query.page) || 1;
   const offset = (page - 1) * limit;
@@ -29,7 +30,7 @@ transactionsRouter.get('/', authRequired, async (req, res) => {
 transactionsRouter.post(
   '/',
   authRequired,
-  requireRole(['admin', 'manager', 'worker']),
+  requirePermission('perm_inventory'),
   async (req, res) => {
     const payload = req.body || {};
     const productId = String(payload.product_id || '').trim();
@@ -361,6 +362,22 @@ transactionsRouter.post(
 
     // Fire-and-forget push notifications for stock activity.
     sendStockTransactionPush(insertResult.data).catch(() => {});
+
+    // Log stock transaction activity
+    await logActivity({
+      actorId: session.sub || workerId,
+      actorName: workerName || userName,
+      actionType: 'stock_transaction',
+      description: `${insertResult.data.type === 'stock_in' ? 'Stocked in' : 'Stocked out'} ${insertResult.data.quantity} units of ${insertResult.data.product_name} (${insertResult.data.color_name}) at ${insertResult.data.warehouse_name}`,
+      metadata: {
+        transaction_id: insertResult.data.id,
+        product_id: insertResult.data.product_id,
+        warehouse_id: insertResult.data.warehouse_id,
+        type: insertResult.data.type,
+        quantity: insertResult.data.quantity
+      }
+    });
+
     return res.json({ data: insertResult.data });
   }
 );
@@ -368,7 +385,7 @@ transactionsRouter.post(
 transactionsRouter.patch(
   '/:id',
   authRequired,
-  requireRole(['admin', 'manager']),
+  requirePermission('perm_inventory'),
   async (req, res) => {
     const txId = String(req.params.id || '').trim();
     if (!txId) return res.status(400).json({ error: 'transaction id is required' });
@@ -538,6 +555,18 @@ transactionsRouter.patch(
       .maybeSingle();
     if (updatedTxRes.error) return res.status(400).json({ error: updatedTxRes.error.message });
 
+    await logActivity({
+      actorId: req.session.sub,
+      actorName: req.session.name,
+      actionType: 'stock_transaction_edit',
+      description: `Edited stock transaction ${txId} for ${oldTx.product_name} (New quantity: ${quantity})`,
+      metadata: {
+        transaction_id: txId,
+        old_qty: oldQty,
+        new_qty: quantity
+      }
+    });
+
     return res.json({ data: updatedTxRes.data });
   },
 );
@@ -545,7 +574,7 @@ transactionsRouter.patch(
 transactionsRouter.post(
   '/:id/reverse',
   authRequired,
-  requireRole(['admin', 'manager', 'worker']),
+  requirePermission('perm_inventory'),
   async (req, res) => {
     const txId = String(req.params.id || '').trim();
     if (!txId) return res.status(400).json({ error: 'transaction id is required' });
@@ -631,6 +660,18 @@ transactionsRouter.post(
     if (insertResult.error) return res.status(400).json({ error: insertResult.error.message });
 
     sendStockTransactionPush(insertResult.data).catch(() => {});
+
+    await logActivity({
+      actorId: req.session.sub,
+      actorName: req.session.name,
+      actionType: 'stock_transaction_reverse',
+      description: `Reversed stock transaction ${txId} for ${original.product_name}`,
+      metadata: {
+        original_transaction_id: txId,
+        reverse_transaction_id: insertResult.data.id
+      }
+    });
+
     return res.json({ data: insertResult.data });
   },
 );

@@ -40,6 +40,42 @@ export function requireRole(roles) {
   };
 }
 
+export function requirePermission(permission) {
+  return async (req, res, next) => {
+    try {
+      const userId = req.session?.sub;
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const { data: user, error } = await supabaseAdmin
+        .from('users')
+        .select('role, is_active, perm_products, perm_inventory, perm_orders, perm_reports, perm_users, perm_settings')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (error || !user) {
+        return res.status(401).json({ error: 'User profile not found' });
+      }
+
+      if (!user.is_active) {
+        return res.status(403).json({ error: 'Account is disabled. Please contact admin.' });
+      }
+
+      if (user.role === 'admin') {
+        return next();
+      }
+
+      if (!user[permission]) {
+        return res.status(403).json({ error: `Forbidden: requires ${permission}` });
+      }
+
+      return next();
+    } catch (e) {
+      return res.status(500).json({ error: 'Permission check failed' });
+    }
+  };
+}
+
+
 export async function loginWithEmailPassword(email, password) {
   const { data, error } = await supabaseAuth.auth.signInWithPassword({ email, password });
   if (error) throw error;

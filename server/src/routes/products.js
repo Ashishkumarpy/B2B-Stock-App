@@ -1,6 +1,7 @@
 import express from 'express';
 import { supabaseAdmin } from '../supabase.js';
-import { authRequired, requireRole } from '../auth.js';
+import { authRequired, requirePermission } from '../auth.js';
+import { logActivity } from '../activity_logger.js';
 
 export const productsRouter = express.Router();
 
@@ -66,14 +67,23 @@ productsRouter.get('/:id/stock-distribution', authRequired, async (req, res) => 
 });
 
 
-productsRouter.post('/', authRequired, requireRole(['admin', 'manager']), async (req, res) => {
+productsRouter.post('/', authRequired, requirePermission('perm_products'), async (req, res) => {
   const payload = req.body || {};
   const { data, error } = await supabaseAdmin.from('products').insert(payload).select('*').single();
   if (error) return res.status(400).json({ error: error.message });
+
+  await logActivity({
+    actorId: req.session.sub,
+    actorName: req.session.name,
+    actionType: 'product_create',
+    description: `Created product ${data.name} (Code: ${data.code})`,
+    metadata: { product_id: data.id, product_name: data.name, price: data.price }
+  });
+
   return res.json({ data });
 });
 
-productsRouter.put('/:id', authRequired, requireRole(['admin', 'manager', 'worker']), async (req, res) => {
+productsRouter.put('/:id', authRequired, requirePermission('perm_products'), async (req, res) => {
   const id = req.params.id;
   const payload = req.body || {};
   const hasColorStocksUpdate = Object.prototype.hasOwnProperty.call(payload, 'color_stocks');
@@ -85,6 +95,14 @@ productsRouter.put('/:id', authRequired, requireRole(['admin', 'manager', 'worke
     .single();
     
   if (error) return res.status(400).json({ error: error.message });
+
+  await logActivity({
+    actorId: req.session.sub,
+    actorName: req.session.name,
+    actionType: 'product_edit',
+    description: `Edited product ${data.name} (Code: ${data.code})`,
+    metadata: { product_id: id, product_name: data.name, updated_fields: Object.keys(payload) }
+  });
 
   // Auto-sync renamed colors across warehouse rows + transactions.
   if (hasColorStocksUpdate) {
@@ -201,14 +219,14 @@ productsRouter.put('/:id', authRequired, requireRole(['admin', 'manager', 'worke
   return res.json({ data });
 });
 
-productsRouter.delete('/:id', authRequired, requireRole(['admin', 'manager']), async (req, res) => {
+productsRouter.delete('/:id', authRequired, requirePermission('perm_products'), async (req, res) => {
   const id = req.params.id;
 
   try {
     // 1. Fetch product to get image public IDs before deleting
     const { data: product, error: fetchError } = await supabaseAdmin
       .from('products')
-      .select('images')
+      .select('name, code, images')
       .eq('id', id)
       .single();
 
@@ -227,6 +245,15 @@ productsRouter.delete('/:id', authRequired, requireRole(['admin', 'manager']), a
     // 2. Delete from DB
     const { error } = await supabaseAdmin.from('products').delete().eq('id', id);
     if (error) return res.status(400).json({ error: error.message });
+
+    await logActivity({
+      actorId: req.session.sub,
+      actorName: req.session.name,
+      actionType: 'product_delete',
+      description: `Deleted product ${product?.name || 'Unknown'} (Code: ${product?.code || 'Unknown'})`,
+      metadata: { product_id: id, product_name: product?.name }
+    });
+
     return res.json({ ok: true });
   } catch (err) {
     console.error('Product deletion error:', err);
