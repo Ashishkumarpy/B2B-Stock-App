@@ -882,19 +882,19 @@ export default function StockPage() {
                   <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10">
                     <button
                       onClick={() => setDateFilter('all')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
                     >
                       All Time
                     </button>
                     <button
                       onClick={() => setDateFilter('today')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
                     >
                       Today
                     </button>
                     <button
                       onClick={() => setDateFilter('custom')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
                     >
                       Choose Date
                     </button>
@@ -905,7 +905,7 @@ export default function StockPage() {
                       type="date"
                       value={customDate}
                       onChange={(e) => setCustomDate(e.target.value)}
-                      className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                     />
                   )}
                 </div>
@@ -916,19 +916,19 @@ export default function StockPage() {
                   <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10">
                     <button
                       onClick={() => setTypeFilter('both')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
                     >
                       All Types
                     </button>
                     <button
                       onClick={() => setTypeFilter('stock_in')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
                     >
                       Stock In
                     </button>
                     <button
                       onClick={() => setTypeFilter('stock_out')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'bg-red-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'bg-red-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'}`}
                     >
                       Stock Out
                     </button>
@@ -965,7 +965,7 @@ export default function StockPage() {
                   {filteredTransactions.map((t, idx) => (
                     <tr key={t.id}>
                       <td className="text-slate-400 dark:text-gray-500 font-mono text-xs w-12">{idx + 1}</td>
-                      <td className="text-white font-medium">{t.worker_name}</td>
+                      <td className="text-slate-900 dark:text-white font-medium">{t.worker_name}</td>
                       <td>
                         <span className={`badge ${t.type === 'stock_in' ? 'badge-green' : 'badge-red'}`}>
                           {t.type === 'stock_in' ? 'Stock In' : 'Stock Out'}
@@ -1045,7 +1045,7 @@ export default function StockPage() {
                             if (customer) params.set('customer', customer);
                             router.push(`/stock?${params.toString()}`);
                           }}
-                          className="rounded-md border border-indigo-400/40 bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-300 hover:bg-indigo-500/20"
+                          className="rounded-md border border-indigo-400/40 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-500/20"
                         >
                           Edit
                         </button>
@@ -1065,12 +1065,12 @@ export default function StockPage() {
           <div className="bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/10 rounded-2xl p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-slate-500 dark:text-gray-400 hover:text-white text-2xl leading-none">×</button>
+              <button onClick={() => setShowModal(false)} className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white text-2xl leading-none">×</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {isEditingOlderThan12Hours && (
-                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2.5 text-xs text-amber-300 leading-normal">
+                <div className="rounded-xl border border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-3 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-300 leading-normal">
                   <span className="text-sm">ℹ️</span>
                   <p>This transaction was recorded more than 12 hours ago. Only the customer name and notes can be edited.</p>
                 </div>
@@ -1093,9 +1093,9 @@ export default function StockPage() {
                       }}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition ${form.type === t
                           ? t === 'stock_in'
-                            ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
-                            : 'bg-red-600/20 border-red-500 text-red-300'
-                          : 'border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 hover:bg-slate-100 dark:hover:bg-white/5'
+                            ? 'bg-emerald-50 dark:bg-emerald-600/20 border-emerald-500 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-red-50 dark:bg-red-600/20 border-red-500 text-red-700 dark:text-red-300'
+                          : 'border-slate-200 dark:border-white/10 text-slate-500 dark:text-gray-500 hover:bg-slate-100 dark:hover:bg-white/5'
                         } ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {t === 'stock_in' ? '↑ Stock In' : '↓ Stock Out'}
@@ -1111,7 +1111,7 @@ export default function StockPage() {
                   type="button"
                   disabled={isEditingOlderThan12Hours}
                   onClick={() => setShowProductPicker(true)}
-                  className={`w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-left text-white focus:outline-none focus:border-indigo-500 flex justify-between items-center ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-left text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 flex justify-between items-center ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {form.product_id ? (
                     <div className="flex flex-col">
@@ -1127,7 +1127,7 @@ export default function StockPage() {
                   )}
                   <div className="flex items-center gap-3">
                     {selectedProduct && (
-                      <span className="bg-indigo-500/20 text-indigo-300 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider">
+                      <span className="bg-indigo-50 dark:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 text-[10px] px-2 py-1 rounded-md font-bold uppercase tracking-wider">
                         Available: {selectedProduct.quantity}
                       </span>
                     )}
@@ -1143,7 +1143,7 @@ export default function StockPage() {
                     value={form.warehouse_id}
                     disabled={isEditingOlderThan12Hours}
                     onChange={(e) => handleWarehouseChange(e.target.value)}
-                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {filteredWarehouseOptions.length === 0 ? (
                       <option value="" className="bg-white dark:bg-[#0f1117]">No warehouse with stock</option>
@@ -1165,7 +1165,7 @@ export default function StockPage() {
                         disabled={isEditingOlderThan12Hours}
                         value={form.color_name}
                         onChange={(e) => handleColorChange(e.target.value)}
-                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {colorSuggestions.length === 0 ? (
                           <option value="" className="bg-white dark:bg-[#0f1117]">No colors in stock</option>
@@ -1192,7 +1192,7 @@ export default function StockPage() {
                         list="color-suggestions"
                         value={form.color_name}
                         onChange={(e) => handleColorChange(e.target.value)}
-                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="e.g. Black"
                       />
                       <datalist id="color-suggestions">
@@ -1229,7 +1229,7 @@ export default function StockPage() {
                         const p = Number(form.pcsPerCarton) || 0;
                         setForm({ ...form, cartons: e.target.value, quantity: c * p || 0 });
                       }}
-                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 5"
                     />
                   </div>
@@ -1244,7 +1244,7 @@ export default function StockPage() {
                         const c = Number(form.cartons) || 0;
                         setForm({ ...form, pcsPerCarton: e.target.value, quantity: c * p || 0 });
                       }}
-                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 20"
                     />
                   </div>
@@ -1255,7 +1255,7 @@ export default function StockPage() {
                       disabled={isEditingOlderThan12Hours}
                       value={form.quantity || ''}
                       onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
-                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 100"
                     />
                   </div>
@@ -1270,7 +1270,7 @@ export default function StockPage() {
                       const w = workers.find(w => w.id === e.target.value);
                       setForm({ ...form, worker_id: e.target.value, worker_name: w?.name || '' });
                     }}
-                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <option value="" disabled className="bg-white dark:bg-[#0f1117]">Select Worker...</option>
                     {workers.map((w) => (
@@ -1290,7 +1290,7 @@ export default function StockPage() {
                     type="text"
                     value={form.customer_name}
                     onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
-                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                     placeholder="Enter customer name"
                   />
                 </div>
@@ -1303,7 +1303,7 @@ export default function StockPage() {
                   type="text"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
                   placeholder="Reason, batch number, etc."
                 />
               </div>
@@ -1347,7 +1347,7 @@ export default function StockPage() {
                   setPickerSearch('');
                 }
               }}
-              className="p-2 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-white flex items-center justify-center min-w-[40px]"
+              className="p-2 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-white flex items-center justify-center min-w-[40px]"
             >
               ←
             </button>
@@ -1357,7 +1357,7 @@ export default function StockPage() {
               value={pickerSearch}
               onChange={(e) => setPickerSearch(e.target.value)}
               placeholder="Search products by name or code..."
-              className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
@@ -1430,7 +1430,7 @@ export default function StockPage() {
                     >
                       <p className="font-mono font-bold text-indigo-400 text-sm">{p.code}</p>
                       <p className="text-[10px] text-slate-400 dark:text-gray-500 truncate mt-0.5">{p.name}</p>
-                      <p className="text-[10px] font-bold text-indigo-300 mt-2 uppercase tracking-tight bg-indigo-500/10 px-2 py-0.5 rounded inline-block">
+                      <p className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 mt-2 uppercase tracking-tight bg-indigo-50 dark:bg-indigo-500/10 px-2 py-0.5 rounded inline-block">
                         Qty: {p.quantity}
                       </p>
                     </button>
@@ -1454,8 +1454,8 @@ export default function StockPage() {
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition" />
                     <span className="text-4xl mb-2 opacity-80">📁</span>
-                    <p className="text-sm font-semibold text-white text-center line-clamp-2">{name}</p>
-                    <span className="mt-2 text-[10px] uppercase tracking-wider text-slate-400 dark:text-gray-500 bg-black/40 px-2 py-0.5 rounded-full">{count} items</span>
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white text-center line-clamp-2">{name}</p>
+                    <span className="mt-2 text-[10px] uppercase tracking-wider text-slate-600 dark:text-gray-500 bg-slate-200 dark:bg-black/40 px-2 py-0.5 rounded-full">{count} items</span>
                   </button>
                 ))}
               </div>
@@ -1471,14 +1471,14 @@ export default function StockPage() {
             {/* Header with gradient */}
             <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 px-8 py-6 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <h2 className="text-xl font-bold text-slate-950 dark:text-white flex items-center gap-2">
                   <span>📥</span> Export Stock Report
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">Download daily transactions by product in Excel format</p>
               </div>
               <button 
                 onClick={() => setShowExportModal(false)} 
-                className="text-slate-500 dark:text-gray-400 hover:text-white text-2xl leading-none w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center transition-all"
+                className="text-slate-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white text-2xl leading-none w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center transition-all"
               >
                 ×
               </button>
@@ -1494,7 +1494,7 @@ export default function StockPage() {
                     required
                     value={exportDate}
                     onChange={(e) => setExportDate(e.target.value)}
-                    className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
+                    className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
                   />
                   <button
                     type="button"
@@ -1530,12 +1530,12 @@ export default function StockPage() {
                 
                 <div className="grid grid-cols-2 gap-4">
                   {/* Stock In Preview Card */}
-                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex flex-col justify-between">
+                  <div className="rounded-2xl border border-emerald-500/20 bg-emerald-50 dark:bg-emerald-500/5 p-4 flex flex-col justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider bg-emerald-500/10 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 rounded">
                         Sheet 1: In stock
                       </span>
-                      <p className="mt-3 text-2xl font-black text-emerald-100 font-mono">
+                      <p className="mt-3 text-2xl font-black text-emerald-700 dark:text-emerald-100 font-mono">
                         +{exportStats.totalInQty}
                         <span className="text-xs font-normal text-slate-500 dark:text-gray-400 ml-1">pcs</span>
                       </p>
@@ -1546,12 +1546,12 @@ export default function StockPage() {
                   </div>
 
                   {/* Stock Out Preview Card */}
-                  <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-4 flex flex-col justify-between">
+                  <div className="rounded-2xl border border-rose-500/20 bg-rose-50 dark:bg-rose-500/5 p-4 flex flex-col justify-between">
                     <div>
-                      <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider bg-rose-500/10 px-2 py-0.5 rounded">
+                      <span className="text-[10px] font-bold text-rose-700 dark:text-rose-400 uppercase tracking-wider bg-rose-100 dark:bg-rose-500/10 px-2 py-0.5 rounded">
                         Sheet 2: Stock out
                       </span>
-                      <p className="mt-3 text-2xl font-black text-rose-100 font-mono">
+                      <p className="mt-3 text-2xl font-black text-rose-700 dark:text-rose-100 font-mono">
                         -{exportStats.totalOutQty}
                         <span className="text-xs font-normal text-slate-500 dark:text-gray-400 ml-1">pcs</span>
                       </p>
@@ -1563,7 +1563,7 @@ export default function StockPage() {
                 </div>
 
                 {exportStats.totalCount === 0 && (
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 flex items-start gap-2.5 text-xs text-amber-300 leading-normal animate-pulse">
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-50 dark:bg-amber-500/5 p-3 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-300 leading-normal animate-pulse">
                     <span className="text-sm">⚠️</span>
                     <p>No transactions found on this date. The report will generate empty tables for all products.</p>
                   </div>
@@ -1581,7 +1581,7 @@ export default function StockPage() {
                 <button
                   type="button"
                   onClick={() => setShowExportModal(false)}
-                  className="px-6 py-3 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-white transition active:scale-95 duration-150"
+                  className="px-6 py-3 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition active:scale-95 duration-150"
                 >
                   Cancel
                 </button>
