@@ -309,15 +309,15 @@ export default function UsersPage() {
       return;
     }
     
-    // Only require email if they are not phone-only OR if upgrading them
-    const isUpgrading = editingUser?.is_phone_only && formState.email;
-    const requiresEmail = !editingUser?.is_phone_only || isUpgrading;
+    // Require email if they are not phone-only, or if they are being upgraded/set to admin/manager
+    const isUpgrading = editingUser?.is_phone_only && (formState.role === 'admin' || formState.role === 'manager' || !!formState.email);
+    const requiresEmail = !editingUser?.is_phone_only || isUpgrading || formState.role === 'admin' || formState.role === 'manager';
     if (requiresEmail && !formState.email) {
       setSaveError('Email is required.');
       return;
     }
     if (isUpgrading && !formState.password) {
-      setSaveError('Password is required to upgrade phone-only account to email account.');
+      setSaveError('Password is required to register/upgrade account to email access.');
       return;
     }
     if (!editingUser && !formState.password) {
@@ -964,7 +964,7 @@ export default function UsersPage() {
 
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Email Address {editingUser?.is_phone_only && '(Optional for Upgrade)'}
+                      Email Address {formState.role === 'admin' || formState.role === 'manager' ? '(Required)' : (editingUser?.is_phone_only ? '(Optional for Upgrade)' : '')}
                     </label>
                     <input
                       type="email"
@@ -972,23 +972,35 @@ export default function UsersPage() {
                       value={formState.email}
                       onChange={(e) => setFormState(prev => ({ ...prev, email: e.target.value }))}
                       className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
-                      required={!editingUser?.is_phone_only}
+                      required={formState.role === 'admin' || formState.role === 'manager' || !editingUser?.is_phone_only}
                     />
                   </div>
 
-                  {(!editingUser || (editingUser.is_phone_only && formState.email)) && (
+                  {(!editingUser || editingUser.is_phone_only || !editingUser.is_phone_only) && (
                     <div>
                       <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                        Password {editingUser?.is_phone_only && '(Required for Upgrade)'}
+                        {!editingUser
+                          ? 'Password'
+                          : editingUser.is_phone_only
+                            ? 'Register Password (To upgrade to email account)'
+                            : 'Update Password (Leave blank to keep current)'
+                        }
                       </label>
                       <input
                         type="password"
-                        placeholder="Secure password (min 6 chars)"
+                        placeholder={
+                          editingUser && !editingUser.is_phone_only
+                            ? 'Enter new password to update'
+                            : 'Secure password (min 6 chars)'
+                        }
                         value={formState.password}
                         onChange={(e) => setFormState(prev => ({ ...prev, password: e.target.value }))}
                         className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
                         minLength={6}
-                        required={!editingUser || !!(editingUser.is_phone_only && formState.email)}
+                        required={
+                          !editingUser || 
+                          (editingUser.is_phone_only && (formState.role === 'admin' || formState.role === 'manager' || !!formState.email))
+                        }
                       />
                     </div>
                   )}

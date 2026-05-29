@@ -298,10 +298,18 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
         if (permissions.perm_settings !== undefined) profileUpdate.perm_settings = permissions.perm_settings;
       }
 
+      const authUpdates = {};
       if (email && email !== existingUser.email) {
-        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, { email });
+        authUpdates.email = email;
+      }
+      if (password) {
+        authUpdates.password = password;
+      }
+
+      if (Object.keys(authUpdates).length > 0) {
+        const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(id, authUpdates);
         if (authError) return res.status(400).json({ error: authError.message });
-        profileUpdate.email = email;
+        if (authUpdates.email) profileUpdate.email = email;
       }
 
       // Update User Profile
