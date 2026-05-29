@@ -600,4 +600,111 @@ html:not(.dark) {
   [class*="hover:border-white/"]:hover {
     border-color: var(--border-color) !important;
   }
+
+  /* ==========================================
+     High-Priority Overrides for Modals & Pickers in Light Mode
+     ========================================== */
+
+  /* 1. Reset background and border colors for inputs, selects, textareas, and transparent buttons inside light-theme modal cards */
+  .bg-\[\#0f1117\] input,
+  .bg-\[\#0f1117\] select,
+  .bg-\[\#0f1117\] textarea,
+  .bg-\[\#0f1117\] [class*="bg-white/5"],
+  .bg-\[\#0f1117\] [class*="bg-white/10"],
+  [class*="bg-["] input,
+  [class*="bg-["] select,
+  [class*="bg-["] textarea,
+  [class*="bg-["] [class*="bg-white/5"],
+  [class*="bg-["] [class*="bg-white/10"] {
+    background-color: var(--bg-input) !important;
+    border-color: var(--border-color) !important;
+  }
+
+  .bg-\[\#0f1117\] [class*="hover:bg-white/5"]:hover,
+  .bg-\[\#0f1117\] [class*="hover:bg-white/10"]:hover,
+  [class*="bg-["] [class*="hover:bg-white/5"]:hover,
+  [class*="bg-["] [class*="hover:bg-white/10"]:hover {
+    background-color: var(--bg-hover) !important;
+  }
+
+  /* 2. Reset text colors to dark for descendants inside light-theme modal cards */
+  .bg-\[\#0f1117\] input,
+  .bg-\[\#0f1117\] select,
+  .bg-\[\#0f1117\] textarea,
+  .bg-\[\#0f1117\] .text-white,
+  .bg-\[\#0f1117\] .text-gray-100,
+  .bg-\[\#0f1117\] .text-gray-200,
+  .bg-\[\#0f1117\] .text-gray-300,
+  .bg-\[\#0f1117\] .text-gray-400,
+  .bg-\[\#0f1117\] [class*="text-white/"],
+  [class*="bg-["] input,
+  [class*="bg-["] select,
+  [class*="bg-["] textarea,
+  [class*="bg-["] .text-white,
+  [class*="bg-["] .text-gray-100,
+  [class*="bg-["] .text-gray-200,
+  [class*="bg-["] .text-gray-300,
+  [class*="bg-["] .text-gray-400,
+  [class*="bg-["] [class*="text-white/"] {
+    color: var(--text-primary) !important;
+  }
+
+  /* Secondary/muted text overrides inside light-theme modal cards */
+  .bg-\[\#0f1117\] .text-gray-500,
+  .bg-\[\#0f1117\] .text-slate-500,
+  [class*="bg-["] .text-gray-500,
+  [class*="bg-["] .text-slate-500 {
+    color: var(--text-muted) !important;
+  }
+
+  /* Ensure options inside select tags are readable */
+  .bg-\[\#0f1117\] option,
+  [class*="bg-["] option {
+    background-color: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+  }
+
+  /* 3. Re-preserve white text color on solid brand backgrounds (like primary buttons, badges) inside the modal cards */
+  .bg-\[\#0f1117\] .bg-indigo-600,
+  .bg-\[\#0f1117\] .bg-indigo-500,
+  .bg-\[\#0f1117\] .bg-emerald-600,
+  .bg-\[\#0f1117\] .bg-red-600,
+  .bg-\[\#0f1117\] .bg-rose-600,
+  .bg-\[\#0f1117\] .bg-blue-600,
+  .bg-\[\#0f1117\] .bg-purple-600,
+  [class*="bg-["] .bg-indigo-600,
+  [class*="bg-["] .bg-indigo-500,
+  [class*="bg-["] .bg-emerald-600,
+  [class*="bg-["] .bg-red-600,
+  [class*="bg-["] .bg-rose-600,
+  [class*="bg-["] .bg-blue-600,
+  [class*="bg-["] .bg-purple-600 {
+    &, & * {
+      color: #ffffff !important;
+    }
+  }
+
+  /* 4. Restore visible colors for low-opacity warning/success preview cards inside the Excel export modal */
+  [class*="bg-emerald-500/5"],
+  [class*="bg-rose-500/5"],
+  .bg-emerald-500\/5,
+  .bg-rose-500\/5 {
+    &, & * {
+      &.text-emerald-100 {
+        color: var(--color-success) !important;
+      }
+      &.text-rose-100 {
+        color: var(--color-danger) !important;
+      }
+      &.text-emerald-400 {
+        color: var(--color-success) !important;
+      }
+      &.text-rose-400 {
+        color: var(--color-danger) !important;
+      }
+      &.text-gray-400 {
+        color: var(--text-secondary) !important;
+      }
+    }
+  }
 }
