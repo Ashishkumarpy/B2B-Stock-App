@@ -113,10 +113,10 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0a0a0f] p-6 text-slate-800 dark:text-white">
           <div className="w-full max-w-md rounded-3xl border border-red-500/20 bg-white dark:bg-[#11131a] p-8 shadow-sm">
             <h1 className="text-xl font-semibold">Access denied</h1>
-            <p className="mt-3 text-sm text-gray-400">
+            <p className="mt-3 text-sm text-slate-500 dark:text-gray-400">
               Your account is signed in, but it does not have admin dashboard access.
             </p>
-            <p className="mt-2 text-sm text-gray-500">
+            <p className="mt-2 text-sm text-slate-400 dark:text-gray-500">
               Ask for a `users.role` of `admin` or `manager` in Supabase.
             </p>
             {authError && <p className="mt-3 text-sm text-red-300">{authError}</p>}
@@ -132,7 +132,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
                 }
                 router.replace('/login');
               }}
-              className="mt-6 rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-300 transition hover:bg-white/5 hover:text-white"
+              className="mt-6 rounded-xl border border-slate-200 dark:border-white/10 px-4 py-2 text-sm text-slate-600 dark:text-gray-300 transition hover:bg-slate-100 dark:hover:bg-white/5 hover:text-white"
             >
               Sign Out
             </button>
@@ -151,10 +151,10 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-[#0a0a0f] p-6 text-slate-800 dark:text-white">
         <div className="w-full max-w-md rounded-3xl border border-red-500/20 bg-white dark:bg-[#11131a] p-8 shadow-sm">
           <h1 className="text-xl font-semibold">Admin access required</h1>
-          <p className="mt-3 text-sm text-gray-400">
+          <p className="mt-3 text-sm text-slate-500 dark:text-gray-400">
             This dashboard only allows users with the `admin` or `manager` role.
           </p>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-slate-400 dark:text-gray-500">
             If you see a permission error for `users`, your live Supabase policies for `public.users`
             still need to be applied.
           </p>
@@ -170,7 +170,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
               }
               router.replace('/login');
             }}
-            className="mt-6 rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-300 transition hover:bg-white/5 hover:text-white"
+            className="mt-6 rounded-xl border border-slate-200 dark:border-white/10 px-4 py-2 text-sm text-slate-600 dark:text-gray-300 transition hover:bg-slate-100 dark:hover:bg-white/5 hover:text-white"
           >
             Sign Out
           </button>

@@ -212,7 +212,13 @@ body {
 input,
 select,
 textarea {
-  color-scheme: light dark;
+  color-scheme: light;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  color-scheme: dark;
 }
 
 /* ── Light Mode Override Rules for Hardcoded Tailwind Dark Classes ── */

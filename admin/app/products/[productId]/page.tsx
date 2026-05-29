@@ -245,7 +245,7 @@ export default function ProductDetailAdminPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Product Details</h1>
-          <p className="mt-1 text-sm text-gray-500">History and stock movement</p>
+          <p className="mt-1 text-sm text-slate-400 dark:text-gray-500">History and stock movement</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {prevProduct && (
@@ -282,26 +282,26 @@ export default function ProductDetailAdminPage() {
       </div>
 
       {loading ? (
-        <div className="card p-12 text-center text-sm text-gray-500">Loading details...</div>
+        <div className="card p-12 text-center text-sm text-slate-400 dark:text-gray-500">Loading details...</div>
       ) : error ? (
         <div className="card border border-red-500/20 bg-red-500/10 p-6 text-sm text-red-300">{error}</div>
       ) : !product ? (
-        <div className="card p-12 text-center text-sm text-gray-500">Product not found.</div>
+        <div className="card p-12 text-center text-sm text-slate-400 dark:text-gray-500">Product not found.</div>
       ) : (
         <>
           <div className="grid gap-6 lg:grid-cols-[1.15fr_1fr]">
             <div className="card p-4">
-              <div className="relative aspect-square overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+              <div className="relative aspect-square overflow-hidden rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5">
                 {currentImage ? (
                   <NextImage src={currentImage} alt={product.name} fill className="object-contain" sizes="(max-width: 1024px) 100vw, 60vw" priority />
                 ) : (
-                  <div className="flex h-full items-center justify-center text-gray-500">No image</div>
+                  <div className="flex h-full items-center justify-center text-slate-400 dark:text-gray-500">No image</div>
                 )}
               </div>
               {images.length > 1 && (
                 <div className="mt-3 grid grid-cols-6 gap-2">
                   {images.map((url, index) => (
-                    <button key={`${url}-${index}`} type="button" onClick={() => setSelectedImageIndex(index)} className={`relative aspect-square overflow-hidden rounded-lg border ${activeImageIndex === index ? 'border-indigo-500 ring-1 ring-indigo-500/50' : 'border-white/10'}`}>
+                    <button key={`${url}-${index}`} type="button" onClick={() => setSelectedImageIndex(index)} className={`relative aspect-square overflow-hidden rounded-lg border ${activeImageIndex === index ? 'border-indigo-500 ring-1 ring-indigo-500/50' : 'border-slate-200 dark:border-white/10'}`}>
                       <NextImage src={url} alt="Thumbnail" fill className="object-cover" sizes="96px" />
                     </button>
                   ))}
@@ -321,33 +321,33 @@ export default function ProductDetailAdminPage() {
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs text-gray-500">Category</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-3">
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Category</p>
                     <p className="mt-1 font-semibold text-white">{product.category || 'Uncategorized'}</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs text-gray-500">Price</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-3">
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Price</p>
                     <p className="mt-1 font-semibold text-white">Rs {formatMoney(product.price)}</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs text-gray-500">Pcs per Carton</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-3">
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Pcs per Carton</p>
                     <p className="mt-1 font-semibold text-white">{product.pcs_per_carton || 1} pcs/ctn</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs text-gray-500">MOQ / Threshold</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-3">
+                    <p className="text-xs text-slate-400 dark:text-gray-500">MOQ / Threshold</p>
                     <p className="mt-1 font-semibold text-white">{product.threshold || 50} pcs</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs text-gray-500">Created</p>
-                    <p className="mt-1 text-[10px] text-gray-300">{formatDateTime(product.created_at)}</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-3">
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Created</p>
+                    <p className="mt-1 text-[10px] text-slate-600 dark:text-gray-300">{formatDateTime(product.created_at)}</p>
                   </div>
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                    <p className="text-xs text-gray-500">Updated</p>
-                    <p className="mt-1 text-[10px] text-gray-300">{formatDateTime(product.updated_at)}</p>
+                  <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-3">
+                    <p className="text-xs text-slate-400 dark:text-gray-500">Updated</p>
+                    <p className="mt-1 text-[10px] text-slate-600 dark:text-gray-300">{formatDateTime(product.updated_at)}</p>
                   </div>
                 </div>
                 {product.description && (
-                  <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-gray-300 leading-relaxed">{product.description}</div>
+                  <div className="mt-4 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-3 text-sm text-slate-600 dark:text-gray-300 leading-relaxed">{product.description}</div>
                 )}
               </div>
 
@@ -391,7 +391,7 @@ export default function ProductDetailAdminPage() {
             {product.color_stocks && product.color_stocks.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {product.color_stocks.map((entry, index) => (
-                  <div key={`${entry.color}-${index}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                  <div key={`${entry.color}-${index}`} className="flex items-center justify-between rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3">
                     <span className="text-sm font-semibold text-white">{entry.color}</span>
                     <div className="text-right">
                       <span className="text-sm font-black text-indigo-300">{(() => {
@@ -404,14 +404,14 @@ export default function ProductDetailAdminPage() {
                         return `${cartons} ctn, ${pcs} pcs`;
                       })()}</span>
                       {product.pcs_per_carton && product.pcs_per_carton > 1 && (
-                        <p className="text-[9px] text-gray-500">({entry.quantity} pcs)</p>
+                        <p className="text-[9px] text-slate-400 dark:text-gray-500">({entry.quantity} pcs)</p>
                       )}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">No color-wise stock added.</p>
+              <p className="text-sm text-slate-400 dark:text-gray-500">No color-wise stock added.</p>
             )}
           </div>
 
@@ -419,12 +419,12 @@ export default function ProductDetailAdminPage() {
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">7-Day Activity</h2>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+            <div className="rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-6">
               <svg viewBox="0 0 100 100" className="h-48 w-full overflow-visible">
                 <line x1="0" y1="50" x2="100" y2="50" stroke="rgba(255,255,255,0.1)" strokeDasharray="4 2" />
                 <polyline fill="none" stroke="#6366f1" strokeWidth="2" points={chartPoints} />
               </svg>
-              <div className="mt-4 grid grid-cols-7 gap-2 text-center text-[10px] text-gray-500">
+              <div className="mt-4 grid grid-cols-7 gap-2 text-center text-[10px] text-slate-400 dark:text-gray-500">
                 {netSevenDays.map(p => <div key={p.key}><p>{p.label}</p><p className={p.value >= 0 ? 'text-emerald-400' : 'text-rose-400'}>{p.value > 0 ? `+${p.value}` : p.value}</p></div>)}
               </div>
             </div>
@@ -433,22 +433,22 @@ export default function ProductDetailAdminPage() {
           <div className="card p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Transactions</h2>
-              <span className="text-xs text-gray-500">{productTransactions.length} entries</span>
+              <span className="text-xs text-slate-400 dark:text-gray-500">{productTransactions.length} entries</span>
             </div>
             <div className="space-y-2">
               {productTransactions.slice(0, 20).map((txn) => {
                 const isIn = txn.type === 'stock_in';
                 return (
-                  <div key={txn.id} className="rounded-xl border border-white/10 bg-white/5 p-4 flex items-center justify-between gap-4">
+                  <div key={txn.id} className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-4 flex items-center justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className={`badge ${isIn ? 'badge-green' : 'badge-red'} text-[9px] uppercase`}>{isIn ? 'IN' : 'OUT'}</span>
                         <span className="text-xs font-bold text-white truncate">{txn.color_name || 'Standard'}</span>
                       </div>
-                      <p className="text-[10px] text-gray-500 truncate">By {txn.worker_name || 'Admin'} • {formatDateTime(txn.created_at)}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-gray-500 truncate">By {txn.worker_name || 'Admin'} • {formatDateTime(txn.created_at)}</p>
                       {txn.notes && (
                         <div className="mt-1">
-                          <span className="text-[9px] text-gray-400 truncate bg-white/5 px-1.5 py-0.5 rounded inline-block max-w-full">
+                          <span className="text-[9px] text-slate-500 dark:text-gray-400 truncate bg-slate-100 dark:bg-white/5 px-1.5 py-0.5 rounded inline-block max-w-full">
                             {txn.notes}
                           </span>
                         </div>
@@ -461,7 +461,7 @@ export default function ProductDetailAdminPage() {
                       {(() => {
                         if (txn.cartons !== undefined && txn.cartons !== null) {
                           return (
-                            <span className="text-[10px] text-gray-400 leading-tight mt-1 whitespace-nowrap">
+                            <span className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight mt-1 whitespace-nowrap">
                               {txn.cartons} ctn × {txn.pcs_per_carton || 1}
                             </span>
                           );
@@ -469,7 +469,7 @@ export default function ProductDetailAdminPage() {
                         const parsed = parseCartonFromNotes(txn.notes);
                         if (parsed) {
                           return (
-                            <span className="text-[10px] text-gray-400 leading-tight mt-1 whitespace-nowrap">
+                            <span className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight mt-1 whitespace-nowrap">
                               {parsed.cartons} ctn × {parsed.pcsPerCarton}
                             </span>
                           );
@@ -480,7 +480,7 @@ export default function ProductDetailAdminPage() {
                   </div>
                 );
               })}
-              {productTransactions.length === 0 && <p className="p-8 text-center text-sm text-gray-500">No history found.</p>}
+              {productTransactions.length === 0 && <p className="p-8 text-center text-sm text-slate-400 dark:text-gray-500">No history found.</p>}
             </div>
           </div>
         </>

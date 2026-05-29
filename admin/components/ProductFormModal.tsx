@@ -292,24 +292,24 @@ export default function ProductFormModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#0f1117] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-white/10 p-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/70 p-4 backdrop-blur-sm">
+      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1117] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 p-6">
           <div>
             <h2 className="text-xl font-bold">{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
-            <p className="text-xs text-gray-400">Fill in the details below to {editingProduct ? 'update' : 'create'} the product.</p>
+            <p className="text-xs text-slate-500 dark:text-gray-400">Fill in the details below to {editingProduct ? 'update' : 'create'} the product.</p>
           </div>
-          <button onClick={onClose} className="text-2xl text-gray-400 hover:text-white">&times;</button>
+          <button onClick={onClose} className="text-2xl text-slate-500 dark:text-gray-400 hover:text-white">&times;</button>
         </div>
 
         <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-6 scrollbar-hide">
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             {/* Left Column: Images */}
             <div className="space-y-4">
-              <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400">Product Gallery</label>
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Product Gallery</label>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {images.map((img, idx) => (
-                  <div key={`${img.publicId || img.url}-${idx}`} className="group relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-white/5">
+                  <div key={`${img.publicId || img.url}-${idx}`} className="group relative aspect-square overflow-hidden rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5">
                     <NextImage src={img.url} alt="Product" fill className="object-cover" sizes="150px" />
                     {idx === 0 && <span className="absolute left-1 top-1 rounded bg-indigo-600 px-1 text-[8px] font-bold text-white uppercase">Main</span>}
                     <button
@@ -345,7 +345,7 @@ export default function ProductFormModal({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square rounded-xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center text-gray-500 hover:border-indigo-500/40 hover:text-indigo-300 transition-colors"
+                  className="aspect-square rounded-xl border-2 border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center text-slate-400 dark:text-gray-500 hover:border-indigo-500/40 hover:text-indigo-300 transition-colors"
                 >
                   <span className="text-2xl">+</span>
                   <span className="text-[10px] uppercase font-bold">Add Photo</span>
@@ -354,15 +354,15 @@ export default function ProductFormModal({
               <input ref={fileInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileChange} />
 
               {uploading && (
-                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
                   <div className="h-full bg-indigo-500 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                 </div>
               )}
               {uploadError && <p className="text-xs text-red-400">{uploadError}</p>}
 
-              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+              <div className="space-y-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] p-4">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-400">Color Stocks</label>
+                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Color Stocks</label>
                   <button
                     type="button"
                     onClick={() => setColorStocks(prev => [...prev, { id: makeDraftId(), color: '', quantity: 0 }])}
@@ -379,14 +379,14 @@ export default function ProductFormModal({
                         placeholder="Color"
                         value={entry.color}
                         onChange={e => setColorStocks(prev => prev.map((x, i) => i === idx ? { ...x, color: e.target.value } : x))}
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                        className="rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
                       />
                       <input
                         type="number"
                         min="0"
                         value={entry.quantity}
                         onChange={e => setColorStocks(prev => prev.map((x, i) => i === idx ? { ...x, quantity: Number(e.target.value) } : x))}
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                        className="rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
                       />
                       <button
                         type="button"
@@ -399,7 +399,7 @@ export default function ProductFormModal({
                   ))}
                 </div>
                 {colorStocks.length > 0 && (
-                  <label className="flex items-center gap-2 text-[11px] text-gray-400 mt-2">
+                  <label className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-gray-400 mt-2">
                     <input type="checkbox" checked={syncQuantityFromColors} onChange={e => setSyncQuantityFromColors(e.target.checked)} />
                     Auto-sync total quantity ({colorTotalQuantity} pcs)
                   </label>
@@ -411,45 +411,45 @@ export default function ProductFormModal({
             <div className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Product Name *</span>
-                  <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Product Name *</span>
+                  <input type="text" required value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Product Code *</span>
-                  <input type="text" required value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Product Code *</span>
+                  <input type="text" required value={form.code} onChange={e => setForm({ ...form, code: e.target.value })} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
                 </label>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                     Category * <span className="text-[10px] text-indigo-400 font-normal lowercase">(type to create new folder)</span>
                   </span>
-                  <input type="text" required list="modal-categories" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                  <input type="text" required list="modal-categories" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
                   <datalist id="modal-categories">
                     {allCategories.map(c => <option key={c} value={c} />)}
                   </datalist>
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Price (Rs) *</span>
-                  <input type="number" required min="0" value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Price (Rs) *</span>
+                  <input type="number" required min="0" value={form.price} onChange={e => setForm({ ...form, price: Number(e.target.value) })} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
                 </label>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Pcs per Carton *</span>
-                  <input type="number" required min="1" value={form.pcs_per_carton} onChange={e => setForm({ ...form, pcs_per_carton: Number(e.target.value) })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Pcs per Carton *</span>
+                  <input type="number" required min="1" value={form.pcs_per_carton} onChange={e => setForm({ ...form, pcs_per_carton: Number(e.target.value) })} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
                 </label>
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">MOQ / Threshold *</span>
-                  <input type="number" required min="1" value={form.threshold} onChange={e => setForm({ ...form, threshold: Number(e.target.value) })} className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">MOQ / Threshold *</span>
+                  <input type="number" required min="1" value={form.threshold} onChange={e => setForm({ ...form, threshold: Number(e.target.value) })} className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none" />
                 </label>
               </div>
 
               <div className="grid grid-cols-1 gap-4">
                 <label className="block">
-                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Stock Quantity *</span>
+                  <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Stock Quantity *</span>
                   <input
                     type="number"
                     required
@@ -457,18 +457,18 @@ export default function ProductFormModal({
                     disabled={syncQuantityFromColors}
                     value={syncQuantityFromColors ? colorTotalQuantity : form.quantity}
                     onChange={e => setForm({ ...form, quantity: Number(e.target.value) })}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none disabled:opacity-50"
                   />
                 </label>
               </div>
 
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Description</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Description</span>
                 <textarea
                   rows={4}
                   value={form.description}
                   onChange={e => setForm({ ...form, description: e.target.value })}
-                  className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full resize-none rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
               </label>
 
@@ -476,7 +476,7 @@ export default function ProductFormModal({
             </div>
           </div>
 
-          <div className="mt-8 flex gap-3 border-t border-white/10 pt-6">
+          <div className="mt-8 flex gap-3 border-t border-slate-200 dark:border-white/10 pt-6">
             <button
               type="submit"
               disabled={saving || uploading}
@@ -487,7 +487,7 @@ export default function ProductFormModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-2xl border border-white/10 px-8 py-3.5 text-sm font-semibold text-gray-300 hover:bg-white/5 transition-all"
+              className="rounded-2xl border border-slate-200 dark:border-white/10 px-8 py-3.5 text-sm font-semibold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-all"
             >
               Cancel
             </button>

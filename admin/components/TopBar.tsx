@@ -11,14 +11,16 @@ interface TopBarProps {
 }
 
 export default function TopBar({ name, email, role, initials, onSignOut }: TopBarProps) {
-  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    if (typeof window === 'undefined') return 'system';
+    const savedTheme = localStorage.getItem('theme');
+    return savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system'
+      ? savedTheme
+      : 'system';
+  });
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | 'system' | null;
-      const currentTheme = savedTheme || 'system';
-      setTheme(currentTheme);
-
       const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
       const handleChange = () => {
         const activeTheme = localStorage.getItem('theme') || 'system';
@@ -114,7 +116,7 @@ export default function TopBar({ name, email, role, initials, onSignOut }: TopBa
         <button
           type="button"
           onClick={onSignOut}
-          className="rounded-lg border border-slate-200 dark:border-white/10 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-gray-300 transition hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-955 dark:hover:text-white"
+          className="rounded-lg border border-slate-200 dark:border-white/10 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-gray-300 transition hover:bg-slate-100 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white"
         >
           Sign Out
         </button>

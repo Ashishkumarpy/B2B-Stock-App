@@ -320,12 +320,12 @@ export default function EditProductPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Edit Product</h1>
-          <p className="mt-1 text-sm text-gray-500">Editing stays in product details flow</p>
+          <p className="mt-1 text-sm text-slate-400 dark:text-gray-500">Editing stays in product details flow</p>
         </div>
         <button
           type="button"
           onClick={goBackToFolder}
-          className="rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-white/5"
+          className="rounded-xl border border-slate-200 dark:border-white/10 px-4 py-2 text-sm text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/5"
         >
           Back to Folder
         </button>
@@ -333,14 +333,14 @@ export default function EditProductPage() {
 
       <div className="card max-w-4xl p-6 md:p-8">
         {loading ? (
-          <div className="p-8 text-center text-sm text-gray-500">Loading product...</div>
+          <div className="p-8 text-center text-sm text-slate-400 dark:text-gray-500">Loading product...</div>
         ) : (
           <form onSubmit={handleSave} className="space-y-6">
             <div>
-              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-gray-400">Product Gallery</label>
+              <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Product Gallery</label>
               <div className="mb-3 grid grid-cols-3 gap-3 sm:grid-cols-5">
                 {images.map((image, idx) => (
-                  <div key={`${image.url}-${idx}`} className="group relative aspect-square overflow-hidden rounded-lg border border-white/10">
+                  <div key={`${image.url}-${idx}`} className="group relative aspect-square overflow-hidden rounded-lg border border-slate-200 dark:border-white/10">
                     <NextImage src={image.url} alt={`Product image ${idx + 1}`} fill className="object-cover" sizes="120px" />
                     {idx === 0 ? (
                       <span className="absolute left-1 top-1 rounded bg-indigo-600 px-1 text-[8px] font-bold uppercase text-white">Main</span>
@@ -365,7 +365,7 @@ export default function EditProductPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square rounded-lg border-2 border-dashed border-white/10 text-gray-500 transition hover:border-indigo-500/40 hover:text-indigo-300"
+                  className="aspect-square rounded-lg border-2 border-dashed border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 transition hover:border-indigo-500/40 hover:text-indigo-300"
                 >
                   <div className="flex h-full flex-col items-center justify-center gap-1">
                     <span className="text-xl">+</span>
@@ -380,48 +380,48 @@ export default function EditProductPage() {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Product Name *</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Product Name *</span>
                 <input
                   type="text"
                   required
                   value={form.name}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Product Code *</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Product Code *</span>
                 <input
                   type="text"
                   required
                   value={form.code}
                   onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Category *</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Category *</span>
                 <input
                   type="text"
                   required
                   value={form.category}
                   onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Price (Rs) *</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Price (Rs) *</span>
                 <input
                   type="number"
                   required
                   min="0"
                   value={form.price}
                   onChange={(e) => setForm((prev) => ({ ...prev, price: Number(e.target.value) }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Stock Quantity *</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Stock Quantity *</span>
                 <input
                   type="number"
                   required
@@ -429,7 +429,7 @@ export default function EditProductPage() {
                   value={syncQuantityFromColors ? colorTotalQuantity : form.quantity}
                   disabled={syncQuantityFromColors}
                   onChange={(e) => setForm((prev) => ({ ...prev, quantity: Number(e.target.value) }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
                 {hasColorMismatch && (
                   <p className="mt-1 text-xs text-amber-300">
@@ -438,21 +438,21 @@ export default function EditProductPage() {
                 )}
               </label>
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">MOQ / Threshold *</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">MOQ / Threshold *</span>
                 <input
                   type="number"
                   required
                   min="1"
                   value={form.threshold}
                   onChange={(e) => setForm((prev) => ({ ...prev, threshold: Number(e.target.value) }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                 />
               </label>
             </div>
 
-            <div className="space-y-3 rounded-xl border border-white/10 bg-white/[0.02] p-4">
+            <div className="space-y-3 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] p-4">
               <div className="flex items-center justify-between">
-                <label className="block text-xs font-semibold uppercase tracking-wider text-gray-400">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
                   Color Stocks
                 </label>
                 <button
@@ -464,7 +464,7 @@ export default function EditProductPage() {
                 </button>
               </div>
               {colorStocks.length === 0 ? (
-                <p className="text-xs text-gray-500">No colors added. Use Add Color to create color-wise quantities.</p>
+                <p className="text-xs text-slate-400 dark:text-gray-500">No colors added. Use Add Color to create color-wise quantities.</p>
               ) : (
                 <div className="space-y-2">
                   {colorStocks.map((entry, index) => (
@@ -474,7 +474,7 @@ export default function EditProductPage() {
                         value={entry.color}
                         onChange={(e) => updateColorStock(index, { color: e.target.value })}
                         placeholder="Color name"
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                        className="rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
                       />
                       <input
                         type="number"
@@ -485,7 +485,7 @@ export default function EditProductPage() {
                             quantity: Number(e.target.value),
                           })
                         }
-                        className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                        className="rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
                       />
                       <button
                         type="button"
@@ -498,7 +498,7 @@ export default function EditProductPage() {
                   ))}
                 </div>
               )}
-              <label className="mt-2 flex items-center gap-2 text-xs text-gray-300">
+              <label className="mt-2 flex items-center gap-2 text-xs text-slate-600 dark:text-gray-300">
                 <input
                   type="checkbox"
                   checked={syncQuantityFromColors}
@@ -509,12 +509,12 @@ export default function EditProductPage() {
             </div>
 
             <label className="block">
-              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">Description</span>
+              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">Description</span>
               <textarea
                 rows={3}
                 value={form.description}
                 onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                className="w-full resize-none rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                className="w-full resize-none rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
               />
             </label>
 
@@ -531,7 +531,7 @@ export default function EditProductPage() {
               <button
                 type="button"
                 onClick={() => router.push(`/products/${encodeURIComponent(productId)}`)}
-                className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-gray-200 hover:bg-white/5"
+                className="rounded-xl border border-slate-200 dark:border-white/10 px-5 py-2.5 text-sm text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/5"
               >
                 Back to Details
               </button>

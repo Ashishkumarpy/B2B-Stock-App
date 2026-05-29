@@ -213,7 +213,7 @@ export default function FolderExplorerPage() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Folder Explorer</h1>
-          <p className="mt-1 text-sm text-gray-500">Windows-style navigation for product folders</p>
+          <p className="mt-1 text-sm text-slate-400 dark:text-gray-500">Windows-style navigation for product folders</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -223,7 +223,7 @@ export default function FolderExplorerPage() {
               if (warehouseId) params.set('warehouseId', warehouseId);
               router.push(`/products?${params.toString()}`);
             }}
-            className="rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-200 hover:bg-white/5"
+            className="rounded-xl border border-slate-200 dark:border-white/10 px-4 py-2 text-sm text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/5"
           >
             Back to Products
           </button>
@@ -259,7 +259,7 @@ export default function FolderExplorerPage() {
               if (warehouseId) params.set('warehouseId', warehouseId);
               router.push(`/products/folder?${params.toString()}`);
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs ${currentSegments.length === 0 ? 'bg-indigo-600 text-white' : 'border border-white/10 text-gray-300'
+            className={`rounded-lg px-3 py-1.5 text-xs ${currentSegments.length === 0 ? 'bg-indigo-600 text-white' : 'border border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300'
               }`}
           >
             Root
@@ -276,7 +276,7 @@ export default function FolderExplorerPage() {
                   if (warehouseId) params.set('warehouseId', warehouseId);
                   router.push(`/products/folder?${params.toString()}`);
                 }}
-                className={`rounded-lg px-3 py-1.5 text-xs ${active ? 'bg-indigo-600 text-white' : 'border border-white/10 text-gray-300'
+                className={`rounded-lg px-3 py-1.5 text-xs ${active ? 'bg-indigo-600 text-white' : 'border border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300'
                   }`}
               >
                 {segment}
@@ -289,7 +289,7 @@ export default function FolderExplorerPage() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder={`Search in ${currentLabel}...`}
-          className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+          className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-2.5 text-sm text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
         />
       </div>
 
@@ -308,7 +308,7 @@ export default function FolderExplorerPage() {
               newUrl.searchParams.delete('warehouseId');
               router.push(newUrl.pathname + newUrl.search);
             }}
-            className="rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 text-xs font-semibold px-4 py-2 transition"
+            className="rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-gray-300 text-xs font-semibold px-4 py-2 transition"
           >
             Clear Filter
           </button>
@@ -318,9 +318,9 @@ export default function FolderExplorerPage() {
       <div className="card p-4 md:p-6">
         <h2 className="mb-4 text-sm font-semibold text-white">Products in {currentLabel}</h2>
         {loading ? (
-          <div className="p-8 text-center text-sm text-gray-500">Loading products...</div>
+          <div className="p-8 text-center text-sm text-slate-400 dark:text-gray-500">Loading products...</div>
         ) : visibleProducts.length === 0 ? (
-          <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center text-sm text-gray-500">
+          <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-6 text-center text-sm text-slate-400 dark:text-gray-500">
             No products in this folder.
           </div>
         ) : (
@@ -332,7 +332,7 @@ export default function FolderExplorerPage() {
                 <div
                   key={product.id}
                   onClick={() => router.push(`/products/${encodeURIComponent(product.id)}`)}
-                  className={`group relative aspect-square cursor-pointer overflow-hidden border border-white/10 bg-white/5 ${cardRoundClass}`}
+                  className={`group relative aspect-square cursor-pointer overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 ${cardRoundClass}`}
                 >
                   {product.image_url ? (
                       <NextImage
@@ -373,7 +373,7 @@ export default function FolderExplorerPage() {
                             event.stopPropagation();
                             router.push(`/products/${encodeURIComponent(product.id)}`);
                           }}
-                          className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[10px] font-semibold text-gray-300 hover:bg-white/10"
+                          className="rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-2 py-1 text-[10px] font-semibold text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10"
                         >
                           Details
                         </button>
@@ -408,14 +408,14 @@ export default function FolderExplorerPage() {
       </div>
 
       {showCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f1117] p-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1117] p-8 shadow-2xl">
             <h3 className="text-xl font-bold mb-2">Create Folder</h3>
-            <p className="text-xs text-gray-400 mb-6 uppercase tracking-widest">New category for your products</p>
-            <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Folder Name" className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none mb-6" />
+            <p className="text-xs text-slate-500 dark:text-gray-400 mb-6 uppercase tracking-widest">New category for your products</p>
+            <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Folder Name" className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none mb-6" />
             <div className="flex gap-3">
               <button onClick={handleCreateCategory} className="flex-1 rounded-xl bg-indigo-600 py-3 font-bold text-white hover:bg-indigo-500 transition-all">Create</button>
-              <button onClick={() => setShowCategoryModal(false)} className="rounded-xl border border-white/10 px-6 py-3 text-sm font-semibold text-gray-300 hover:bg-white/5 transition-all">Cancel</button>
+              <button onClick={() => setShowCategoryModal(false)} className="rounded-xl border border-slate-200 dark:border-white/10 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-all">Cancel</button>
             </div>
           </div>
         </div>

@@ -91,15 +91,15 @@ export default function OrdersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Orders</h1>
-          <p className="text-gray-500 text-sm mt-1">{orders.length} orders total</p>
+          <p className="text-slate-400 dark:text-gray-500 text-sm mt-1">{orders.length} orders total</p>
         </div>
       </div>
 
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-gray-500 text-sm">Loading orders…</div>
+          <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">Loading orders…</div>
         ) : orders.length === 0 ? (
-          <div className="p-12 text-center text-gray-500 text-sm">No orders received yet.</div>
+          <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">No orders received yet.</div>
         ) : (
           <table className="data-table w-full text-sm">
             <thead>
@@ -119,7 +119,7 @@ export default function OrdersPage() {
                   <td className="font-mono text-xs text-indigo-400">#{o.id.slice(-6).toUpperCase()}</td>
                   <td>
                     <div className="text-white font-medium">{o.customer_name}</div>
-                    <div className="text-xs text-gray-500">{o.company_name}</div>
+                    <div className="text-xs text-slate-400 dark:text-gray-500">{o.company_name}</div>
                   </td>
                   <td className="text-right font-mono">{o.items.length}</td>
                   <td className="text-right font-semibold">₹{o.total.toLocaleString()}</td>
@@ -129,14 +129,14 @@ export default function OrdersPage() {
                       onChange={(e) => updateStatus(o.id, e.target.value)}
                       className={`bg-transparent border-none text-xs focus:ring-0 cursor-pointer ${statusCls[o.status]}`}
                     >
-                      <option value="pending" className="bg-[#0f1117] text-white">Pending</option>
-                      <option value="confirmed" className="bg-[#0f1117] text-white">Confirmed</option>
-                      <option value="shipped" className="bg-[#0f1117] text-white">Shipped</option>
-                      <option value="delivered" className="bg-[#0f1117] text-white">Delivered</option>
-                      <option value="cancelled" className="bg-[#0f1117] text-white">Cancelled</option>
+                      <option value="pending" className="bg-white dark:bg-[#0f1117] text-white">Pending</option>
+                      <option value="confirmed" className="bg-white dark:bg-[#0f1117] text-white">Confirmed</option>
+                      <option value="shipped" className="bg-white dark:bg-[#0f1117] text-white">Shipped</option>
+                      <option value="delivered" className="bg-white dark:bg-[#0f1117] text-white">Delivered</option>
+                      <option value="cancelled" className="bg-white dark:bg-[#0f1117] text-white">Cancelled</option>
                     </select>
                   </td>
-                  <td className="text-gray-500 text-xs">
+                  <td className="text-slate-400 dark:text-gray-500 text-xs">
                     {new Date(o.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                   </td>
                   <td>
@@ -156,29 +156,29 @@ export default function OrdersPage() {
 
       {/* Order Details Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f1117] border border-white/10 rounded-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/10">
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/10 rounded-2xl p-8 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-8 pb-4 border-b border-slate-200 dark:border-white/10">
               <div>
                 <h2 className="text-xl font-bold">Order Details</h2>
                 <p className="text-xs font-mono text-indigo-400 mt-1">ID: #{selectedOrder.id.toUpperCase()}</p>
               </div>
-              <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+              <button onClick={() => setSelectedOrder(null)} className="text-slate-500 dark:text-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8 mb-8">
               <div className="md:col-span-1">
-                <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Customer</h3>
+                <h3 className="text-[10px] text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Customer</h3>
                 <p className="text-sm font-semibold text-white">{selectedOrder.customer_name}</p>
-                <p className="text-xs text-gray-400 mt-1">{selectedOrder.company_name}</p>
-                <p className="text-xs text-gray-400 mt-1">{selectedOrder.email}</p>
-                <p className="text-xs text-gray-400 mt-1">{selectedOrder.phone}</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">{selectedOrder.company_name}</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">{selectedOrder.email}</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">{selectedOrder.phone}</p>
               </div>
 
               <div className="md:col-span-1">
-                <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Branding</h3>
+                <h3 className="text-[10px] text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Branding</h3>
                 {selectedOrder.branding?.logoUrl ? (
-                  <div className="w-24 h-24 bg-white/5 border border-white/10 rounded p-2 flex items-center justify-center mb-2">
+                  <div className="w-24 h-24 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded p-2 flex items-center justify-center mb-2">
                     <Image
                       src={selectedOrder.branding.logoUrl}
                       alt="Customer Logo"
@@ -189,41 +189,41 @@ export default function OrdersPage() {
                     />
                   </div>
                 ) : (
-                  <p className="text-xs text-gray-500 italic mb-2">No logo provided</p>
+                  <p className="text-xs text-slate-400 dark:text-gray-500 italic mb-2">No logo provided</p>
                 )}
                 {selectedOrder.branding?.notes && (
-                  <div className="p-3 bg-white/5 rounded border border-white/5">
-                    <p className="text-[10px] text-gray-400 italic">"{selectedOrder.branding.notes}"</p>
+                  <div className="p-3 bg-slate-100 dark:bg-white/5 rounded border border-slate-200 dark:border-white/5">
+                    <p className="text-[10px] text-slate-500 dark:text-gray-400 italic">"{selectedOrder.branding.notes}"</p>
                   </div>
                 )}
               </div>
 
               <div className="md:col-span-1">
-                <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-3">Summary</h3>
+                <h3 className="text-[10px] text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-3">Summary</h3>
                 <div className="space-y-2">
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Status</span>
+                    <span className="text-slate-400 dark:text-gray-500">Status</span>
                     <span className={`badge ${statusCls[selectedOrder.status]}`}>{selectedOrder.status}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-500">Date</span>
+                    <span className="text-slate-400 dark:text-gray-500">Date</span>
                     <span className="text-white">{new Date(selectedOrder.created_at).toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-white/10">
-                    <span className="text-gray-400">Total</span>
+                  <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-200 dark:border-white/10">
+                    <span className="text-slate-500 dark:text-gray-400">Total</span>
                     <span className="text-indigo-400">₹{selectedOrder.total.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <h3 className="text-[10px] text-gray-500 uppercase tracking-widest mb-4">Order Items</h3>
+            <h3 className="text-[10px] text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-4">Order Items</h3>
             <div className="space-y-2 mb-8">
               {selectedOrder.items.map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-white/3 border border-white/5 rounded-xl">
+                <div key={idx} className="flex items-center justify-between p-4 bg-white/3 border border-slate-200 dark:border-white/5 rounded-xl">
                   <div>
                     <div className="text-sm font-medium text-white">{item.name}</div>
-                    <div className="text-xs text-gray-500 mt-0.5">₹{item.price.toLocaleString()} x {item.quantity}</div>
+                    <div className="text-xs text-slate-400 dark:text-gray-500 mt-0.5">₹{item.price.toLocaleString()} x {item.quantity}</div>
                   </div>
                   <div className="text-sm font-mono text-indigo-400">
                     ₹{(item.price * item.quantity).toLocaleString()}
@@ -235,7 +235,7 @@ export default function OrdersPage() {
             <div className="flex gap-4">
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="flex-1 px-6 py-3 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/5 transition"
+                className="flex-1 px-6 py-3 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 transition"
               >
                 Close Details
               </button>

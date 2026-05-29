@@ -291,7 +291,7 @@ export default function ProductsPage() {
       <div
         key={product.id}
         onClick={() => router.push(`/products/${encodeURIComponent(product.id)}`)}
-        className={`group relative aspect-square overflow-hidden rounded-3xl border border-white/10 bg-white/5 ${highlightedProductId === product.id ? 'ring-2 ring-indigo-500/30' : ''} cursor-pointer`}
+        className={`group relative aspect-square overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 ${highlightedProductId === product.id ? 'ring-2 ring-indigo-500/30' : ''} cursor-pointer`}
       >
         <div className="absolute inset-0">
           {product.image_url ? (
@@ -325,10 +325,10 @@ export default function ProductsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Products</h1>
-          <p className="mt-1 text-sm text-gray-500">{filteredProducts.length} products shown</p>
+          <p className="mt-1 text-sm text-slate-400 dark:text-gray-500">{filteredProducts.length} products shown</p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => router.push('/products/folder')} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-gray-200 hover:bg-white/5">Open Explorer</button>
+          <button onClick={() => router.push('/products/folder')} className="rounded-xl border border-slate-200 dark:border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/5">Open Explorer</button>
           <button onClick={() => openAdd()} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500 transition-all">+ Add Product</button>
         </div>
       </div>
@@ -348,7 +348,7 @@ export default function ProductsPage() {
               newUrl.searchParams.delete('warehouseId');
               router.push(newUrl.pathname + newUrl.search);
             }}
-            className="rounded-xl border border-white/10 hover:bg-white/5 text-gray-300 text-xs font-semibold px-4 py-2 transition"
+            className="rounded-xl border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-600 dark:text-gray-300 text-xs font-semibold px-4 py-2 transition"
           >
             Clear Filter
           </button>
@@ -361,7 +361,7 @@ export default function ProductsPage() {
           placeholder="Search folders or products..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+          className="w-full max-w-sm rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-2.5 text-sm text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
         />
         <button onClick={openCreateCategory} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500">+ Create Folder</button>
       </div>
@@ -383,9 +383,9 @@ export default function ProductsPage() {
             )}
           </div>
           {loading ? (
-            <div className="p-12 text-center text-sm text-gray-500">Loading...</div>
+            <div className="p-12 text-center text-sm text-slate-400 dark:text-gray-500">Loading...</div>
           ) : searchedProducts.length === 0 ? (
-            <div className="p-12 text-center text-sm text-gray-500">No matches found.</div>
+            <div className="p-12 text-center text-sm text-slate-400 dark:text-gray-500">No matches found.</div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {searchedProducts.map((p, i) => renderProductCard(p, i))}
@@ -395,7 +395,7 @@ export default function ProductsPage() {
       ) : (
         <div className="card p-4 md:p-6">
           <h2 className="text-sm font-semibold text-white mb-4">Folders ({visibleFolders.length})</h2>
-          {loading ? <div className="p-12 text-center text-sm text-gray-500">Loading...</div> : visibleFolders.length === 0 ? <div className="p-12 text-center text-sm text-gray-500">No products yet.</div> : (
+          {loading ? <div className="p-12 text-center text-sm text-slate-400 dark:text-gray-500">Loading...</div> : visibleFolders.length === 0 ? <div className="p-12 text-center text-sm text-slate-400 dark:text-gray-500">No products yet.</div> : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {visibleFolders.map((folder, index) => (
                 <button
@@ -406,9 +406,9 @@ export default function ProductsPage() {
                     if (warehouseId) params.set('warehouseId', warehouseId);
                     router.push(`/products/folder?${params.toString()}`);
                   }}
-                  className="group relative aspect-square overflow-hidden rounded-3xl border border-white/10 bg-white/5 hover:border-indigo-500/40 transition-all"
+                  className="group relative aspect-square overflow-hidden rounded-3xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 hover:border-indigo-500/40 transition-all"
                 >
-                  <div className="relative h-full w-full bg-[#121826]">
+                  <div className="relative h-full w-full bg-slate-50 dark:bg-[#121826]">
                     {folder.sampleImage ? (
                       <NextImage src={folder.sampleImage} alt={folder.name} fill className="object-cover transition duration-500 group-hover:scale-110" sizes="300px" priority={index < 3} />
                     ) : (
@@ -418,7 +418,7 @@ export default function ProductsPage() {
                     <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-white/20 bg-black/35 p-3 backdrop-blur-md">
                       <div className="mb-2 flex items-center justify-between">
                         <p className="truncate text-sm font-semibold text-white">{folder.name}</p>
-                        <span className="rounded-full bg-black/50 px-2 py-0.5 text-[11px] text-white">{folder.count}</span>
+                        <span className="rounded-full bg-black/40 dark:bg-black/50 px-2 py-0.5 text-[11px] text-white">{folder.count}</span>
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-[11px] text-gray-200">
                         <div className="rounded-lg border border-white/20 bg-white/10 px-2 py-1">Qty: <span className="font-semibold text-white">{folder.totalQty}</span></div>
@@ -445,19 +445,19 @@ export default function ProductsPage() {
 
       {viewerImages.length > 0 && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/85 p-4 backdrop-blur-md">
-          <div className="w-full max-w-5xl rounded-3xl border border-white/10 bg-[#0f1117] p-4 shadow-2xl">
+          <div className="w-full max-w-5xl rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1117] p-4 shadow-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <div className="text-sm text-gray-300">Photo {viewerIndex + 1} / {viewerImages.length}</div>
+              <div className="text-sm text-slate-600 dark:text-gray-300">Photo {viewerIndex + 1} / {viewerImages.length}</div>
               <div className="flex items-center gap-2">
-                <button onClick={() => { setViewerImages([]); setViewerIndex(0); }} className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-white/10 uppercase tracking-widest transition-all">Close</button>
+                <button onClick={() => { setViewerImages([]); setViewerIndex(0); }} className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-200 dark:hover:bg-white/10 uppercase tracking-widest transition-all">Close</button>
               </div>
             </div>
             <div className="relative h-[70vh] overflow-hidden rounded-2xl bg-black/40">
               <NextImage src={viewerImages[viewerIndex]} alt="Full size" fill className="object-contain" sizes="90vw" />
               {viewerImages.length > 1 && (
                 <>
-                  <button onClick={() => setViewerIndex(prev => (prev - 1 + viewerImages.length) % viewerImages.length)} className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white hover:bg-black/80 transition-all text-2xl">‹</button>
-                  <button onClick={() => setViewerIndex(prev => (prev + 1) % viewerImages.length)} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-3 text-white hover:bg-black/80 transition-all text-2xl">›</button>
+                  <button onClick={() => setViewerIndex(prev => (prev - 1 + viewerImages.length) % viewerImages.length)} className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/40 dark:bg-black/50 p-3 text-white hover:bg-black/80 transition-all text-2xl">‹</button>
+                  <button onClick={() => setViewerIndex(prev => (prev + 1) % viewerImages.length)} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/40 dark:bg-black/50 p-3 text-white hover:bg-black/80 transition-all text-2xl">›</button>
                 </>
               )}
             </div>
@@ -466,14 +466,14 @@ export default function ProductsPage() {
       )}
 
       {showCategoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-3xl border border-white/10 bg-[#0f1117] p-8 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1117] p-8 shadow-2xl">
             <h3 className="text-xl font-bold mb-2">Create Folder</h3>
-            <p className="text-xs text-gray-400 mb-6 uppercase tracking-widest">New category for your products</p>
-            <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Folder Name" className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none mb-6" />
+            <p className="text-xs text-slate-500 dark:text-gray-400 mb-6 uppercase tracking-widest">New category for your products</p>
+            <input value={newCategory} onChange={e => setNewCategory(e.target.value)} placeholder="Folder Name" className="w-full rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none mb-6" />
             <div className="flex gap-3">
               <button onClick={handleCreateCategory} className="flex-1 rounded-xl bg-indigo-600 py-3 font-bold text-white hover:bg-indigo-500 transition-all">Create</button>
-              <button onClick={() => setShowCategoryModal(false)} className="rounded-xl border border-white/10 px-6 py-3 text-sm font-semibold text-gray-300 hover:bg-white/5 transition-all">Cancel</button>
+              <button onClick={() => setShowCategoryModal(false)} className="rounded-xl border border-slate-200 dark:border-white/10 px-6 py-3 text-sm font-semibold text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-all">Cancel</button>
             </div>
           </div>
         </div>

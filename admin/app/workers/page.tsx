@@ -95,7 +95,7 @@ export default function WorkersPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Worker Activity</h1>
-          <p className="text-gray-500 text-sm mt-1">Management and real-time operations</p>
+          <p className="text-slate-400 dark:text-gray-500 text-sm mt-1">Management and real-time operations</p>
         </div>
         <button 
           onClick={() => setShowModal(true)}
@@ -106,9 +106,9 @@ export default function WorkersPage() {
       </div>
 
       {loading ? (
-        <div className="text-center text-gray-500 text-sm py-12">Loading activity…</div>
+        <div className="text-center text-slate-400 dark:text-gray-500 text-sm py-12">Loading activity…</div>
       ) : workerSummaries.length === 0 ? (
-        <div className="card p-10 text-center text-gray-500 text-sm">
+        <div className="card p-10 text-center text-slate-400 dark:text-gray-500 text-sm">
           No workers added yet.
         </div>
       ) : (
@@ -127,17 +127,17 @@ export default function WorkersPage() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-white truncate">{w.name}</p>
-                  <p className="text-xs text-gray-500">{w.transactions} transaction{w.transactions !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-slate-400 dark:text-gray-500">{w.transactions} transaction{w.transactions !== 1 ? 's' : ''}</p>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-500">Stock In</span>
+                    <span className="text-slate-400 dark:text-gray-500">Stock In</span>
                     <span className="text-emerald-400 font-mono">+{w.stockIn}</span>
                   </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-emerald-500 rounded-full"
                       style={{ width: `${Math.min(100, (w.stockIn / Math.max(w.stockIn + w.stockOut, 1)) * 100)}%` }}
@@ -146,10 +146,10 @@ export default function WorkersPage() {
                 </div>
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-500">Stock Out</span>
+                    <span className="text-slate-400 dark:text-gray-500">Stock Out</span>
                     <span className="text-red-400 font-mono">-{w.stockOut}</span>
                   </div>
-                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-red-500 rounded-full"
                       style={{ width: `${Math.min(100, (w.stockOut / Math.max(w.stockIn + w.stockOut, 1)) * 100)}%` }}
@@ -168,30 +168,30 @@ export default function WorkersPage() {
 
       {/* Add Worker Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f1117] border border-white/10 rounded-2xl p-8 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/10 rounded-2xl p-8 w-full max-w-md">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">Add New Worker</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+              <button onClick={() => setShowModal(false)} className="text-slate-500 dark:text-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
             <form onSubmit={handleAddWorker} className="space-y-4">
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Full Name *</label>
+                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Full Name *</label>
                 <input
                   type="text" required
                   value={newWorker.name}
                   onChange={(e) => setNewWorker({ ...newWorker, name: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
                   placeholder="e.g. Rahul Singh"
                 />
               </div>
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Phone (Optional)</label>
+                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Phone (Optional)</label>
                 <input
                   type="tel"
                   value={newWorker.phone}
                   onChange={(e) => setNewWorker({ ...newWorker, phone: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
                 />
               </div>
               <div className="flex gap-3 pt-4">
@@ -204,7 +204,7 @@ export default function WorkersPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-6 py-3 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/5 transition"
+                  className="px-6 py-3 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 transition"
                 >
                   Cancel
                 </button>

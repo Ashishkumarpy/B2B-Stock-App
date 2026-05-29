@@ -718,26 +718,26 @@ export default function UsersPage() {
 
           {/* Expanded Metadata Overlay Panel */}
           {expandedLogId && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-              <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#11131a] p-7 shadow-2xl">
-                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 p-6 backdrop-blur-sm">
+              <div className="w-full max-w-lg rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#11131a] p-7 shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
                   <h3 className="text-base font-semibold text-white">Metadata Inspector</h3>
                   <button
                     onClick={() => setExpandedLogId(null)}
-                    className="text-gray-400 hover:text-white text-lg font-bold"
+                    className="text-slate-500 dark:text-gray-400 hover:text-white text-lg font-bold"
                   >
                     ×
                   </button>
                 </div>
                 <div className="mt-4">
-                  <pre className="p-4 bg-black/50 border border-white/5 rounded-2xl text-xs text-indigo-300 font-mono max-h-[300px] overflow-auto">
+                  <pre className="p-4 bg-black/40 dark:bg-black/50 border border-slate-200 dark:border-white/5 rounded-2xl text-xs text-indigo-300 font-mono max-h-[300px] overflow-auto">
                     {JSON.stringify(activities.find(a => a.id === expandedLogId)?.metadata, null, 2)}
                   </pre>
                 </div>
                 <div className="mt-6 flex justify-end">
                   <button
                     onClick={() => setExpandedLogId(null)}
-                    className="rounded-xl border border-white/10 px-5 py-2 text-sm text-gray-300 hover:bg-white/5"
+                    className="rounded-xl border border-slate-200 dark:border-white/10 px-5 py-2 text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5"
                   >
                     Close
                   </button>
@@ -809,24 +809,24 @@ export default function UsersPage() {
 
       {/* ── User Profile Detail Sidebar / Modal ── */}
       {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-xl h-full bg-[#11131a] border-l border-white/10 p-8 shadow-2xl overflow-y-auto flex flex-col justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/40 dark:bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-xl h-full bg-white dark:bg-[#11131a] border-l border-slate-200 dark:border-white/10 p-8 shadow-2xl overflow-y-auto flex flex-col justify-between">
             <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+              <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
                 <div>
                   <h2 className="text-xl font-bold text-white">{selectedUser.name}</h2>
                   <p className="text-xs text-slate-400 dark:text-gray-500 mt-1">ID: {selectedUser.id}</p>
                 </div>
                 <button
                   onClick={() => setSelectedUser(null)}
-                  className="rounded-xl border border-white/10 bg-white/5 p-2 text-gray-300 hover:bg-white/10 text-sm font-semibold cursor-pointer"
+                  className="rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-2 text-slate-600 dark:text-gray-300 hover:bg-slate-200 dark:hover:bg-white/10 text-sm font-semibold cursor-pointer"
                 >
                   Close
                 </button>
               </div>
 
               {/* Basic Fields */}
-              <div className="grid grid-cols-2 gap-4 text-sm bg-white/5 border border-white/5 rounded-2xl p-4">
+              <div className="grid grid-cols-2 gap-4 text-sm bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-4">
                 {selectedUser.email ? (
                   <div>
                     <span className="text-xs text-slate-400 dark:text-gray-500 block uppercase font-bold">Email Address</span>
@@ -863,7 +863,7 @@ export default function UsersPage() {
               {/* Warehouses Block */}
               <div className="space-y-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Assigned Warehouses</h3>
-                <div className="bg-white/5 border border-white/5 rounded-2xl p-4 text-sm text-slate-300">
+                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-4 text-sm text-slate-300">
                   {selectedUser.warehouses.length === 0 ? (
                     <p className="text-slate-500 italic">No warehouses assigned (Global access / Storefront Customer)</p>
                   ) : (
@@ -884,11 +884,11 @@ export default function UsersPage() {
               {/* Permissions Blocks */}
               <div className="space-y-2">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Effective Permissions</h3>
-                <div className="bg-white/5 border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-3 text-xs">
                   {Object.entries(selectedUser.permissions).map(([key, val]) => {
                     const cleanName = key.replace('perm_', '').replace('_', ' ');
                     return (
-                      <div key={key} className="flex items-center justify-between border-b border-white/5 pb-2 last:border-b-0">
+                      <div key={key} className="flex items-center justify-between border-b border-slate-200 dark:border-white/5 pb-2 last:border-b-0">
                         <span className="text-slate-300 capitalize font-medium">{cleanName}</span>
                         {val || selectedUser.role === 'admin' ? (
                           <span className="text-emerald-400 font-semibold">✔ Permitted</span>
@@ -902,7 +902,7 @@ export default function UsersPage() {
               </div>
             </div>
 
-            <div className="border-t border-white/10 pt-4 flex gap-3">
+            <div className="border-t border-slate-200 dark:border-white/10 pt-4 flex gap-3">
               <button
                 onClick={() => {
                   setSelectedUser(null);
@@ -927,15 +927,15 @@ export default function UsersPage() {
 
       {/* ── Add / Edit User Drawer / Modal ── */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#11131a] p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#11131a] p-7 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4 mb-5">
               <h2 className="text-xl font-semibold text-white">
                 {editingUser ? 'Edit User Credentials & Access' : 'Create Platform User Account'}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-gray-400 hover:text-white text-xl font-bold cursor-pointer"
+                className="text-slate-500 dark:text-gray-400 hover:text-white text-xl font-bold cursor-pointer"
               >
                 ×
               </button>
@@ -946,7 +946,7 @@ export default function UsersPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Column Left: Credentials */}
                 <div className="space-y-4">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400 border-b border-white/5 pb-2">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400 border-b border-slate-200 dark:border-white/5 pb-2">
                     Account Basics
                   </h3>
 
@@ -957,7 +957,7 @@ export default function UsersPage() {
                       placeholder="e.g. John Doe"
                       value={formState.name}
                       onChange={(e) => setFormState(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-white"
                       required
                     />
                   </div>
@@ -971,7 +971,7 @@ export default function UsersPage() {
                       placeholder="e.g. user@zentory.com"
                       value={formState.email}
                       onChange={(e) => setFormState(prev => ({ ...prev, email: e.target.value }))}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-white"
                       required={formState.role === 'admin' || formState.role === 'manager' || !editingUser?.is_phone_only}
                     />
                   </div>
@@ -995,7 +995,7 @@ export default function UsersPage() {
                         }
                         value={formState.password}
                         onChange={(e) => setFormState(prev => ({ ...prev, password: e.target.value }))}
-                        className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
+                        className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-white"
                         minLength={6}
                         required={
                           !editingUser || 
@@ -1012,7 +1012,7 @@ export default function UsersPage() {
                       placeholder="e.g. +919999999999"
                       value={formState.phone}
                       onChange={(e) => setFormState(prev => ({ ...prev, phone: e.target.value }))}
-                      className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-white"
                     />
                   </div>
 
@@ -1021,7 +1021,7 @@ export default function UsersPage() {
                     <select
                       value={formState.role}
                       onChange={(e) => handleRoleChange(e.target.value as User['role'])}
-                      className="w-full rounded-2xl border border-white/10 bg-[#11131a] px-4 py-3 text-sm text-white"
+                      className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#11131a] px-4 py-3 text-sm text-white"
                     >
                       <option value="worker">Worker</option>
                       <option value="manager">Manager</option>
@@ -1036,7 +1036,7 @@ export default function UsersPage() {
                       id="form-is-active"
                       checked={formState.is_active}
                       onChange={(e) => setFormState(prev => ({ ...prev, is_active: e.target.checked }))}
-                      className="h-4.5 w-4.5 rounded border-white/10 bg-white/5"
+                      className="h-4.5 w-4.5 rounded border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5"
                     />
                     <label htmlFor="form-is-active" className="text-sm text-white font-medium">
                       Account status is Active (allows login)
@@ -1048,10 +1048,10 @@ export default function UsersPage() {
                 <div className="space-y-6">
                   {/* Warehouse Assignment */}
                   <div className="space-y-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400 border-b border-white/5 pb-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400 border-b border-slate-200 dark:border-white/5 pb-2">
                       Warehouse Assignments
                     </h3>
-                    <div className="grid grid-cols-1 gap-2 max-h-[140px] overflow-y-auto bg-white/5 border border-white/5 rounded-2xl p-3">
+                    <div className="grid grid-cols-1 gap-2 max-h-[140px] overflow-y-auto bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-3">
                       {warehouses.length === 0 ? (
                         <p className="text-xs text-slate-500 italic">No warehouses available</p>
                       ) : (
@@ -1062,7 +1062,7 @@ export default function UsersPage() {
                               id={`w-${w.id}`}
                               checked={formState.warehouses.includes(w.id)}
                               onChange={() => toggleWarehouse(w.id)}
-                              className="h-4 w-4 rounded border-white/10"
+                              className="h-4 w-4 rounded border-slate-200 dark:border-white/10"
                             />
                             <label htmlFor={`w-${w.id}`} className="text-xs text-slate-300 truncate">
                               {w.name}
@@ -1075,13 +1075,13 @@ export default function UsersPage() {
 
                   {/* Individual Permissions */}
                   <div className="space-y-2">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400 border-b border-white/5 pb-2">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400 border-b border-slate-200 dark:border-white/5 pb-2">
                       Access Permissions
                     </h3>
                     <p className="text-[10px] text-indigo-400 italic">
                       Changing roles resets permissions to system defaults. Toggle boxes to customize.
                     </p>
-                    <div className="space-y-3 bg-white/5 border border-white/5 rounded-2xl p-4 max-h-[220px] overflow-y-auto">
+                    <div className="space-y-3 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded-2xl p-4 max-h-[220px] overflow-y-auto">
                       {Object.keys(formState.permissions).map((k) => {
                         const key = k as keyof typeof formState.permissions;
                         const labelText = key.replace('perm_', '').replace('_', ' ');
@@ -1093,7 +1093,7 @@ export default function UsersPage() {
                               checked={formState.permissions[key] || formState.role === 'admin'}
                               disabled={formState.role === 'admin'} // Admin role enforces true
                               onChange={() => togglePermission(key)}
-                              className="h-4.5 w-4.5 rounded border-white/10 mt-0.5"
+                              className="h-4.5 w-4.5 rounded border-slate-200 dark:border-white/10 mt-0.5"
                             />
                             <div className="text-left">
                               <label htmlFor={`perm-${key}`} className="text-xs text-white capitalize font-semibold block">
@@ -1122,11 +1122,11 @@ export default function UsersPage() {
                 </p>
               )}
 
-              <div className="border-t border-white/10 pt-5 flex gap-3 justify-end">
+              <div className="border-t border-slate-200 dark:border-white/10 pt-5 flex gap-3 justify-end">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-gray-300 hover:bg-white/5 cursor-pointer"
+                  className="rounded-xl border border-slate-200 dark:border-white/10 px-5 py-2.5 text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -1145,10 +1145,10 @@ export default function UsersPage() {
 
       {/* ── Remove User Confirmation Dialog ── */}
       {removingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-3xl border border-red-500/20 bg-[#11131a] p-7 shadow-2xl text-left">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 p-6 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-3xl border border-red-500/20 bg-white dark:bg-[#11131a] p-7 shadow-2xl text-left">
             <h2 className="text-lg font-semibold text-white">Permanently Remove Account?</h2>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm text-slate-500 dark:text-gray-400">
               Are you sure you want to remove <span className="font-semibold text-white">{removingUser.name}</span>?
               This will completely delete their credentials and revoke all access. This action is permanent and cannot be undone.
             </p>
@@ -1156,7 +1156,7 @@ export default function UsersPage() {
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => setRemovingUser(null)}
-                className="flex-1 rounded-xl border border-white/10 py-2.5 text-sm text-gray-300 transition hover:bg-white/5 cursor-pointer"
+                className="flex-1 rounded-xl border border-slate-200 dark:border-white/10 py-2.5 text-sm text-slate-600 dark:text-gray-300 transition hover:bg-slate-100 dark:hover:bg-white/5 cursor-pointer"
               >
                 Cancel
               </button>

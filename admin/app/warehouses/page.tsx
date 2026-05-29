@@ -120,7 +120,7 @@ export default function WarehousesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Warehouses</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage stock locations and map URLs</p>
+          <p className="mt-1 text-sm text-slate-400 dark:text-gray-500">Manage stock locations and map URLs</p>
         </div>
         <button
           onClick={openCreate}
@@ -138,9 +138,9 @@ export default function WarehousesPage() {
 
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-sm text-gray-500">Loading warehouses...</div>
+          <div className="p-12 text-center text-sm text-slate-400 dark:text-gray-500">Loading warehouses...</div>
         ) : warehouses.length === 0 ? (
-          <div className="p-12 text-center text-sm text-gray-500">No warehouses yet.</div>
+          <div className="p-12 text-center text-sm text-slate-400 dark:text-gray-500">No warehouses yet.</div>
         ) : (
           <table className="data-table w-full text-sm">
             <thead>
@@ -158,7 +158,7 @@ export default function WarehousesPage() {
                 <tr key={warehouse.id}>
                   <td className="font-medium text-white">{warehouse.name}</td>
                   <td className="font-mono text-xs text-indigo-300">{warehouse.code || '—'}</td>
-                  <td className="max-w-[220px] truncate text-gray-300">{warehouse.location || '—'}</td>
+                  <td className="max-w-[220px] truncate text-slate-600 dark:text-gray-300">{warehouse.location || '—'}</td>
                   <td className="max-w-[300px] truncate">
                     {warehouse.location_url ? (
                       <a
@@ -170,7 +170,7 @@ export default function WarehousesPage() {
                         {warehouse.location_url}
                       </a>
                     ) : (
-                      <span className="text-gray-500">—</span>
+                      <span className="text-slate-400 dark:text-gray-500">—</span>
                     )}
                   </td>
                   <td>
@@ -181,7 +181,7 @@ export default function WarehousesPage() {
                   <td>
                     <button
                       onClick={() => openEdit(warehouse)}
-                      className="rounded-lg border border-white/10 px-3 py-1.5 text-xs text-gray-200 hover:bg-white/5"
+                      className="rounded-lg border border-slate-200 dark:border-white/10 px-3 py-1.5 text-xs text-slate-700 dark:text-gray-200 hover:bg-slate-100 dark:hover:bg-white/5"
                     >
                       Edit
                     </button>
@@ -194,15 +194,15 @@ export default function WarehousesPage() {
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#0f1117] p-8">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-xl rounded-2xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#0f1117] p-8">
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-xl font-bold">
                 {editing ? 'Edit Warehouse' : 'Add Warehouse'}
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-2xl leading-none text-gray-400 hover:text-white"
+                className="text-2xl leading-none text-slate-500 dark:text-gray-400 hover:text-white"
               >
                 ×
               </button>
@@ -210,55 +210,55 @@ export default function WarehousesPage() {
 
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-xs uppercase tracking-wider text-gray-400">Warehouse Name *</label>
+                <label className="mb-1.5 block text-xs uppercase tracking-wider text-slate-500 dark:text-gray-400">Warehouse Name *</label>
                 <input
                   required
                   value={form.name}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                   placeholder="e.g. Hyderabad Central"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-xs uppercase tracking-wider text-gray-400">Code</label>
+                  <label className="mb-1.5 block text-xs uppercase tracking-wider text-slate-500 dark:text-gray-400">Code</label>
                   <input
                     value={form.code}
                     onChange={(e) => setForm((prev) => ({ ...prev, code: e.target.value }))}
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                     placeholder="e.g. HYD-C"
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs uppercase tracking-wider text-gray-400">Status</label>
+                  <label className="mb-1.5 block text-xs uppercase tracking-wider text-slate-500 dark:text-gray-400">Status</label>
                   <select
                     value={form.is_active ? 'active' : 'inactive'}
                     onChange={(e) =>
                       setForm((prev) => ({ ...prev, is_active: e.target.value === 'active' }))
                     }
-                    className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                    className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                   >
-                    <option value="active" className="bg-[#0f1117]">Active</option>
-                    <option value="inactive" className="bg-[#0f1117]">Inactive</option>
+                    <option value="active" className="bg-white dark:bg-[#0f1117]">Active</option>
+                    <option value="inactive" className="bg-white dark:bg-[#0f1117]">Inactive</option>
                   </select>
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs uppercase tracking-wider text-gray-400">Location</label>
+                <label className="mb-1.5 block text-xs uppercase tracking-wider text-slate-500 dark:text-gray-400">Location</label>
                 <input
                   value={form.location}
                   onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                   placeholder="City, area, floor details..."
                 />
               </div>
               <div>
-                <label className="mb-1.5 block text-xs uppercase tracking-wider text-gray-400">Location URL</label>
+                <label className="mb-1.5 block text-xs uppercase tracking-wider text-slate-500 dark:text-gray-400">Location URL</label>
                 <input
                   type="url"
                   value={form.location_url}
                   onChange={(e) => setForm((prev) => ({ ...prev, location_url: e.target.value }))}
-                  className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
                   placeholder="https://maps.google.com/..."
                 />
               </div>
@@ -278,7 +278,7 @@ export default function WarehousesPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="rounded-xl border border-white/10 px-6 py-3 text-sm text-gray-300 transition hover:bg-white/5"
+                  className="rounded-xl border border-slate-200 dark:border-white/10 px-6 py-3 text-sm text-slate-600 dark:text-gray-300 transition hover:bg-slate-100 dark:hover:bg-white/5"
                 >
                   Cancel
                 </button>

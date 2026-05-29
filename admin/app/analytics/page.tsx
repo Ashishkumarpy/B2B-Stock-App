@@ -153,28 +153,28 @@ export default function AnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">Analytics</h1>
-          <p className="text-gray-500 text-sm mt-1">Live stock trends and category distribution</p>
+          <p className="text-slate-400 dark:text-gray-500 text-sm mt-1">Live stock trends and category distribution</p>
         </div>
 
         {/* Date Filter Toolbar */}
         <div className="flex items-center gap-3">
-          <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Date:</span>
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+          <span className="text-slate-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Date:</span>
+          <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10">
             <button
               onClick={() => setDateFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
             >
               All Time
             </button>
             <button
               onClick={() => setDateFilter('today')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
             >
               Today
             </button>
             <button
               onClick={() => setDateFilter('custom')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 cursor-pointer ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
             >
               Choose Date
             </button>
@@ -185,14 +185,14 @@ export default function AnalyticsPage() {
               type="date"
               value={customDate}
               onChange={(e) => setCustomDate(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+              className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
             />
           )}
         </div>
       </div>
 
       {loading ? (
-        <div className="p-12 text-center text-gray-500 text-sm">Loading analytics…</div>
+        <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">Loading analytics…</div>
       ) : (
         <>
           {/* Financial & Inventory Value Cards */}
@@ -210,11 +210,11 @@ export default function AnalyticsPage() {
               >
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-gray-500 font-semibold">{s.label}</p>
+                    <p className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-gray-500 font-semibold">{s.label}</p>
                     <p className="text-xl font-bold text-white mt-1">{s.value}</p>
-                    <p className="text-[10px] text-gray-400 mt-2">{s.sub}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-2">{s.sub}</p>
                   </div>
-                  <span className="text-2xl p-2 bg-white/5 rounded-xl">{s.icon}</span>
+                  <span className="text-2xl p-2 bg-slate-100 dark:bg-white/5 rounded-xl">{s.icon}</span>
                 </div>
               </div>
             ))}
@@ -223,7 +223,7 @@ export default function AnalyticsPage() {
           <div className="grid lg:grid-cols-2 gap-6">
             {/* Monthly trend bar chart */}
             <div className="card p-6">
-              <h2 className="font-semibold mb-6 text-sm text-gray-300">Monthly Stock Flow</h2>
+              <h2 className="font-semibold mb-6 text-sm text-slate-600 dark:text-gray-300">Monthly Stock Flow</h2>
               <div className="flex items-end gap-3 h-40">
                 {monthlyTrend.map((m) => (
                   <div key={`${m.month}-${m.year}`} className="flex-1 flex flex-col items-center gap-1">
@@ -239,11 +239,11 @@ export default function AnalyticsPage() {
                         title={`Out: ${m.out}`}
                       />
                     </div>
-                    <span className="text-[10px] text-gray-500">{m.month}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">{m.month}</span>
                   </div>
                 ))}
               </div>
-              <div className="flex gap-4 mt-4 text-xs text-gray-500">
+              <div className="flex gap-4 mt-4 text-xs text-slate-400 dark:text-gray-500">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"/>Stock In</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500/60 inline-block"/>Stock Out</span>
               </div>
@@ -251,17 +251,17 @@ export default function AnalyticsPage() {
 
             {/* Category breakdown */}
             <div className="card p-6">
-              <h2 className="font-semibold mb-6 text-sm text-gray-300">Stock by Category (%)</h2>
+              <h2 className="font-semibold mb-6 text-sm text-slate-600 dark:text-gray-300">Stock by Category (%)</h2>
               <div className="space-y-4">
                 {categoryData.length === 0 ? (
-                  <div className="text-gray-500 text-xs py-8 text-center">No categories found</div>
+                  <div className="text-slate-400 dark:text-gray-500 text-xs py-8 text-center">No categories found</div>
                 ) : categoryData.map((c) => (
                   <div key={c.name}>
                     <div className="flex justify-between text-sm mb-1.5">
-                      <span className="text-gray-300">{c.name}</span>
-                      <span className="text-gray-500 font-mono text-xs">{c.percentage}%</span>
+                      <span className="text-slate-600 dark:text-gray-300">{c.name}</span>
+                      <span className="text-slate-400 dark:text-gray-500 font-mono text-xs">{c.percentage}%</span>
                     </div>
-                    <div className="h-2 rounded-full bg-white/5 overflow-hidden">
+                    <div className="h-2 rounded-full bg-slate-100 dark:bg-white/5 overflow-hidden">
                       <div
                         className="h-full rounded-full transition-all duration-500"
                         style={{ width: `${c.percentage}%`, background: c.color }}
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
               <div key={s.label} className="card p-5 text-center">
                 <p className="text-3xl mb-2">{s.icon}</p>
                 <p className="text-xl font-bold text-white">{s.value}</p>
-                <p className="text-[10px] uppercase tracking-widest text-gray-500 mt-2">{s.label}</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-gray-500 mt-2">{s.label}</p>
               </div>
             ))}
           </div>

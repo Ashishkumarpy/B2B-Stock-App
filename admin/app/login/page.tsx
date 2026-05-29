@@ -35,7 +35,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-[#0b1020] text-white flex items-center justify-center p-6">
       <form
         onSubmit={onSubmit}
-        className="w-full max-w-sm rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl"
+        className="w-full max-w-sm rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 p-6 shadow-xl"
       >
         <h1 className="text-xl font-semibold">Admin Login</h1>
         <p className="mt-1 text-sm text-white/60">
@@ -44,7 +44,7 @@ export default function LoginPage() {
 
         <div className="mt-5 space-y-3">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
               Email
             </label>
             <input
@@ -52,11 +52,11 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               type="email"
               required
-              className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none"
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-gray-400">
               Password
             </label>
             <div className="relative">
@@ -65,13 +65,13 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 type={showPassword ? 'text' : 'password'}
                 required
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 pr-10 text-sm text-white focus:border-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-3 py-2.5 pr-10 text-sm text-white focus:border-indigo-500 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-white/70 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-2 text-white/70 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/60"
               >
                 {showPassword ? (
                   <svg

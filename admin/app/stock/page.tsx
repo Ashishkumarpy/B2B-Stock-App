@@ -847,12 +847,12 @@ export default function StockPage() {
               {realtimeStatus === 'connected' ? 'LIVE' : realtimeStatus === 'error' ? 'OFFLINE' : 'CONNECTING'}
             </div>
           </div>
-          <p className="text-gray-500 text-sm">{transactions.length} transactions recorded</p>
+          <p className="text-slate-400 dark:text-gray-500 text-sm">{transactions.length} transactions recorded</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowExportModal(true)}
-            className="border border-white/10 hover:bg-white/5 text-gray-200 text-sm font-semibold px-5 py-2.5 rounded-xl transition active:scale-95 flex items-center gap-2"
+            className="border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-gray-200 text-sm font-semibold px-5 py-2.5 rounded-xl transition active:scale-95 flex items-center gap-2"
           >
             <span>📥</span> Export to Excel
           </button>
@@ -868,33 +868,33 @@ export default function StockPage() {
       {/* Table */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center text-gray-500 text-sm">Loading transactions…</div>
+          <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">Loading transactions…</div>
         ) : transactions.length === 0 ? (
-          <div className="p-12 text-center text-gray-500 text-sm">No stock entries yet. Click "+ Record Stock" to log the first transaction.</div>
+          <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">No stock entries yet. Click "+ Record Stock" to log the first transaction.</div>
         ) : (
           <>
             {/* Filter Toolbar */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 border-b border-white/5 bg-white/[0.02]">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 p-5 border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02]">
               <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                 {/* Date Filter */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Date:</span>
-                  <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                  <span className="text-slate-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Date:</span>
+                  <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10">
                     <button
                       onClick={() => setDateFilter('all')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'all' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
                     >
                       All Time
                     </button>
                     <button
                       onClick={() => setDateFilter('today')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'today' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
                     >
                       Today
                     </button>
                     <button
                       onClick={() => setDateFilter('custom')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${dateFilter === 'custom' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
                     >
                       Choose Date
                     </button>
@@ -905,30 +905,30 @@ export default function StockPage() {
                       type="date"
                       value={customDate}
                       onChange={(e) => setCustomDate(e.target.value)}
-                      className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
+                      className="bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-indigo-500"
                     />
                   )}
                 </div>
 
                 {/* Type Filter */}
                 <div className="flex items-center gap-2">
-                  <span className="text-gray-400 text-xs font-bold uppercase tracking-wider">Type:</span>
-                  <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                  <span className="text-slate-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Type:</span>
+                  <div className="flex bg-slate-100 dark:bg-white/5 p-1 rounded-xl border border-slate-200 dark:border-white/10">
                     <button
                       onClick={() => setTypeFilter('both')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'bg-indigo-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
                     >
                       All Types
                     </button>
                     <button
                       onClick={() => setTypeFilter('stock_in')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'bg-emerald-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
                     >
                       Stock In
                     </button>
                     <button
                       onClick={() => setTypeFilter('stock_out')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'bg-red-600 text-white shadow-md' : 'text-gray-400 hover:text-white'}`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'bg-red-600 text-white shadow-md' : 'text-slate-500 dark:text-gray-400 hover:text-white'}`}
                     >
                       Stock Out
                     </button>
@@ -936,13 +936,13 @@ export default function StockPage() {
                 </div>
               </div>
 
-              <div className="text-xs text-gray-500 font-medium">
+              <div className="text-xs text-slate-400 dark:text-gray-500 font-medium">
                 Showing {filteredTransactions.length} of {transactions.length} entries
               </div>
             </div>
 
             {filteredTransactions.length === 0 ? (
-              <div className="p-12 text-center text-gray-500 text-sm">
+              <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">
                 No entries found for the selected filter criteria.
               </div>
             ) : (
@@ -964,7 +964,7 @@ export default function StockPage() {
                 <tbody>
                   {filteredTransactions.map((t, idx) => (
                     <tr key={t.id}>
-                      <td className="text-gray-500 font-mono text-xs w-12">{idx + 1}</td>
+                      <td className="text-slate-400 dark:text-gray-500 font-mono text-xs w-12">{idx + 1}</td>
                       <td className="text-white font-medium">{t.worker_name}</td>
                       <td>
                         <span className={`badge ${t.type === 'stock_in' ? 'badge-green' : 'badge-red'}`}>
@@ -980,13 +980,13 @@ export default function StockPage() {
                           >
                             {t.product_code}
                           </button>
-                          <span className="text-[10px] text-gray-500 max-w-[200px] truncate leading-tight mt-0.5">
+                          <span className="text-[10px] text-slate-400 dark:text-gray-500 max-w-[200px] truncate leading-tight mt-0.5">
                             {t.product_name}
                           </span>
                         </div>
                       </td>
-                      <td className="text-gray-300">{t.color_name || 'Default'}</td>
-                      <td className="text-gray-300 max-w-[180px] truncate">{t.warehouse_name || 'Main Warehouse'}</td>
+                      <td className="text-slate-600 dark:text-gray-300">{t.color_name || 'Default'}</td>
+                      <td className="text-slate-600 dark:text-gray-300 max-w-[180px] truncate">{t.warehouse_name || 'Main Warehouse'}</td>
                       <td className="text-right py-2">
                         <div className="flex flex-col items-end justify-center">
                           <span className={`font-mono font-bold text-sm ${t.type === 'stock_in' ? 'text-emerald-400' : 'text-red-400'}`}>
@@ -995,7 +995,7 @@ export default function StockPage() {
                           {(() => {
                             if (t.cartons && t.pcs_per_carton) {
                               return (
-                                <span className="text-[10px] text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
+                                <span className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
                                   {t.cartons} ctn × {t.pcs_per_carton}
                                 </span>
                               );
@@ -1003,7 +1003,7 @@ export default function StockPage() {
                             const parsed = parseCartonFromNotes(t.notes);
                             if (parsed) {
                               return (
-                                <span className="text-[10px] text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
+                                <span className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight mt-0.5 whitespace-nowrap">
                                   {parsed.cartons} ctn × {parsed.pcsPerCarton}
                                 </span>
                               );
@@ -1012,8 +1012,8 @@ export default function StockPage() {
                           })()}
                         </div>
                       </td>
-                      <td className="text-gray-500 text-xs max-w-[140px] truncate">{t.notes || '—'}</td>
-                      <td className="text-gray-500 text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="text-slate-400 dark:text-gray-500 text-xs max-w-[140px] truncate">{t.notes || '—'}</td>
+                      <td className="text-slate-400 dark:text-gray-500 text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                       <td>
                         <button
                           type="button"
@@ -1061,11 +1061,11 @@ export default function StockPage() {
 
       {/* Record Stock Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#0f1117] border border-white/10 rounded-2xl p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/10 rounded-2xl p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
-              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-white text-2xl leading-none">×</button>
+              <button onClick={() => setShowModal(false)} className="text-slate-500 dark:text-gray-400 hover:text-white text-2xl leading-none">×</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -1078,7 +1078,7 @@ export default function StockPage() {
 
               {/* Type Toggle */}
               <div>
-                <label className="block text-xs text-gray-400 mb-2 uppercase tracking-wider">Movement Type</label>
+                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-2 uppercase tracking-wider">Movement Type</label>
                 <div className="flex gap-3">
                   {(['stock_in', 'stock_out'] as TransactionType[]).map((t) => (
                     <button
@@ -1095,7 +1095,7 @@ export default function StockPage() {
                           ? t === 'stock_in'
                             ? 'bg-emerald-600/20 border-emerald-500 text-emerald-300'
                             : 'bg-red-600/20 border-red-500 text-red-300'
-                          : 'border-white/10 text-gray-500 hover:bg-white/5'
+                          : 'border-slate-200 dark:border-white/10 text-slate-400 dark:text-gray-500 hover:bg-slate-100 dark:hover:bg-white/5'
                         } ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
                       {t === 'stock_in' ? '↑ Stock In' : '↓ Stock Out'}
@@ -1106,24 +1106,24 @@ export default function StockPage() {
 
               {/* Product */}
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Product *</label>
+                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Product *</label>
                 <button
                   type="button"
                   disabled={isEditingOlderThan12Hours}
                   onClick={() => setShowProductPicker(true)}
-                  className={`w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-left text-white focus:outline-none focus:border-indigo-500 flex justify-between items-center ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-left text-white focus:outline-none focus:border-indigo-500 flex justify-between items-center ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   {form.product_id ? (
                     <div className="flex flex-col">
                       <span className="font-mono font-bold text-indigo-500 text-sm">
                         {productById.get(form.product_id)?.code}
                       </span>
-                      <span className="text-[10px] text-gray-400 leading-tight">
+                      <span className="text-[10px] text-slate-500 dark:text-gray-400 leading-tight">
                         {productById.get(form.product_id)?.name}
                       </span>
                     </div>
                   ) : (
-                    <span className="text-gray-400">Choose product from folders...</span>
+                    <span className="text-slate-500 dark:text-gray-400">Choose product from folders...</span>
                   )}
                   <div className="flex items-center gap-3">
                     {selectedProduct && (
@@ -1131,25 +1131,25 @@ export default function StockPage() {
                         Available: {selectedProduct.quantity}
                       </span>
                     )}
-                    <span className="text-gray-400 text-xs">▼</span>
+                    <span className="text-slate-500 dark:text-gray-400 text-xs">▼</span>
                   </div>
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Warehouse</label>
+                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Warehouse</label>
                   <select
                     value={form.warehouse_id}
                     disabled={isEditingOlderThan12Hours}
                     onChange={(e) => handleWarehouseChange(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {filteredWarehouseOptions.length === 0 ? (
-                      <option value="" className="bg-[#0f1117]">No warehouse with stock</option>
+                      <option value="" className="bg-white dark:bg-[#0f1117]">No warehouse with stock</option>
                     ) : (
                       filteredWarehouseOptions.map((w) => (
-                        <option key={w.id} value={w.id} className="bg-[#0f1117]">
+                        <option key={w.id} value={w.id} className="bg-white dark:bg-[#0f1117]">
                           {w.location ? `${w.name} — ${w.location}` : w.name}
                         </option>
                       ))
@@ -1157,7 +1157,7 @@ export default function StockPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Color *</label>
+                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Color *</label>
                   {form.type === 'stock_out' ? (
                     <div className="relative">
                       <select
@@ -1165,13 +1165,13 @@ export default function StockPage() {
                         disabled={isEditingOlderThan12Hours}
                         value={form.color_name}
                         onChange={(e) => handleColorChange(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {colorSuggestions.length === 0 ? (
-                          <option value="" className="bg-[#0f1117]">No colors in stock</option>
+                          <option value="" className="bg-white dark:bg-[#0f1117]">No colors in stock</option>
                         ) : (
                           colorSuggestions.map((color) => (
-                            <option key={color} value={color} className="bg-[#0f1117]">
+                            <option key={color} value={color} className="bg-white dark:bg-[#0f1117]">
                               {color}
                             </option>
                           ))
@@ -1192,7 +1192,7 @@ export default function StockPage() {
                         list="color-suggestions"
                         value={form.color_name}
                         onChange={(e) => handleColorChange(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="e.g. Black"
                       />
                       <datalist id="color-suggestions">
@@ -1208,7 +1208,7 @@ export default function StockPage() {
                     </div>
                   )}
                   {availableColors.length > 0 && (
-                    <p className="mt-1 text-[11px] text-gray-500">
+                    <p className="mt-1 text-[11px] text-slate-400 dark:text-gray-500">
                       Available: {availableColors.map((c) => `${c.color} (${c.quantity})`).join(', ')}
                     </p>
                   )}
@@ -1219,7 +1219,7 @@ export default function StockPage() {
               <div className="grid gap-4">
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Cartons</label>
+                    <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Cartons</label>
                     <input
                       type="number" min="0"
                       disabled={isEditingOlderThan12Hours}
@@ -1229,12 +1229,12 @@ export default function StockPage() {
                         const p = Number(form.pcsPerCarton) || 0;
                         setForm({ ...form, cartons: e.target.value, quantity: c * p || 0 });
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 5"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Pcs / Carton</label>
+                    <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Pcs / Carton</label>
                     <input
                       type="number" min="0"
                       disabled={isEditingOlderThan12Hours}
@@ -1244,24 +1244,24 @@ export default function StockPage() {
                         const c = Number(form.cartons) || 0;
                         setForm({ ...form, pcsPerCarton: e.target.value, quantity: c * p || 0 });
                       }}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 20"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Total Quantity *</label>
+                    <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Total Quantity *</label>
                     <input
                       type="number" required min="1"
                       disabled={isEditingOlderThan12Hours}
                       value={form.quantity || ''}
                       onChange={(e) => setForm({ ...form, quantity: Number(e.target.value) })}
-                      className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       placeholder="e.g. 100"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Recorded By *</label>
+                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Recorded By *</label>
                   <select
                     required
                     disabled={isEditingOlderThan12Hours}
@@ -1270,11 +1270,11 @@ export default function StockPage() {
                       const w = workers.find(w => w.id === e.target.value);
                       setForm({ ...form, worker_id: e.target.value, worker_name: w?.name || '' });
                     }}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <option value="" disabled className="bg-[#0f1117]">Select Worker...</option>
+                    <option value="" disabled className="bg-white dark:bg-[#0f1117]">Select Worker...</option>
                     {workers.map((w) => (
-                      <option key={w.id} value={w.id} className="bg-[#0f1117]">
+                      <option key={w.id} value={w.id} className="bg-white dark:bg-[#0f1117]">
                         {w.name}
                       </option>
                     ))}
@@ -1285,12 +1285,12 @@ export default function StockPage() {
               {/* Customer Name */}
               {form.type === 'stock_out' && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Customer Name (optional)</label>
+                  <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Customer Name (optional)</label>
                   <input
                     type="text"
                     value={form.customer_name}
                     onChange={(e) => setForm({ ...form, customer_name: e.target.value })}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                    className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
                     placeholder="Enter customer name"
                   />
                 </div>
@@ -1298,12 +1298,12 @@ export default function StockPage() {
 
               {/* Notes */}
               <div>
-                <label className="block text-xs text-gray-400 mb-1.5 uppercase tracking-wider">Notes (optional)</label>
+                <label className="block text-xs text-slate-500 dark:text-gray-400 mb-1.5 uppercase tracking-wider">Notes (optional)</label>
                 <input
                   type="text"
                   value={form.notes}
                   onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
+                  className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500"
                   placeholder="Reason, batch number, etc."
                 />
               </div>
@@ -1324,7 +1324,7 @@ export default function StockPage() {
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
-                  className="px-6 py-3 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/5 transition"
+                  className="px-6 py-3 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 transition"
                 >
                   Cancel
                 </button>
@@ -1336,7 +1336,7 @@ export default function StockPage() {
 
       {/* Product Picker Modal */}
       {showProductPicker && (
-        <div className="fixed inset-0 bg-[#0f1117] z-[60] flex flex-col p-4 md:p-8 overflow-hidden">
+        <div className="fixed inset-0 bg-white dark:bg-[#0f1117] z-[60] flex flex-col p-4 md:p-8 overflow-hidden">
           <div className="flex items-center gap-4 mb-6">
             <button
               type="button"
@@ -1347,7 +1347,7 @@ export default function StockPage() {
                   setPickerSearch('');
                 }
               }}
-              className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white flex items-center justify-center min-w-[40px]"
+              className="p-2 rounded-lg bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-white flex items-center justify-center min-w-[40px]"
             >
               ←
             </button>
@@ -1357,7 +1357,7 @@ export default function StockPage() {
               value={pickerSearch}
               onChange={(e) => setPickerSearch(e.target.value)}
               placeholder="Search products by name or code..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-indigo-500"
+              className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-indigo-500"
             />
           </div>
 
@@ -1390,10 +1390,10 @@ export default function StockPage() {
                         setPickerSearch('');
                         setPickerCategory(null);
                       }}
-                      className="text-left bg-white/5 border border-white/10 p-4 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/10 transition"
+                      className="text-left bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/10 transition"
                     >
                       <p className="font-mono font-bold text-indigo-400 text-sm">{p.code}</p>
-                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{p.name}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-gray-500 truncate mt-0.5">{p.name}</p>
                       <p className="text-xs text-indigo-400 mt-2">{p.quantity} in stock</p>
                     </button>
                   ))}
@@ -1426,10 +1426,10 @@ export default function StockPage() {
                         setPickerSearch('');
                         setPickerCategory(null);
                       }}
-                      className="text-left bg-white/5 border border-white/10 p-4 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/10 transition"
+                      className="text-left bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 p-4 rounded-xl hover:border-indigo-500/50 hover:bg-indigo-500/10 transition"
                     >
                       <p className="font-mono font-bold text-indigo-400 text-sm">{p.code}</p>
-                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{p.name}</p>
+                      <p className="text-[10px] text-slate-400 dark:text-gray-500 truncate mt-0.5">{p.name}</p>
                       <p className="text-[10px] font-bold text-indigo-300 mt-2 uppercase tracking-tight bg-indigo-500/10 px-2 py-0.5 rounded inline-block">
                         Qty: {p.quantity}
                       </p>
@@ -1450,12 +1450,12 @@ export default function StockPage() {
                     key={name}
                     type="button"
                     onClick={() => setPickerCategory(name)}
-                    className="aspect-square bg-[#121826] border border-white/10 rounded-2xl flex flex-col items-center justify-center p-4 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition relative overflow-hidden group"
+                    className="aspect-square bg-slate-50 dark:bg-[#121826] border border-slate-200 dark:border-white/10 rounded-2xl flex flex-col items-center justify-center p-4 hover:border-indigo-500/40 hover:bg-indigo-500/5 transition relative overflow-hidden group"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition" />
                     <span className="text-4xl mb-2 opacity-80">📁</span>
                     <p className="text-sm font-semibold text-white text-center line-clamp-2">{name}</p>
-                    <span className="mt-2 text-[10px] uppercase tracking-wider text-gray-500 bg-black/40 px-2 py-0.5 rounded-full">{count} items</span>
+                    <span className="mt-2 text-[10px] uppercase tracking-wider text-slate-400 dark:text-gray-500 bg-black/40 px-2 py-0.5 rounded-full">{count} items</span>
                   </button>
                 ))}
               </div>
@@ -1466,19 +1466,19 @@ export default function StockPage() {
 
       {/* Export Excel Modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#0f1117] border border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300">
+        <div className="fixed inset-0 bg-black/40 dark:bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-[#0f1117] border border-slate-200 dark:border-white/10 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden transition-all duration-300">
             {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 px-8 py-6 border-b border-white/10 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 px-8 py-6 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                   <span>📥</span> Export Stock Report
                 </h2>
-                <p className="text-xs text-gray-400 mt-1">Download daily transactions by product in Excel format</p>
+                <p className="text-xs text-slate-500 dark:text-gray-400 mt-1">Download daily transactions by product in Excel format</p>
               </div>
               <button 
                 onClick={() => setShowExportModal(false)} 
-                className="text-gray-400 hover:text-white text-2xl leading-none w-8 h-8 rounded-full hover:bg-white/5 flex items-center justify-center transition-all"
+                className="text-slate-500 dark:text-gray-400 hover:text-white text-2xl leading-none w-8 h-8 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 flex items-center justify-center transition-all"
               >
                 ×
               </button>
@@ -1487,14 +1487,14 @@ export default function StockPage() {
             <div className="p-8 space-y-6">
               {/* Date Input & Quick Selectors */}
               <div className="space-y-3">
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Select Date</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Select Date</label>
                 <div className="flex gap-2">
                   <input
                     type="date"
                     required
                     value={exportDate}
                     onChange={(e) => setExportDate(e.target.value)}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
+                    className="flex-1 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono"
                   />
                   <button
                     type="button"
@@ -1504,7 +1504,7 @@ export default function StockPage() {
                       const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
                       setExportDate(adjusted.toISOString().slice(0, 10));
                     }}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 font-semibold active:scale-95 transition-all"
+                    className="bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 dark:text-gray-200 font-semibold active:scale-95 transition-all"
                   >
                     Today
                   </button>
@@ -1517,7 +1517,7 @@ export default function StockPage() {
                       const adjusted = new Date(local.getTime() - (offset * 60 * 1000));
                       setExportDate(adjusted.toISOString().slice(0, 10));
                     }}
-                    className="bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-gray-200 font-semibold active:scale-95 transition-all"
+                    className="bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-700 dark:text-gray-200 font-semibold active:scale-95 transition-all"
                   >
                     Yesterday
                   </button>
@@ -1526,7 +1526,7 @@ export default function StockPage() {
 
               {/* Live Preview Stats */}
               <div className="space-y-3">
-                <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider">Report Preview</label>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wider">Report Preview</label>
                 
                 <div className="grid grid-cols-2 gap-4">
                   {/* Stock In Preview Card */}
@@ -1537,10 +1537,10 @@ export default function StockPage() {
                       </span>
                       <p className="mt-3 text-2xl font-black text-emerald-100 font-mono">
                         +{exportStats.totalInQty}
-                        <span className="text-xs font-normal text-gray-400 ml-1">pcs</span>
+                        <span className="text-xs font-normal text-slate-500 dark:text-gray-400 ml-1">pcs</span>
                       </p>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-2 font-medium">
+                    <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-2 font-medium">
                       {exportStats.totalInCount} entries recorded
                     </p>
                   </div>
@@ -1553,10 +1553,10 @@ export default function StockPage() {
                       </span>
                       <p className="mt-3 text-2xl font-black text-rose-100 font-mono">
                         -{exportStats.totalOutQty}
-                        <span className="text-xs font-normal text-gray-400 ml-1">pcs</span>
+                        <span className="text-xs font-normal text-slate-500 dark:text-gray-400 ml-1">pcs</span>
                       </p>
                     </div>
-                    <p className="text-[10px] text-gray-400 mt-2 font-medium">
+                    <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-2 font-medium">
                       {exportStats.totalOutCount} entries recorded
                     </p>
                   </div>
@@ -1571,7 +1571,7 @@ export default function StockPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-2 border-t border-white/5">
+              <div className="flex gap-3 pt-2 border-t border-slate-200 dark:border-white/5">
                 <button
                   onClick={handleExportExcel}
                   className="flex-1 font-semibold py-3 rounded-xl transition text-white bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 duration-150"
@@ -1581,7 +1581,7 @@ export default function StockPage() {
                 <button
                   type="button"
                   onClick={() => setShowExportModal(false)}
-                  className="px-6 py-3 border border-white/10 rounded-xl text-sm text-gray-300 hover:bg-white/5 hover:text-white transition active:scale-95 duration-150"
+                  className="px-6 py-3 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 hover:text-white transition active:scale-95 duration-150"
                 >
                   Cancel
                 </button>
