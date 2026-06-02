@@ -75,6 +75,40 @@ interface Warehouse {
   is_active: boolean;
 }
 
+interface StockDistributionRow {
+  warehouse_id?: string;
+  color_name?: string;
+  quantity?: number | string | null;
+}
+
+function getBestWarehouseForColor(
+  rows: StockDistributionRow[],
+  colorName: string,
+  fallbackWarehouseId: string
+) {
+  if (rows.length === 0) return fallbackWarehouseId;
+  const targetColor = colorName.trim().toLowerCase();
+  if (!targetColor) return fallbackWarehouseId;
+
+  const stockedRows = rows.filter((r) => {
+    const rowColor = (r.color_name?.toString() ?? '').trim().toLowerCase();
+    const qty = parseInt(r.quantity?.toString() ?? '0', 10);
+    return rowColor === targetColor && qty > 0;
+  });
+  if (stockedRows.length === 0) return fallbackWarehouseId;
+  if (
+    fallbackWarehouseId &&
+    stockedRows.some((r) => r.warehouse_id?.toString() === fallbackWarehouseId)
+  ) {
+    return fallbackWarehouseId;
+  }
+
+  const bestRow = stockedRows.sort(
+    (a, b) => parseInt(b.quantity?.toString() ?? '0', 10) - parseInt(a.quantity?.toString() ?? '0', 10)
+  )[0];
+  return bestRow?.warehouse_id?.toString() || fallbackWarehouseId;
+}
+
 const EMPTY_FORM = {
   product_id: '',
   type: 'stock_in' as TransactionType,
@@ -130,7 +164,7 @@ export default function StockPage() {
   const [pickerCategory, setPickerCategory] = useState<string | null>(null);
   const prefetchedQueryRef = useRef<string | null>(null);
   const [stockPrefs, setStockPrefs] = useState<StockEntryPrefMap>({});
-  const [productStockDistribution, setProductStockDistribution] = useState<any[]>([]);
+  const [productStockDistribution, setProductStockDistribution] = useState<StockDistributionRow[]>([]);
   const [isLoadingStockDistribution, setIsLoadingStockDistribution] = useState(false);
 
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
@@ -410,17 +444,37 @@ export default function StockPage() {
     setIsLoadingStockDistribution(true);
     try {
       const res = await serverGet(`/products/${encodeURIComponent(productId)}/stock-distribution`);
-      const rows = ((res as any)?.data ?? []) as any[];
+      const rows = ((res as any)?.data ?? []) as StockDistributionRow[];
       setProductStockDistribution(rows);
       
-      if (autoRoute && rows.length > 0) {
+      if (rows.length > 0) {
         const firstStockRow = rows.find((r) => parseInt(r.quantity?.toString() ?? '0', 10) > 0);
         if (firstStockRow) {
-          setForm((prev) => ({
-            ...prev,
-            color_name: firstStockRow.color_name || 'Default',
-            warehouse_id: firstStockRow.warehouse_id || prev.warehouse_id || warehouses[0]?.id || '',
-          }));
+          setForm((prev) => {
+            const currentColorIsAvailable = rows.some(
+              (r) =>
+                parseInt(r.quantity?.toString() ?? '0', 10) > 0 &&
+                (r.color_name?.toString() ?? '').trim().toLowerCase() === prev.color_name.trim().toLowerCase()
+            );
+            if (
+              prev.type !== 'stock_out' ||
+              prev.product_id !== productId ||
+              (!autoRoute && currentColorIsAvailable)
+            ) {
+              return prev;
+            }
+
+            const nextColor = firstStockRow.color_name || 'Default';
+            return {
+              ...prev,
+              color_name: nextColor,
+              warehouse_id: getBestWarehouseForColor(
+                rows,
+                nextColor,
+                prev.warehouse_id || firstStockRow.warehouse_id?.toString() || warehouses[0]?.id || ''
+              ),
+            };
+          });
         }
       }
     } catch (e) {
@@ -708,25 +762,7 @@ export default function StockPage() {
     setForm((prev) => {
       let newWarehouseId = prev.warehouse_id;
       if (prev.type === 'stock_out' && productStockDistribution.length > 0) {
-        const targetColor = colorName.trim().toLowerCase();
-        
-        const warehousesWithColorStock = productStockDistribution
-          .filter((r) => {
-            const rowColor = (r.color_name?.toString() ?? '').trim().toLowerCase();
-            const qty = parseInt(r.quantity?.toString() ?? '0', 10);
-            return rowColor === targetColor && qty > 0;
-          })
-          .map((r) => r.warehouse_id?.toString() ?? '')
-          .filter(Boolean);
-        
-        if (newWarehouseId && !warehousesWithColorStock.includes(newWarehouseId) && warehousesWithColorStock.length > 0) {
-          const sorted = productStockDistribution
-            .filter((r) => (r.color_name?.toString() ?? '').trim().toLowerCase() === targetColor && parseInt(r.quantity?.toString() ?? '0', 10) > 0)
-            .sort((a, b) => parseInt(b.quantity?.toString() ?? '0', 10) - parseInt(a.quantity?.toString() ?? '0', 10));
-          if (sorted.length > 0) {
-            newWarehouseId = sorted[0].warehouse_id;
-          }
-        }
+        newWarehouseId = getBestWarehouseForColor(productStockDistribution, colorName, prev.warehouse_id);
       }
       return { ...prev, color_name: colorName, warehouse_id: newWarehouseId };
     });
@@ -1180,7 +1216,7 @@ export default function StockPage() {
                         disabled={isEditingOlderThan12Hours}
                         value={form.color_name}
                         onChange={(e) => handleColorChange(e.target.value)}
-                        className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="stock-field w-full rounded-lg border pl-3 pr-24 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {colorSuggestions.length === 0 ? (
                           <option value="" className="bg-white dark:bg-[#0f1117]">No colors in stock</option>
@@ -1209,7 +1245,7 @@ export default function StockPage() {
                         list="color-suggestions"
                         value={form.color_name}
                         onChange={(e) => handleColorChange(e.target.value)}
-                        className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="stock-field w-full rounded-lg border pl-3 pr-24 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
                         placeholder="e.g. Black"
                       />
                       <datalist id="color-suggestions">
@@ -1218,7 +1254,7 @@ export default function StockPage() {
                         ))}
                       </datalist>
                       {form.product_id && (
-                        <span className="stock-quantity-pill absolute right-3 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-bold">
+                        <span className="stock-quantity-pill pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-bold">
                           Stock: {selectedColorQty}
                         </span>
                       )}
