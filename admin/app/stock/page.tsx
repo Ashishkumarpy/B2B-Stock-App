@@ -124,6 +124,7 @@ const EMPTY_FORM = {
 };
 
 const STOCK_PREFS_STORAGE_KEY = 'stock_entry_prefs_v1';
+const CUSTOM_STOCK_IN_COLOR_VALUE = '__custom_stock_in_color__';
 
 type StockEntryPref = {
   warehouse_id?: string;
@@ -710,6 +711,19 @@ export default function StockPage() {
     return [...new Set(all)];
   }, [form.product_id, form.type, colorRows, selectedProduct?.color_stocks, stockPrefs]);
 
+  const stockInColorOptions = useMemo(() => {
+    if (form.type !== 'stock_in') return [];
+    const baseOptions = colorSuggestions.length > 0 ? colorSuggestions : ['Default'];
+    return [...new Set(baseOptions.map((color) => color.trim()).filter(Boolean))];
+  }, [colorSuggestions, form.type]);
+
+  const isCustomStockInColor = useMemo(() => {
+    if (form.type !== 'stock_in') return false;
+    const currentColor = form.color_name.trim().toLowerCase();
+    if (!currentColor) return true;
+    return !stockInColorOptions.some((color) => color.trim().toLowerCase() === currentColor);
+  }, [form.color_name, form.type, stockInColorOptions]);
+
   const selectedColorQty = useMemo(() => {
     if (!selectedProduct) return 0;
     const normalizedColor = form.color_name.trim().toLowerCase();
@@ -1235,28 +1249,50 @@ export default function StockPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="relative">
-                      <input
-                        id="stock-color"
-                        name="stock-color"
-                        required
-                        type="text"
-                        disabled={isEditingOlderThan12Hours}
-                        list="color-suggestions"
-                        value={form.color_name}
-                        onChange={(e) => handleColorChange(e.target.value)}
-                        className="stock-field w-full rounded-lg border pl-3 pr-24 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                        placeholder="e.g. Black"
-                      />
-                      <datalist id="color-suggestions">
-                        {colorSuggestions.map((color) => (
-                          <option key={color} value={color} />
-                        ))}
-                      </datalist>
-                      {form.product_id && (
-                        <span className="stock-quantity-pill pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-bold">
-                          Stock: {selectedColorQty}
-                        </span>
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <select
+                          id="stock-color"
+                          name="stock-color"
+                          required
+                          disabled={isEditingOlderThan12Hours}
+                          value={isCustomStockInColor ? CUSTOM_STOCK_IN_COLOR_VALUE : form.color_name}
+                          onChange={(e) => {
+                            if (e.target.value === CUSTOM_STOCK_IN_COLOR_VALUE) {
+                              handleColorChange('');
+                              return;
+                            }
+                            handleColorChange(e.target.value);
+                          }}
+                          className="stock-field w-full rounded-lg border pl-3 pr-24 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {stockInColorOptions.map((color) => (
+                            <option key={color} value={color} className="bg-white dark:bg-[#0f1117]">
+                              {color}
+                            </option>
+                          ))}
+                          <option value={CUSTOM_STOCK_IN_COLOR_VALUE} className="bg-white dark:bg-[#0f1117]">
+                            Custom color...
+                          </option>
+                        </select>
+                        {form.product_id && (
+                          <span className="stock-quantity-pill pointer-events-none absolute right-8 top-1/2 -translate-y-1/2 rounded px-1.5 py-0.5 text-[10px] font-bold">
+                            Stock: {selectedColorQty}
+                          </span>
+                        )}
+                      </div>
+                      {isCustomStockInColor && (
+                        <input
+                          id="stock-custom-color"
+                          name="stock-custom-color"
+                          required
+                          type="text"
+                          disabled={isEditingOlderThan12Hours}
+                          value={form.color_name}
+                          onChange={(e) => handleColorChange(e.target.value)}
+                          className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          placeholder="Enter new color"
+                        />
                       )}
                     </div>
                   )}
