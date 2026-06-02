@@ -125,6 +125,7 @@ const EMPTY_FORM = {
 
 const STOCK_PREFS_STORAGE_KEY = 'stock_entry_prefs_v1';
 const CUSTOM_STOCK_IN_COLOR_VALUE = '__custom_stock_in_color__';
+const STOCK_TRANSACTIONS_PAGE_SIZE = 25;
 
 type StockEntryPref = {
   warehouse_id?: string;
@@ -171,6 +172,7 @@ export default function StockPage() {
   const [realtimeStatus, setRealtimeStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
   const [typeFilter, setTypeFilter] = useState<'both' | 'stock_in' | 'stock_out'>('both');
   const [dateFilter, setDateFilter] = useState<'today' | 'all' | 'custom'>('all');
+  const [transactionsPage, setTransactionsPage] = useState(1);
   const [customDate, setCustomDate] = useState<string>(() => {
     const local = new Date();
     const offset = local.getTimezoneOffset();
@@ -212,6 +214,23 @@ export default function StockPage() {
 
     return result;
   }, [transactions, dateFilter, customDate, typeFilter]);
+
+  const totalTransactionPages = Math.max(
+    1,
+    Math.ceil(filteredTransactions.length / STOCK_TRANSACTIONS_PAGE_SIZE)
+  );
+  const visibleTransactionsPage = Math.min(transactionsPage, totalTransactionPages);
+  const transactionPageStartIndex = filteredTransactions.length === 0
+    ? 0
+    : (visibleTransactionsPage - 1) * STOCK_TRANSACTIONS_PAGE_SIZE;
+  const transactionPageEndIndex = Math.min(
+    transactionPageStartIndex + STOCK_TRANSACTIONS_PAGE_SIZE,
+    filteredTransactions.length
+  );
+  const paginatedTransactions = useMemo(
+    () => filteredTransactions.slice(transactionPageStartIndex, transactionPageEndIndex),
+    [filteredTransactions, transactionPageStartIndex, transactionPageEndIndex]
+  );
 
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportDate, setExportDate] = useState(() => {
@@ -938,19 +957,28 @@ export default function StockPage() {
                   <span className="stock-secondary text-xs font-bold uppercase tracking-wider">Date:</span>
                   <div className="stock-soft-control flex rounded-xl border p-1">
                     <button
-                      onClick={() => setDateFilter('all')}
+                      onClick={() => {
+                        setDateFilter('all');
+                        setTransactionsPage(1);
+                      }}
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${dateFilter === 'all' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
                     >
                       All Time
                     </button>
                     <button
-                      onClick={() => setDateFilter('today')}
+                      onClick={() => {
+                        setDateFilter('today');
+                        setTransactionsPage(1);
+                      }}
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${dateFilter === 'today' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
                     >
                       Today
                     </button>
                     <button
-                      onClick={() => setDateFilter('custom')}
+                      onClick={() => {
+                        setDateFilter('custom');
+                        setTransactionsPage(1);
+                      }}
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${dateFilter === 'custom' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
                     >
                       Choose Date
@@ -964,7 +992,10 @@ export default function StockPage() {
                       type="date"
                       aria-label="Stock custom date"
                       value={customDate}
-                      onChange={(e) => setCustomDate(e.target.value)}
+                      onChange={(e) => {
+                        setCustomDate(e.target.value);
+                        setTransactionsPage(1);
+                      }}
                       className="stock-field rounded-lg border px-2 py-1 text-xs focus:outline-none focus:border-indigo-500"
                     />
                   )}
@@ -975,19 +1006,28 @@ export default function StockPage() {
                   <span className="stock-secondary text-xs font-bold uppercase tracking-wider">Type:</span>
                   <div className="stock-soft-control flex rounded-xl border p-1">
                     <button
-                      onClick={() => setTypeFilter('both')}
+                      onClick={() => {
+                        setTypeFilter('both');
+                        setTransactionsPage(1);
+                      }}
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${typeFilter === 'both' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
                     >
                       All Types
                     </button>
                     <button
-                      onClick={() => setTypeFilter('stock_in')}
+                      onClick={() => {
+                        setTypeFilter('stock_in');
+                        setTransactionsPage(1);
+                      }}
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_in' ? 'stock-segment-active-success shadow-md' : 'stock-segment'}`}
                     >
                       Stock In
                     </button>
                     <button
-                      onClick={() => setTypeFilter('stock_out')}
+                      onClick={() => {
+                        setTypeFilter('stock_out');
+                        setTransactionsPage(1);
+                      }}
                       className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${typeFilter === 'stock_out' ? 'stock-segment-active-danger shadow-md' : 'stock-segment'}`}
                     >
                       Stock Out
@@ -997,7 +1037,7 @@ export default function StockPage() {
               </div>
 
               <div className="stock-secondary text-xs font-medium">
-                Showing {filteredTransactions.length} of {transactions.length} entries
+                Showing {filteredTransactions.length === 0 ? 0 : transactionPageStartIndex + 1}-{transactionPageEndIndex} of {filteredTransactions.length} entries
               </div>
             </div>
 
@@ -1006,25 +1046,26 @@ export default function StockPage() {
                 No entries found for the selected filter criteria.
               </div>
             ) : (
-              <table className="data-table w-full text-sm">
-                <thead>
-                  <tr>
-                    <th className="text-left w-12">#</th>
-                    <th className="text-left">Worker</th>
-                    <th className="text-left">Type</th>
-                    <th className="text-left">Code</th>
-                    <th className="text-left">Color</th>
-                    <th className="text-left">Warehouse</th>
-                    <th className="text-right">Qty</th>
-                    <th className="text-left">Notes</th>
-                    <th className="text-left">Date / Time</th>
-                    <th className="text-left">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTransactions.map((t, idx) => (
-                    <tr key={t.id}>
-                      <td className="stock-muted font-mono text-xs w-12">{idx + 1}</td>
+              <>
+                <table className="data-table w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="text-left w-12">#</th>
+                      <th className="text-left">Worker</th>
+                      <th className="text-left">Type</th>
+                      <th className="text-left">Code</th>
+                      <th className="text-left">Color</th>
+                      <th className="text-left">Warehouse</th>
+                      <th className="text-right">Qty</th>
+                      <th className="text-left">Notes</th>
+                      <th className="text-left">Date / Time</th>
+                      <th className="text-left">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedTransactions.map((t, idx) => (
+                      <tr key={t.id}>
+                        <td className="stock-muted font-mono text-xs w-12">{transactionPageStartIndex + idx + 1}</td>
                       <td className="font-medium">{t.worker_name}</td>
                       <td>
                         <span className={`badge ${t.type === 'stock_in' ? 'badge-green' : 'badge-red'}`}>
@@ -1112,8 +1153,32 @@ export default function StockPage() {
                       </td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+                <div className="stock-toolbar flex flex-col gap-3 border-t p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="stock-secondary text-xs font-medium">
+                    Page {visibleTransactionsPage} of {totalTransactionPages}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={visibleTransactionsPage <= 1}
+                      onClick={() => setTransactionsPage(Math.max(1, visibleTransactionsPage - 1))}
+                      className="stock-soft-control rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      disabled={visibleTransactionsPage >= totalTransactionPages}
+                      onClick={() => setTransactionsPage(Math.min(totalTransactionPages, visibleTransactionsPage + 1))}
+                      className="stock-soft-control rounded-lg border px-3 py-1.5 text-xs font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </>
             )}
           </>
         )}
