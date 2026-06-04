@@ -505,6 +505,29 @@ export default function StockPage() {
     }
   }, [warehouses]);
 
+  const clearStockQuery = useCallback(() => {
+    const hasStockQuery =
+      searchParams.has('transactionId') ||
+      searchParams.has('action') ||
+      searchParams.has('productId');
+    prefetchedQueryRef.current = null;
+    if (hasStockQuery) {
+      router.replace('/stock', { scroll: false });
+    }
+  }, [router, searchParams]);
+
+  const closeStockModal = useCallback(() => {
+    setShowModal(false);
+    setEditingTransactionId(null);
+    setShowProductPicker(false);
+    setError('');
+    setForm({
+      ...EMPTY_FORM,
+      warehouse_id: warehouses[0]?.id ?? '',
+    });
+    clearStockQuery();
+  }, [clearStockQuery, warehouses]);
+
   useEffect(() => {
     fetchTransactions();
     fetchFormData();
@@ -901,12 +924,52 @@ export default function StockPage() {
       });
       setEditingTransactionId(null);
       setShowModal(false);
+      clearStockQuery();
     } catch (err) {
       setError('Failed to save. Please try again.');
     } finally {
       setSaving(false);
     }
   };
+
+  const openEditTransaction = useCallback((transaction: Transaction) => {
+    let warehouseId = transaction.warehouse_id?.toString() || '';
+    if (!warehouseId && transaction.warehouse_name) {
+      const matchedWarehouse = warehouses.find((w) => w.name === transaction.warehouse_name);
+      warehouseId = matchedWarehouse?.id || '';
+    }
+
+    let workerId = transaction.worker_id?.toString() || '';
+    if (!workerId && transaction.worker_name) {
+      const matchedWorker = workers.find((w) => w.name === transaction.worker_name);
+      workerId = matchedWorker?.id || '';
+    }
+
+    const parsedCartons = parseCartonFromNotes(transaction.notes);
+    const customer = parseCustomerFromNotes(transaction.notes);
+
+    setError('');
+    clearStockQuery();
+    setForm({
+      product_id: transaction.product_id,
+      type: transaction.type,
+      cartons: transaction.cartons ?? parsedCartons?.cartons ?? '',
+      pcsPerCarton: transaction.pcs_per_carton ?? parsedCartons?.pcsPerCarton ?? '',
+      quantity: transaction.quantity,
+      color_name: transaction.color_name || 'Default',
+      warehouse_id: warehouseId || warehouses[0]?.id || '',
+      worker_id: workerId,
+      worker_name: transaction.worker_name || '',
+      notes: getCleanNotes(transaction.notes),
+      customer_name: customer,
+    });
+    setEditingTransactionId(transaction.id);
+    setShowModal(true);
+
+    if (transaction.type === 'stock_out' && transaction.product_id) {
+      fetchStockDistribution(transaction.product_id, false);
+    }
+  }, [warehouses, workers, fetchStockDistribution, clearStockQuery]);
 
   return (
     <div className="space-y-6">
@@ -935,7 +998,16 @@ export default function StockPage() {
             <span>📥</span> Export to Excel
           </button>
           <button
-            onClick={() => { setEditingTransactionId(null); setForm(EMPTY_FORM); setError(''); setShowModal(true); }}
+            onClick={() => {
+              clearStockQuery();
+              setEditingTransactionId(null);
+              setForm({
+                ...EMPTY_FORM,
+                warehouse_id: warehouses[0]?.id ?? '',
+              });
+              setError('');
+              setShowModal(true);
+            }}
             className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-indigo-500/20 active:scale-95"
           >
             + Record Stock
@@ -1120,34 +1192,7 @@ export default function StockPage() {
                       <td>
                         <button
                           type="button"
-                          onClick={() => {
-                            const params = new URLSearchParams({
-                              transactionId: t.id,
-                              productId: t.product_id,
-                              type: t.type,
-                              color: t.color_name || 'Default',
-                              quantity: String(t.quantity),
-                              notes: t.notes || '',
-                              workerName: t.worker_name || '',
-                            });
-                            if (t.warehouse_id) {
-                              params.set('warehouseId', t.warehouse_id);
-                            } else if (t.warehouse_name) {
-                              const matchedWarehouse = warehouses.find((w) => w.name === t.warehouse_name);
-                              if (matchedWarehouse?.id) params.set('warehouseId', matchedWarehouse.id);
-                            }
-                            if (t.worker_id) {
-                              params.set('workerId', t.worker_id);
-                            } else if (t.worker_name) {
-                              const matchedWorker = workers.find((w) => w.name === t.worker_name);
-                              if (matchedWorker?.id) params.set('workerId', matchedWorker.id);
-                            }
-                            if (t.cartons != null) params.set('cartons', String(t.cartons));
-                            if (t.pcs_per_carton != null) params.set('pcsPerCarton', String(t.pcs_per_carton));
-                            const customer = parseCustomerFromNotes(t.notes);
-                            if (customer) params.set('customer', customer);
-                            router.push(`/stock?${params.toString()}`);
-                          }}
+                          onClick={() => openEditTransaction(t)}
                           className="stock-edit-action rounded-md border px-2.5 py-1 text-xs font-semibold"
                         >
                           Edit
@@ -1192,7 +1237,7 @@ export default function StockPage() {
           <div className="stock-modal-surface rounded-2xl border p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
-              <button onClick={() => setShowModal(false)} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">×</button>
+              <button onClick={closeStockModal} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">×</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -1491,7 +1536,7 @@ export default function StockPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={closeStockModal}
                   className="stock-soft-control rounded-xl border px-6 py-3 text-sm transition"
                 >
                   Cancel
