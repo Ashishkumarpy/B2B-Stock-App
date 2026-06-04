@@ -12,6 +12,15 @@ ALTER TABLE public.users ADD COLUMN IF NOT EXISTS perm_reports BOOLEAN DEFAULT f
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS perm_users BOOLEAN DEFAULT false;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS perm_settings BOOLEAN DEFAULT false;
 
+-- Phone-only mobile workers/managers also need permission columns because they do
+-- not have a public.users profile until upgraded to email/password access.
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_products BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_inventory BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_orders BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_reports BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_users BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_settings BOOLEAN;
+
 -- Initialize existing users' permissions based on their current roles so they do not lose access
 UPDATE public.users
 SET 
@@ -22,6 +31,23 @@ SET
   perm_reports = COALESCE(perm_reports, (role IN ('admin', 'manager'))),
   perm_users = COALESCE(perm_users, (role IN ('admin', 'manager'))),
   perm_settings = COALESCE(perm_settings, (role = 'admin'));
+
+UPDATE public.workers
+SET
+  perm_products = COALESCE(perm_products, false),
+  perm_inventory = COALESCE(perm_inventory, true),
+  perm_orders = COALESCE(perm_orders, (role = 'manager')),
+  perm_reports = COALESCE(perm_reports, (role = 'manager')),
+  perm_users = COALESCE(perm_users, (role = 'manager')),
+  perm_settings = COALESCE(perm_settings, false);
+
+ALTER TABLE public.workers
+  ALTER COLUMN perm_products SET DEFAULT false,
+  ALTER COLUMN perm_inventory SET DEFAULT true,
+  ALTER COLUMN perm_orders SET DEFAULT false,
+  ALTER COLUMN perm_reports SET DEFAULT false,
+  ALTER COLUMN perm_users SET DEFAULT false,
+  ALTER COLUMN perm_settings SET DEFAULT false;
 
 
 -- 2. Create user_warehouses Table (User-to-Warehouse Mapping)

@@ -309,9 +309,10 @@ export default function UsersPage() {
       return;
     }
     
-    // Require email if they are not phone-only, or if they are being upgraded/set to admin/manager
-    const isUpgrading = editingUser?.is_phone_only && (formState.role === 'admin' || formState.role === 'manager' || !!formState.email);
-    const requiresEmail = !editingUser?.is_phone_only || isUpgrading || formState.role === 'admin' || formState.role === 'manager';
+    // Phone-only workers/managers can keep OTP-only login while permissions are edited.
+    // Supplying email upgrades them to an email/password account; admin role also requires upgrade.
+    const isUpgrading = !!editingUser?.is_phone_only && (formState.role === 'admin' || !!formState.email);
+    const requiresEmail = !editingUser?.is_phone_only || isUpgrading || formState.role === 'admin';
     if (requiresEmail && !formState.email) {
       setSaveError('Email is required.');
       return;
@@ -964,7 +965,7 @@ export default function UsersPage() {
 
                   <div>
                     <label className="mb-1.5 block text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                      Email Address {formState.role === 'admin' || formState.role === 'manager' ? '(Required)' : (editingUser?.is_phone_only ? '(Optional for Upgrade)' : '')}
+                      Email Address {formState.role === 'admin' ? '(Required)' : (editingUser?.is_phone_only ? '(Optional for Upgrade)' : '')}
                     </label>
                     <input
                       type="email"
@@ -972,7 +973,7 @@ export default function UsersPage() {
                       value={formState.email}
                       onChange={(e) => setFormState(prev => ({ ...prev, email: e.target.value }))}
                       className="w-full rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-3 text-sm text-white"
-                      required={formState.role === 'admin' || formState.role === 'manager' || !editingUser?.is_phone_only}
+                      required={formState.role === 'admin' || !editingUser?.is_phone_only}
                     />
                   </div>
 
@@ -999,7 +1000,7 @@ export default function UsersPage() {
                         minLength={6}
                         required={
                           !editingUser || 
-                          (editingUser.is_phone_only && (formState.role === 'admin' || formState.role === 'manager' || !!formState.email))
+                          (editingUser.is_phone_only && (formState.role === 'admin' || !!formState.email))
                         }
                       />
                     </div>

@@ -132,12 +132,12 @@ usersRouter.get('/', authRequired, requirePermission('perm_users'), async (req, 
           created_at: w.created_at,
           is_phone_only: true,
           permissions: {
-            perm_products: false,
-            perm_inventory: true,
-            perm_orders: isManager,
-            perm_reports: isManager,
-            perm_users: isManager,
-            perm_settings: false
+            perm_products: w.perm_products ?? false,
+            perm_inventory: w.perm_inventory ?? true,
+            perm_orders: w.perm_orders ?? isManager,
+            perm_reports: w.perm_reports ?? isManager,
+            perm_users: w.perm_users ?? isManager,
+            perm_settings: w.perm_settings ?? false
           },
           warehouses: workerWarehouseMap.get(w.id) || []
         };
@@ -572,6 +572,14 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
     if (role !== undefined) workerUpdate.role = role;
     if (is_active !== undefined) workerUpdate.is_active = is_active;
     if (email !== undefined) workerUpdate.email = email;
+    if (permissions) {
+      if (permissions.perm_products !== undefined) workerUpdate.perm_products = permissions.perm_products;
+      if (permissions.perm_inventory !== undefined) workerUpdate.perm_inventory = permissions.perm_inventory;
+      if (permissions.perm_orders !== undefined) workerUpdate.perm_orders = permissions.perm_orders;
+      if (permissions.perm_reports !== undefined) workerUpdate.perm_reports = permissions.perm_reports;
+      if (permissions.perm_users !== undefined) workerUpdate.perm_users = permissions.perm_users;
+      if (permissions.perm_settings !== undefined) workerUpdate.perm_settings = permissions.perm_settings;
+    }
 
     const { data: updatedWorker, error: updateErr } = await supabaseAdmin
       .from('workers')
@@ -614,12 +622,12 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
         created_at: updatedWorker.created_at,
         is_phone_only: true,
         permissions: {
-          perm_products: false,
-          perm_inventory: true,
-          perm_orders: isManager,
-          perm_reports: isManager,
-          perm_users: isManager,
-          perm_settings: false
+          perm_products: updatedWorker.perm_products ?? false,
+          perm_inventory: updatedWorker.perm_inventory ?? true,
+          perm_orders: updatedWorker.perm_orders ?? isManager,
+          perm_reports: updatedWorker.perm_reports ?? isManager,
+          perm_users: updatedWorker.perm_users ?? isManager,
+          perm_settings: updatedWorker.perm_settings ?? false
         },
         warehouses: warehouses !== undefined ? warehouses : []
       }

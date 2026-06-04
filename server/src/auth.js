@@ -63,7 +63,7 @@ export function requirePermission(permission) {
         // Fallback: Check if they are in the workers table (SMS OTP logins)
         const { data: worker, error: workerErr } = await supabaseAdmin
           .from('workers')
-          .select('role, is_active')
+          .select('*')
           .eq('id', userId)
           .maybeSingle();
 
@@ -77,12 +77,12 @@ export function requirePermission(permission) {
         user = {
           role: worker.role,
           is_active: worker.is_active ?? true,
-          perm_products: false,
-          perm_inventory: true,
-          perm_orders: isManager,
-          perm_reports: isManager,
-          perm_users: isManager,
-          perm_settings: false
+          perm_products: worker.perm_products ?? false,
+          perm_inventory: worker.perm_inventory ?? true,
+          perm_orders: worker.perm_orders ?? isManager,
+          perm_reports: worker.perm_reports ?? isManager,
+          perm_users: worker.perm_users ?? isManager,
+          perm_settings: worker.perm_settings ?? false
         };
       }
 

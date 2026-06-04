@@ -8,6 +8,30 @@ ALTER TABLE public.user_warehouses DROP CONSTRAINT IF EXISTS user_warehouses_pke
 -- Add worker_id column referencing workers(id)
 ALTER TABLE public.user_warehouses ADD COLUMN IF NOT EXISTS worker_id UUID REFERENCES public.workers(id) ON DELETE CASCADE;
 
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_products BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_inventory BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_orders BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_reports BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_users BOOLEAN;
+ALTER TABLE public.workers ADD COLUMN IF NOT EXISTS perm_settings BOOLEAN;
+
+UPDATE public.workers
+SET
+  perm_products = COALESCE(perm_products, false),
+  perm_inventory = COALESCE(perm_inventory, true),
+  perm_orders = COALESCE(perm_orders, (role = 'manager')),
+  perm_reports = COALESCE(perm_reports, (role = 'manager')),
+  perm_users = COALESCE(perm_users, (role = 'manager')),
+  perm_settings = COALESCE(perm_settings, false);
+
+ALTER TABLE public.workers
+  ALTER COLUMN perm_products SET DEFAULT false,
+  ALTER COLUMN perm_inventory SET DEFAULT true,
+  ALTER COLUMN perm_orders SET DEFAULT false,
+  ALTER COLUMN perm_reports SET DEFAULT false,
+  ALTER COLUMN perm_users SET DEFAULT false,
+  ALTER COLUMN perm_settings SET DEFAULT false;
+
 -- Make user_id nullable (since phone-only workers don't have user_id)
 ALTER TABLE public.user_warehouses ALTER COLUMN user_id DROP NOT NULL;
 

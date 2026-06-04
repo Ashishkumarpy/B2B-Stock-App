@@ -69,6 +69,35 @@ ALTER TABLE workers
   ADD COLUMN IF NOT EXISTS can_access_stock BOOLEAN DEFAULT true;
 ALTER TABLE workers
   ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+ALTER TABLE workers
+  ADD COLUMN IF NOT EXISTS perm_products BOOLEAN;
+ALTER TABLE workers
+  ADD COLUMN IF NOT EXISTS perm_inventory BOOLEAN;
+ALTER TABLE workers
+  ADD COLUMN IF NOT EXISTS perm_orders BOOLEAN;
+ALTER TABLE workers
+  ADD COLUMN IF NOT EXISTS perm_reports BOOLEAN;
+ALTER TABLE workers
+  ADD COLUMN IF NOT EXISTS perm_users BOOLEAN;
+ALTER TABLE workers
+  ADD COLUMN IF NOT EXISTS perm_settings BOOLEAN;
+
+UPDATE workers
+SET
+  perm_products = COALESCE(perm_products, false),
+  perm_inventory = COALESCE(perm_inventory, true),
+  perm_orders = COALESCE(perm_orders, (role = 'manager')),
+  perm_reports = COALESCE(perm_reports, (role = 'manager')),
+  perm_users = COALESCE(perm_users, (role = 'manager')),
+  perm_settings = COALESCE(perm_settings, false);
+
+ALTER TABLE workers
+  ALTER COLUMN perm_products SET DEFAULT false,
+  ALTER COLUMN perm_inventory SET DEFAULT true,
+  ALTER COLUMN perm_orders SET DEFAULT false,
+  ALTER COLUMN perm_reports SET DEFAULT false,
+  ALTER COLUMN perm_users SET DEFAULT false,
+  ALTER COLUMN perm_settings SET DEFAULT false;
 
 DO $$
 BEGIN
