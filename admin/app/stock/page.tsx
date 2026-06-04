@@ -905,7 +905,7 @@ export default function StockPage() {
       }
 
       if (editingTransactionId) {
-        await serverPatch(`/transactions/${encodeURIComponent(editingTransactionId)}`, {
+        const patchRes = await serverPatch(`/transactions/${encodeURIComponent(editingTransactionId)}`, {
           product_id: product.id,
           type: form.type,
           color_name: form.color_name.trim(),
@@ -916,6 +916,12 @@ export default function StockPage() {
           worker_name: form.worker_name.trim(),
           notes: finalNotes || null,
         });
+        const updatedTransaction = (patchRes as any)?.data as Transaction | undefined;
+        if (updatedTransaction?.id) {
+          setTransactions((prev) =>
+            prev.map((tx) => (tx.id === updatedTransaction.id ? updatedTransaction : tx)),
+          );
+        }
       } else {
         // Write transaction
         await serverPost('/transactions', {
@@ -946,6 +952,11 @@ export default function StockPage() {
         }
       }
 
+      await Promise.all([
+        fetchTransactions(),
+        fetchFormData(),
+      ]);
+
       setForm({
         ...EMPTY_FORM,
         warehouse_id: warehouses[0]?.id ?? '',
@@ -954,7 +965,8 @@ export default function StockPage() {
       setShowModal(false);
       clearStockQuery();
     } catch (err) {
-      setError('Failed to save. Please try again.');
+      const message = err instanceof Error ? err.message : 'Please try again.';
+      setError(`Failed to save. ${message}`);
     } finally {
       setSaving(false);
     }
