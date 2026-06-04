@@ -8,6 +8,7 @@ import '../../providers/products_provider.dart';
 import '../../providers/api_client_provider.dart';
 import '../../providers/warehouses_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/transactions_provider.dart';
 import '../../../domain/entities/product.dart';
 
 class StockEntryScreen extends ConsumerStatefulWidget {
@@ -262,6 +263,43 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         _qtyController.text = (cartons * pcs).toString();
       });
     }
+  }
+
+  String _normalizedCategory(String category) {
+    final trimmed = category.trim();
+    return trimmed.isEmpty ? 'uncategorized' : trimmed.toLowerCase();
+  }
+
+  Product? _originalTransactionProduct(List<Product> products) {
+    final originalProductId = widget.productId;
+    if (originalProductId == null || originalProductId.isEmpty) return null;
+    return products.where((p) => p.id == originalProductId).firstOrNull;
+  }
+
+  List<Product>? _productsForPicker(List<Product> products) {
+    if (_isEditing) {
+      final original = _originalTransactionProduct(products);
+      if (original == null) return null;
+
+      final originalCategory = _normalizedCategory(original.category);
+      return products
+          .where((p) => _normalizedCategory(p.category) == originalCategory)
+          .toList();
+    }
+
+    if (_type == TransactionType.stockOut) {
+      return products.where((p) => p.quantity > 0).toList();
+    }
+
+    return products;
+  }
+
+  String? _editingCategoryLabel(List<Product> products) {
+    if (!_isEditing) return null;
+    final original = _originalTransactionProduct(products);
+    final raw = original?.category.trim();
+    if (raw == null || raw.isEmpty) return 'Uncategorized';
+    return raw;
   }
 
   Future<void> _loadProductStockDistribution({
@@ -727,11 +765,26 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         });
       }
       await _saveStockInPrefs();
+      try {
+        await Future.wait([
+          ref.read(productsProvider.notifier).fetchProducts(),
+          ref.read(transactionsProvider.notifier).fetchTransactions(),
+        ]);
+        if (_isEditing) {
+          final originalProductId = widget.productId;
+          if (originalProductId != null && originalProductId.isNotEmpty) {
+            ref.invalidate(productTransactionsProvider(originalProductId));
+          }
+          ref.invalidate(productTransactionsProvider(_selectedProduct!.id));
+        }
+      } catch (_) {
+        // Realtime subscriptions normally refresh this too; do not fail a saved edit.
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Transaction recorded successfully'),
+            content: Text('Transaction saved successfully'),
             backgroundColor: AppTheme.success,
           ),
         );
@@ -749,13 +802,19 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     }
   }
 
-  void _openProductPicker(List<Product> products) {
+  void _openProductPicker(
+    List<Product> products, {
+    bool correctionMode = false,
+    String? helperText,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => ProductPickerModal(
         products: products,
+        initialShowProductsDirectly: correctionMode,
+        helperText: helperText,
         onSelected: (p) {
           final defaultPcsPerCarton =
               (p.pcsPerCarton != null && p.pcsPerCarton! > 0)
@@ -764,7 +823,18 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           setState(() {
             _selectedProduct = p;
             if (p.colorStocks.isNotEmpty) {
-              _selectedColor = p.colorStocks.first.color;
+              final preferredColor =
+                  (correctionMode && p.id == widget.productId)
+                      ? widget.initialColorName?.trim()
+                      : null;
+              final hasPreferredColor = preferredColor != null &&
+                  preferredColor.isNotEmpty &&
+                  p.colorStocks.any((c) =>
+                      c.color.trim().toLowerCase() ==
+                      preferredColor.toLowerCase());
+              _selectedColor = hasPreferredColor
+                  ? preferredColor
+                  : p.colorStocks.first.color;
             } else {
               _selectedColor = 'Default';
             }
@@ -1020,7 +1090,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           : () {
                               setState(() {
                                 _type = TransactionType.stockOut;
-                                if (_selectedProduct != null &&
+                                if (!_isEditing &&
+                                    _selectedProduct != null &&
                                     _selectedProduct!.quantity <= 0) {
                                   _selectedProduct = null;
                                   _selectedColor = 'Default';
@@ -1099,11 +1170,25 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 onTap: _isEditingOlderThan12Hours
                     ? null
                     : () {
-                        final filteredProducts =
-                            _type == TransactionType.stockOut
-                                ? products.where((p) => p.quantity > 0).toList()
-                                : products;
-                        _openProductPicker(filteredProducts);
+                        final pickerProducts = _productsForPicker(products);
+                        if (pickerProducts == null || pickerProducts.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Product list is still loading. Please try again.'),
+                              backgroundColor: AppTheme.danger,
+                            ),
+                          );
+                          return;
+                        }
+                        final categoryLabel = _editingCategoryLabel(products);
+                        _openProductPicker(
+                          pickerProducts,
+                          correctionMode: _isEditing,
+                          helperText: _isEditing && categoryLabel != null
+                              ? 'Edit mode: choose another product only inside "$categoryLabel".'
+                              : null,
+                        );
                       },
                 borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                 child: Opacity(
@@ -1172,6 +1257,29 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                   ),
                 ),
               ),
+              if (_isEditing && !_isEditingOlderThan12Hours) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 15,
+                      color: AppTheme.mutedTextColor(context),
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Product correction is limited to the original folder/category.',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.mutedTextColor(context),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 20),
 
               // WAREHOUSE & COLOR ROW
@@ -1936,11 +2044,15 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 class ProductPickerModal extends StatefulWidget {
   final List<Product> products;
   final ValueChanged<Product> onSelected;
+  final bool initialShowProductsDirectly;
+  final String? helperText;
 
   const ProductPickerModal({
     super.key,
     required this.products,
     required this.onSelected,
+    this.initialShowProductsDirectly = false,
+    this.helperText,
   });
 
   @override
@@ -1950,8 +2062,14 @@ class ProductPickerModal extends StatefulWidget {
 class _ProductPickerModalState extends State<ProductPickerModal> {
   String? _selectedCategory;
   String _searchQuery = '';
-  bool _showProductsDirectly = false;
+  late bool _showProductsDirectly;
   final _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _showProductsDirectly = widget.initialShowProductsDirectly;
+  }
 
   @override
   void dispose() {
@@ -2061,6 +2179,45 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
             ),
           ),
           const SizedBox(height: 10),
+
+          if (widget.helperText != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryLight,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppTheme.primary.withValues(alpha: 0.18)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.lock_outline_rounded,
+                      size: 16,
+                      color: AppTheme.primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.helperText!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          height: 1.25,
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           if (!isSearching && _selectedCategory == null) ...[
             Padding(

@@ -12,6 +12,7 @@ import '../../widgets/skeleton_loading.dart';
 import '../../widgets/stock_chart_widget.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/warehouse_stock_summary_provider.dart';
+import '../../../domain/entities/product.dart';
 import '../../../core/utils/formatters.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -22,6 +23,10 @@ class DashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  final TextEditingController _dashboardSearchController =
+      TextEditingController();
+  String _dashboardSearchQuery = '';
+
   @override
   void initState() {
     super.initState();
@@ -31,6 +36,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         VersionCheckService.check(context, ref);
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _dashboardSearchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -120,6 +131,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
+                  _buildDashboardSearch(productsAsync),
+                  const SizedBox(height: 16),
+
                   // Stats Row
                   _buildStatsSection(productsAsync, transactionsAsync, role),
                   const SizedBox(height: 20),
@@ -159,6 +173,163 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (h < 12) return 'Morning';
     if (h < 17) return 'Afternoon';
     return 'Evening';
+  }
+
+  Widget _buildDashboardSearch(AsyncValue<List<dynamic>> productsAsync) {
+    final query = _dashboardSearchQuery.trim().toLowerCase();
+    final results = query.isEmpty
+        ? <Product>[]
+        : productsAsync.maybeWhen(
+            data: (products) => products
+                .whereType<Product>()
+                .where((product) {
+                  return product.code.toLowerCase().contains(query) ||
+                      product.name.toLowerCase().contains(query) ||
+                      product.category.toLowerCase().contains(query);
+                })
+                .take(8)
+                .toList(),
+            orElse: () => <Product>[],
+          );
+
+    return Container(
+      decoration: BoxDecoration(
+        color: AppTheme.surfaceColor(context),
+        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        border: Border.all(color: AppTheme.borderColor(context)),
+      ),
+      child: Column(
+        children: [
+          TextField(
+            controller: _dashboardSearchController,
+            onChanged: (value) {
+              setState(() {
+                _dashboardSearchQuery = value;
+              });
+            },
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search products by code or name...',
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                color: AppTheme.mutedTextColor(context),
+                size: 20,
+              ),
+              suffixIcon: _dashboardSearchQuery.isNotEmpty
+                  ? IconButton(
+                      tooltip: 'Clear search',
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: AppTheme.mutedTextColor(context),
+                        size: 18,
+                      ),
+                      onPressed: () {
+                        _dashboardSearchController.clear();
+                        setState(() {
+                          _dashboardSearchQuery = '';
+                        });
+                      },
+                    )
+                  : null,
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+            ),
+          ),
+          if (query.isNotEmpty) ...[
+            Divider(height: 1, color: AppTheme.borderColor(context)),
+            if (results.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'No matching products',
+                  style: TextStyle(
+                    color: AppTheme.secondaryTextColor(context),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              )
+            else
+              ...results.map((product) {
+                return InkWell(
+                  onTap: () {
+                    FocusScope.of(context).unfocus();
+                    context.push('/products/${product.id}');
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryLight,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            Icons.inventory_2_rounded,
+                            color: AppTheme.primary,
+                            size: 18,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                product.code.isNotEmpty
+                                    ? product.code
+                                    : 'No Code',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppTheme.primaryTextColor(context),
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${product.name} - ${product.category}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: AppTheme.secondaryTextColor(context),
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          '${product.quantity} pcs',
+                          style: TextStyle(
+                            color: product.quantity > 0
+                                ? AppTheme.success
+                                : AppTheme.danger,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _buildStatsSection(
@@ -395,8 +566,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   height: 260,
                   child: TabBarView(
                     children: [
-                      _buildWarehouseStockTabContent(summaryAsync, topOnly: true),
-                      _buildWarehouseStockTabContent(summaryAsync, topOnly: false),
+                      _buildWarehouseStockTabContent(summaryAsync,
+                          topOnly: true),
+                      _buildWarehouseStockTabContent(summaryAsync,
+                          topOnly: false),
                     ],
                   ),
                 ),
