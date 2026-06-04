@@ -417,6 +417,7 @@ transactionsRouter.patch(
     if (oldRes.error) return res.status(400).json({ error: oldRes.error.message });
     if (!oldRes.data) return res.status(404).json({ error: 'Transaction not found' });
     const oldTx = oldRes.data;
+    const requestedProductId = String(payload.product_id ?? oldTx.product_id ?? '').trim();
     const requestedWarehouseId = String(payload.warehouse_id ?? oldTx.warehouse_id ?? '').trim();
     let requestedColorName = String(payload.color_name ?? oldTx.color_name ?? 'Default').trim() || 'Default';
 
@@ -431,10 +432,12 @@ transactionsRouter.patch(
 
       const payloadPcs = payload.pcs_per_carton !== undefined && payload.pcs_per_carton !== null ? (payload.pcs_per_carton === '' ? null : Number(payload.pcs_per_carton)) : null;
       const oldPcs = oldTx.pcs_per_carton ?? null;
+      const oldProductId = String(oldTx.product_id || '').trim();
       const oldWarehouseId = String(oldTx.warehouse_id || '').trim();
       const oldColorName = String(oldTx.color_name || 'Default').trim() || 'Default';
 
       if (
+        requestedProductId !== oldProductId ||
         type !== String(oldTx.type || '') ||
         quantity !== Number(oldTx.quantity || 0) ||
         workerName !== String(oldTx.worker_name || '') ||
@@ -462,11 +465,15 @@ transactionsRouter.patch(
       return res.json({ data: updatedTxRes.data });
     }
 
-    const productId = String(oldTx.product_id || '').trim();
+    const oldProductId = String(oldTx.product_id || '').trim();
+    const newProductId = requestedProductId || oldProductId;
     const oldWarehouseId = String(oldTx.warehouse_id || '').trim();
     const oldColorName = String(oldTx.color_name || 'Default').trim() || 'Default';
-    if (!productId || !oldWarehouseId) {
+    if (!oldProductId || !oldWarehouseId) {
       return res.status(400).json({ error: 'Existing transaction is missing product/warehouse' });
+    }
+    if (!newProductId) {
+      return res.status(400).json({ error: 'product_id is required' });
     }
     if (!requestedWarehouseId) {
       return res.status(400).json({ error: 'warehouse_id is required' });
@@ -475,14 +482,13 @@ transactionsRouter.patch(
     const oldQty = Number(oldTx.quantity || 0);
     const oldSigned = String(oldTx.type) === 'stock_in' ? oldQty : -oldQty;
     const newSigned = type === 'stock_in' ? quantity : -quantity;
-    const delta = newSigned - oldSigned;
 
-    const [productRes, warehousesRes, stockRowsRes] = await Promise.all([
+    const productIds = [...new Set([oldProductId, newProductId])];
+    const [productsRes, warehousesRes, stockRowsRes] = await Promise.all([
       supabaseAdmin
         .from('products')
-        .select('id,quantity,color_stocks')
-        .eq('id', productId)
-        .maybeSingle(),
+        .select('id,name,code,category,quantity,color_stocks')
+        .in('id', productIds),
       supabaseAdmin
         .from('warehouses')
         .select('id,name,is_active')
@@ -490,13 +496,26 @@ transactionsRouter.patch(
       supabaseAdmin
         .from('warehouse_product_stocks')
         .select('warehouse_id,product_id,color_name,quantity')
-        .eq('product_id', productId)
+        .in('product_id', productIds)
         .limit(10000),
     ]);
-    if (productRes.error) return res.status(400).json({ error: productRes.error.message });
-    if (!productRes.data) return res.status(400).json({ error: 'Product not found for transaction' });
+    if (productsRes.error) return res.status(400).json({ error: productsRes.error.message });
     if (warehousesRes.error) return res.status(400).json({ error: warehousesRes.error.message });
     if (stockRowsRes.error) return res.status(400).json({ error: stockRowsRes.error.message });
+
+    const productsById = new Map((productsRes.data || []).map((product) => [String(product.id), product]));
+    const oldProduct = productsById.get(oldProductId);
+    const newProduct = productsById.get(newProductId);
+    if (!oldProduct) return res.status(400).json({ error: 'Original product not found for transaction' });
+    if (!newProduct) return res.status(400).json({ error: 'Selected product not found' });
+
+    const oldCategory = String(oldProduct.category || 'Uncategorized').trim() || 'Uncategorized';
+    const newCategory = String(newProduct.category || 'Uncategorized').trim() || 'Uncategorized';
+    if (oldCategory.toLowerCase() !== newCategory.toLowerCase()) {
+      return res.status(400).json({
+        error: 'Product correction is only allowed within the same category.',
+      });
+    }
 
     const activeWarehouse = (warehousesRes.data || []).find(
       (w) => String(w.id) === requestedWarehouseId,
@@ -506,37 +525,58 @@ transactionsRouter.patch(
     }
     const requestedWarehouseName = String(activeWarehouse.name || 'Warehouse');
 
-    const currentProductQty = Number(productRes.data.quantity || 0);
-    const nextProductQty = currentProductQty + delta;
-    if (!Number.isFinite(nextProductQty) || nextProductQty < 0) {
-      return res.status(400).json({ error: 'Edit would make product stock negative.' });
-    }
-
-    const colorStocks = Array.isArray(productRes.data.color_stocks)
-      ? productRes.data.color_stocks.map((x) => ({ ...x }))
+    const newProductColorStocks = Array.isArray(newProduct.color_stocks)
+      ? newProduct.color_stocks.map((x) => ({ ...x }))
       : [];
 
-    const matchingProductColor = colorStocks.find((entry) =>
+    const matchingProductColor = newProductColorStocks.find((entry) =>
       String(entry?.color || '').trim().toLowerCase() === requestedColorName.toLowerCase(),
     );
     if (matchingProductColor?.color) {
       requestedColorName = String(matchingProductColor.color).trim() || requestedColorName;
     }
 
+    const productDeltas = new Map();
+    const addProductDelta = (productId, amount) => {
+      productDeltas.set(productId, (productDeltas.get(productId) || 0) + amount);
+    };
+    addProductDelta(oldProductId, -oldSigned);
+    addProductDelta(newProductId, newSigned);
+
+    const productUpdates = [];
+    for (const [productId, productDelta] of productDeltas.entries()) {
+      const product = productsById.get(productId);
+      const currentProductQty = Number(product?.quantity || 0);
+      const nextProductQty = currentProductQty + productDelta;
+      if (!Number.isFinite(nextProductQty) || nextProductQty < 0) {
+        return res.status(400).json({ error: `Edit would make product stock negative for ${product?.code || productId}.` });
+      }
+      productUpdates.push({
+        id: productId,
+        quantity: Math.trunc(nextProductQty),
+      });
+    }
+
     const colorDeltas = new Map();
-    const addColorDelta = (color, amount) => {
+    const addColorDelta = (productId, color, amount) => {
       const normalized = String(color || 'Default').trim() || 'Default';
       if (normalized.toLowerCase() === 'default') return;
-      const key = normalized.toLowerCase();
+      const key = `${productId}::${normalized.toLowerCase()}`;
       colorDeltas.set(key, {
+        product_id: productId,
         color: normalized,
         delta: (colorDeltas.get(key)?.delta || 0) + amount,
       });
     };
-    addColorDelta(oldColorName, -oldSigned);
-    addColorDelta(requestedColorName, newSigned);
+    addColorDelta(oldProductId, oldColorName, -oldSigned);
+    addColorDelta(newProductId, requestedColorName, newSigned);
 
+    const colorStockUpdates = new Map();
     for (const entry of colorDeltas.values()) {
+      const product = productsById.get(entry.product_id);
+      const colorStocks = Array.isArray(product?.color_stocks)
+        ? product.color_stocks.map((stock) => ({ ...stock }))
+        : [];
       let colorIdx = colorStocks.findIndex((stock) =>
         String(stock?.color || '').trim().toLowerCase() === entry.color.toLowerCase(),
       );
@@ -550,18 +590,19 @@ transactionsRouter.patch(
         return res.status(400).json({ error: `Edit would make color stock negative for ${entry.color}.` });
       }
       colorStocks[colorIdx].quantity = Math.trunc(nextColorQty);
+      colorStockUpdates.set(entry.product_id, colorStocks);
     }
 
     const warehouseRowsByKey = new Map();
     for (const row of stockRowsRes.data || []) {
-      const key = `${String(row.warehouse_id)}::${String(row.color_name || 'Default').trim().toLowerCase()}`;
+      const key = `${String(row.product_id)}::${String(row.warehouse_id)}::${String(row.color_name || 'Default').trim().toLowerCase()}`;
       warehouseRowsByKey.set(key, row);
     }
 
     const warehouseDeltas = new Map();
-    const addWarehouseDelta = (warehouseId, color, amount) => {
+    const addWarehouseDelta = (productId, warehouseId, color, amount) => {
       const colorName = String(color || 'Default').trim() || 'Default';
-      const key = `${warehouseId}::${colorName.toLowerCase()}`;
+      const key = `${productId}::${warehouseId}::${colorName.toLowerCase()}`;
       warehouseDeltas.set(key, {
         warehouse_id: warehouseId,
         product_id: productId,
@@ -569,12 +610,12 @@ transactionsRouter.patch(
         delta: (warehouseDeltas.get(key)?.delta || 0) + amount,
       });
     };
-    addWarehouseDelta(oldWarehouseId, oldColorName, -oldSigned);
-    addWarehouseDelta(requestedWarehouseId, requestedColorName, newSigned);
+    addWarehouseDelta(oldProductId, oldWarehouseId, oldColorName, -oldSigned);
+    addWarehouseDelta(newProductId, requestedWarehouseId, requestedColorName, newSigned);
 
     const warehouseUpserts = [];
     for (const entry of warehouseDeltas.values()) {
-      const key = `${entry.warehouse_id}::${entry.color_name.toLowerCase()}`;
+      const key = `${entry.product_id}::${entry.warehouse_id}::${entry.color_name.toLowerCase()}`;
       const currentWarehouseQty = Number(warehouseRowsByKey.get(key)?.quantity || 0);
       const nextWarehouseQty = currentWarehouseQty + entry.delta;
       if (!Number.isFinite(nextWarehouseQty) || nextWarehouseQty < 0) {
@@ -591,16 +632,19 @@ transactionsRouter.patch(
       });
     }
 
-    const updatedProductRes = await supabaseAdmin
-      .from('products')
-      .update({
-        quantity: Math.trunc(nextProductQty),
-        color_stocks: colorStocks,
-      })
-      .eq('id', productId)
-      .select('id')
-      .maybeSingle();
-    if (updatedProductRes.error) return res.status(400).json({ error: updatedProductRes.error.message });
+    for (const productUpdate of productUpdates) {
+      const updatePayload = { quantity: productUpdate.quantity };
+      if (colorStockUpdates.has(productUpdate.id)) {
+        updatePayload.color_stocks = colorStockUpdates.get(productUpdate.id);
+      }
+      const updatedProductRes = await supabaseAdmin
+        .from('products')
+        .update(updatePayload)
+        .eq('id', productUpdate.id)
+        .select('id')
+        .maybeSingle();
+      if (updatedProductRes.error) return res.status(400).json({ error: updatedProductRes.error.message });
+    }
 
     if (warehouseUpserts.length > 0) {
       const updatedWarehouseRes = await supabaseAdmin
@@ -612,6 +656,9 @@ transactionsRouter.patch(
     const updatedTxRes = await supabaseAdmin
       .from('transactions')
       .update({
+        product_id: newProductId,
+        product_name: String(newProduct.name || oldTx.product_name || 'Product'),
+        product_code: String(newProduct.code || oldTx.product_code || ''),
         type,
         color_name: requestedColorName,
         warehouse_id: requestedWarehouseId,
@@ -631,9 +678,17 @@ transactionsRouter.patch(
       actorId: req.session.sub,
       actorName: req.session.name,
       actionType: 'stock_transaction_edit',
-      description: `Edited stock transaction ${txId} for ${oldTx.product_name} (New quantity: ${quantity})`,
+      description: `Edited stock transaction ${txId} for ${newProduct.name || oldTx.product_name} (New quantity: ${quantity})`,
       metadata: {
         transaction_id: txId,
+        old_product_id: oldProductId,
+        new_product_id: newProductId,
+        old_product_code: oldProduct.code || oldTx.product_code || null,
+        new_product_code: newProduct.code || null,
+        old_warehouse_id: oldWarehouseId,
+        new_warehouse_id: requestedWarehouseId,
+        old_color_name: oldColorName,
+        new_color_name: requestedColorName,
         old_qty: oldQty,
         new_qty: quantity
       }

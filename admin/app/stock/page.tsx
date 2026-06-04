@@ -708,7 +708,34 @@ export default function StockPage() {
   }, [products, searchParams, warehouses, fetchStockDistribution]);
 
   const selectedProduct = form.product_id ? productById.get(form.product_id) : undefined;
+  const editingOriginalProduct = editingTransaction ? productById.get(editingTransaction.product_id) : undefined;
+  const pickerProducts = useMemo(() => {
+    if (!editingTransactionId || !editingOriginalProduct) return products;
+    const originalCategory = (editingOriginalProduct.category || 'Uncategorized').toLowerCase();
+    return products.filter((p) => (p.category || 'Uncategorized').toLowerCase() === originalCategory);
+  }, [editingOriginalProduct, editingTransactionId, products]);
   const availableColors = selectedProduct?.color_stocks ?? [];
+
+  const handleProductPicked = useCallback((product: Product) => {
+    const productPcs = Number(product.pcs_per_carton);
+    const nextPcsPerCarton = Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1;
+    setForm((prev) => ({
+      ...prev,
+      product_id: product.id,
+      pcsPerCarton: editingTransactionId ? prev.pcsPerCarton : nextPcsPerCarton,
+      cartons: editingTransactionId ? prev.cartons : '',
+      quantity: editingTransactionId ? prev.quantity : 0,
+      ...(prev.type !== 'stock_out' ? {
+        color_name: product.color_stocks?.[0]?.color || 'Default',
+      } : {}),
+    }));
+    if (form.type === 'stock_out') {
+      fetchStockDistribution(product.id, true);
+    }
+    setShowProductPicker(false);
+    setPickerSearch('');
+    setPickerCategory(null);
+  }, [editingTransactionId, fetchStockDistribution, form.type]);
 
   const allWarehouseIdsWithStock = useMemo(() => {
     if (form.type !== 'stock_out' || !form.product_id) return new Set<string>();
@@ -879,6 +906,7 @@ export default function StockPage() {
 
       if (editingTransactionId) {
         await serverPatch(`/transactions/${encodeURIComponent(editingTransactionId)}`, {
+          product_id: product.id,
           type: form.type,
           color_name: form.color_name.trim(),
           warehouse_id: form.warehouse_id || undefined,
@@ -1579,32 +1607,14 @@ export default function StockPage() {
           <div className="flex-1 overflow-y-auto">
             {pickerSearch ? (
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                {products
+                {pickerProducts
                   .filter((p) => p.name.toLowerCase().includes(pickerSearch.toLowerCase()) || p.code.toLowerCase().includes(pickerSearch.toLowerCase()))
                   .sort((a, b) => a.code.localeCompare(b.code))
                   .map((p) => (
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() => {
-                        const productPcs = Number(p.pcs_per_carton);
-                        setForm((prev) => ({
-                          ...prev,
-                          product_id: p.id,
-                          pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1,
-                          cartons: '',
-                          quantity: 0,
-                          ...(prev.type !== 'stock_out' ? {
-                            color_name: p.color_stocks?.[0]?.color || 'Default',
-                          } : {}),
-                        }));
-                        if (form.type === 'stock_out') {
-                          fetchStockDistribution(p.id, true);
-                        }
-                        setShowProductPicker(false);
-                        setPickerSearch('');
-                        setPickerCategory(null);
-                      }}
+                      onClick={() => handleProductPicked(p)}
                       className="stock-modal-panel text-left rounded-xl border p-4 transition hover:border-indigo-500/50 hover:bg-indigo-500/10"
                     >
                       <p className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-sm">{p.code}</p>
@@ -1615,32 +1625,14 @@ export default function StockPage() {
               </div>
             ) : pickerCategory ? (
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                {products
+                {pickerProducts
                   .filter((p) => (p.category || 'Uncategorized') === pickerCategory)
                   .sort((a, b) => a.code.localeCompare(b.code))
                   .map((p) => (
                     <button
                       key={p.id}
                       type="button"
-                      onClick={() => {
-                        const productPcs = Number(p.pcs_per_carton);
-                        setForm((prev) => ({
-                          ...prev,
-                          product_id: p.id,
-                          pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1,
-                          cartons: '',
-                          quantity: 0,
-                          ...(prev.type !== 'stock_out' ? {
-                            color_name: p.color_stocks?.[0]?.color || 'Default',
-                          } : {}),
-                        }));
-                        if (form.type === 'stock_out') {
-                          fetchStockDistribution(p.id, true);
-                        }
-                        setShowProductPicker(false);
-                        setPickerSearch('');
-                        setPickerCategory(null);
-                      }}
+                      onClick={() => handleProductPicked(p)}
                       className="stock-modal-panel text-left rounded-xl border p-4 transition hover:border-indigo-500/50 hover:bg-indigo-500/10"
                     >
                       <p className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-sm">{p.code}</p>
@@ -1654,7 +1646,7 @@ export default function StockPage() {
             ) : (
               <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {Object.entries(
-                  products.reduce((acc, p) => {
+                  pickerProducts.reduce((acc, p) => {
                     const cat = p.category || 'Uncategorized';
                     if (!acc[cat]) acc[cat] = 0;
                     acc[cat]++;
