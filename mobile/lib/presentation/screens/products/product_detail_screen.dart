@@ -1,64 +1,21 @@
-﻿import 'dart:io';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/products_provider.dart';
-import '../../providers/api_client_provider.dart';
 import '../../providers/transactions_provider.dart';
 import '../../widgets/status_badge.dart';
+import '../../widgets/transaction_activity_card.dart';
 import '../../../core/utils/formatters.dart';
-
-final productTransactionsProvider =
-    FutureProvider.family<List<Transaction>, String>((ref, productId) async {
-  final client = ref.watch(apiClientProvider);
-  final json = await client.get('/transactions?product_id=$productId&limit=1000&page=1');
-  final rows = (json is Map ? json['data'] : null) as List? ?? const [];
-
-  DateTime parseDate(dynamic value) {
-    if (value is String) {
-      final parsed = DateTime.tryParse(value);
-      if (parsed != null) return parsed.toLocal();
-    }
-    return DateTime.now();
-  }
-
-  int? toInt(dynamic value) {
-    if (value is num) return value.toInt();
-    if (value is String) return int.tryParse(value.trim());
-    return null;
-  }
-
-  return rows.map((entry) {
-    final row = Map<String, dynamic>.from(entry as Map);
-    return Transaction(
-      id: row['id']?.toString() ?? '',
-      productId: row['product_id']?.toString() ?? '',
-      workerId: row['worker_id']?.toString() ?? row['user_id']?.toString() ?? '',
-      productName: row['product_name']?.toString() ?? '',
-      productCode: row['product_code']?.toString() ?? row['code']?.toString() ?? '',
-      workerName: row['worker_name']?.toString() ?? '',
-      cartons: toInt(row['cartons']),
-      pcsPerCarton: toInt(row['pcs_per_carton']),
-      colorName: row['color_name']?.toString(),
-      warehouseId: row['warehouse_id']?.toString(),
-      warehouseName: row['warehouse_name']?.toString(),
-      type: TransactionType.fromString(row['type']?.toString() ?? 'OUT'),
-      quantity: toInt(row['quantity']) ?? 0,
-      notes: row['notes']?.toString(),
-      createdAt: parseDate(row['created_at']),
-    );
-  }).toList();
-});
 
 class ProductDetailScreen extends ConsumerStatefulWidget {
   final String productId;
@@ -109,7 +66,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       ref.invalidate(productTransactionsProvider(widget.productId));
     });
     final productsAsync = ref.watch(productsProvider);
-    final productTxsAsync = ref.watch(productTransactionsProvider(widget.productId));
+    final productTxsAsync =
+        ref.watch(productTransactionsProvider(widget.productId));
     final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
 
     return productsAsync.when(
@@ -130,8 +88,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         );
         int? inferredPcsPerCarton;
         final inferredFrequency = <int, int>{};
-        final cartonNotesPattern =
-            RegExp(r'(\d+)\s*cartons?\s*[xX×]\s*(\d+)\s*pcs', caseSensitive: false);
+        final cartonNotesPattern = RegExp(
+            r'(\d+)\s*cartons?\s*[xX×]\s*(\d+)\s*pcs',
+            caseSensitive: false);
         for (final tx in productTransactions) {
           final pcs = tx.pcsPerCarton;
           if (pcs != null && pcs > 1) {
@@ -143,7 +102,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
           if (cartons != null && cartons > 0 && qty > 0 && qty % cartons == 0) {
             final derived = qty ~/ cartons;
             if (derived > 1) {
-              inferredFrequency[derived] = (inferredFrequency[derived] ?? 0) + 1;
+              inferredFrequency[derived] =
+                  (inferredFrequency[derived] ?? 0) + 1;
             }
           }
 
@@ -163,14 +123,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               .key;
         }
         final productPcsPerCarton = product.pcsPerCarton;
-        final effectivePcsPerCarton = (productPcsPerCarton != null &&
-                productPcsPerCarton > 1)
-            ? productPcsPerCarton
-            : ((inferredPcsPerCarton != null && inferredPcsPerCarton > 0)
-                ? inferredPcsPerCarton
-                : ((productPcsPerCarton != null && productPcsPerCarton > 0)
-                    ? productPcsPerCarton
-                    : 1));
+        final effectivePcsPerCarton =
+            (productPcsPerCarton != null && productPcsPerCarton > 1)
+                ? productPcsPerCarton
+                : ((inferredPcsPerCarton != null && inferredPcsPerCarton > 0)
+                    ? inferredPcsPerCarton
+                    : ((productPcsPerCarton != null && productPcsPerCarton > 0)
+                        ? productPcsPerCarton
+                        : 1));
         final isPcsPerCartonInferred =
             (product.pcsPerCarton == null || product.pcsPerCarton! <= 1) &&
                 inferredPcsPerCarton != null;
@@ -443,7 +403,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       FittedBox(
                                         fit: BoxFit.scaleDown,
@@ -460,7 +421,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                       const SizedBox(height: 4),
                                       Text(
                                         'Primary unit: pcs',
-                                        style: const TextStyle(color: Colors.white70, fontSize: 11),
+                                        style: const TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 11),
                                       ),
                                     ],
                                   ),
@@ -471,9 +434,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                _miniStat('Threshold', '${product.threshold} pcs'),
-                                _miniStat('Cartons', '${product.quantity ~/ effectivePcsPerCarton} ctn'),
-                                _miniStat('Per Ctn', '$effectivePcsPerCarton pcs${isPcsPerCartonInferred ? '*' : ''}'),
+                                _miniStat(
+                                    'Threshold', '${product.threshold} pcs'),
+                                _miniStat('Cartons',
+                                    '${product.quantity ~/ effectivePcsPerCarton} ctn'),
+                                _miniStat('Per Ctn',
+                                    '$effectivePcsPerCarton pcs${isPcsPerCartonInferred ? '*' : ''}'),
                               ],
                             ),
                           ],
@@ -599,7 +565,9 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                               BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          AppFormatters.formatQuantity(entry.quantity, product.pcsPerCarton),
+                                          AppFormatters.formatQuantity(
+                                              entry.quantity,
+                                              product.pcsPerCarton),
                                           style: TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 11,
@@ -615,10 +583,39 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Ã¢â€â‚¬Ã¢â€â‚¬ Recent Activity Ã¢â€â‚¬Ã¢â€â‚¬
-                      Text('Recent History',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 16)),
+                      // Recent product movement preview. Full list opens on its own page.
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Recent History',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 16,
+                            ),
+                          ),
+                          if (productTransactions.isNotEmpty)
+                            TextButton.icon(
+                              onPressed: () {
+                                context.push('/product-history/${product.id}');
+                              },
+                              icon: const Icon(
+                                Icons.history_rounded,
+                                size: 17,
+                              ),
+                              label: Text(
+                                'View all (${productTransactions.length})',
+                              ),
+                              style: TextButton.styleFrom(
+                                visualDensity: VisualDensity.compact,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                       const SizedBox(height: 10),
                       if (productTransactions.isEmpty)
                         Container(
@@ -637,8 +634,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                         )
                       else
                         ...productTransactions
-                            .take(8)
-                            .map((tx) => _DetailedActivityTile(tx: tx)),
+                            .take(5)
+                            .map((tx) => TransactionActivityCard(
+                                  transaction: tx,
+                                  margin: const EdgeInsets.only(
+                                    bottom: AppTheme.sp8,
+                                  ),
+                                )),
 
                       const SizedBox(height: 80),
                     ],
@@ -941,249 +943,6 @@ class _FullScreenImageViewerState extends State<FullScreenImageViewer> {
             ),
           );
         },
-      ),
-    );
-  }
-}
-
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Activity Tile Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
-// ignore: unused_element
-class _ActivityTile extends StatelessWidget {
-  final Transaction tx;
-  const _ActivityTile({required this.tx});
-
-  @override
-  Widget build(BuildContext context) {
-    final isIn = tx.isStockIn;
-    final color = isIn ? AppTheme.success : AppTheme.danger;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor(context),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border: Border.all(color: AppTheme.borderColor(context)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 34,
-            height: 34,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              isIn ? Icons.south_west_rounded : Icons.north_east_rounded,
-              color: color,
-              size: 16,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${isIn ? 'Stock In' : 'Stock Out'}: ${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-                ),
-                Text(
-                  '${tx.workerName.isEmpty ? 'Worker' : tx.workerName} Ã¢â‚¬Â¢ ${DateFormat('MMM d, h:mm a').format(tx.createdAt)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      color: AppTheme.secondaryTextColor(context),
-                      fontSize: 11),
-                ),
-                if (tx.cartons != null && tx.pcsPerCarton != null)
-                  Text(
-                    '${tx.cartons} ctn x ${tx.pcsPerCarton} pcs',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: AppTheme.secondaryTextColor(context),
-                        fontSize: 11),
-                  ),
-                if ((tx.notes ?? '').trim().isNotEmpty)
-                  Text(
-                    tx.notes!.trim(),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: AppTheme.secondaryTextColor(context),
-                        fontSize: 11),
-                  ),
-              ],
-            ),
-          ),
-          Text(
-            '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
-            style: TextStyle(
-                color: color, fontWeight: FontWeight.w800, fontSize: 14),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DetailedActivityTile extends StatelessWidget {
-  final Transaction tx;
-  const _DetailedActivityTile({required this.tx});
-
-  @override
-  Widget build(BuildContext context) {
-    final isIn = tx.isStockIn;
-    final actionColor = isIn ? AppTheme.success : AppTheme.danger;
-    final iconBg = isIn ? AppTheme.successLight : AppTheme.dangerLight;
-    final workerName = tx.workerName.isEmpty ? 'Unknown Worker' : tx.workerName;
-    final warehouseName = tx.warehouseName ?? 'Main Warehouse';
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppTheme.sp8),
-      decoration: BoxDecoration(
-        color: AppTheme.surfaceColor(context),
-        borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-        border: Border.all(color: AppTheme.borderColor(context)),
-      ),
-      child: ListTile(
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(AppTheme.radiusSM),
-          ),
-          child: Icon(
-            isIn ? Icons.south_west_rounded : Icons.north_east_rounded,
-            color: actionColor,
-            size: 18,
-          ),
-        ),
-        title: Text(
-          '${isIn ? "Stock In" : "Stock Out"}: ${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.person_rounded, size: 11, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      workerName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 3),
-              Row(
-                children: [
-                  Icon(Icons.storefront_rounded, size: 11, color: Colors.grey[500]),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      warehouseName,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ),
-                  if (tx.colorName != null && tx.colorName!.trim().isNotEmpty) ...[
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        '• ${tx.colorName!.trim()}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 3),
-              Row(
-                children: [
-                  Icon(Icons.access_time_filled_rounded, size: 11, color: Colors.grey[400]),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      DateFormat('dd MMM, hh:mm a').format(tx.createdAt),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[500],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              if (tx.cartons != null && tx.pcsPerCarton != null) ...[
-                const SizedBox(height: 3),
-                Text(
-                  '${tx.cartons} ctn x ${tx.pcsPerCarton} pcs',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-              if ((tx.notes ?? '').trim().isNotEmpty) ...[
-                const SizedBox(height: 3),
-                Text(
-                  tx.notes!.trim(),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-        trailing: Text(
-          '${isIn ? '+' : '-'}${AppFormatters.formatQuantity(tx.quantity, tx.pcsPerCarton)}',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: actionColor,
-                fontWeight: FontWeight.w900,
-              ),
-        ),
       ),
     );
   }

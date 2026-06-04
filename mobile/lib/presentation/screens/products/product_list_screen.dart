@@ -32,6 +32,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String? _openFolder; // null = folder view, string = inside a folder
   String _searchQuery = '';
+  bool _showProductsDirectly = false;
   Set<String> _warehouseProductIds = <String>{};
   bool _isLoadingWarehouseProducts = false;
   String? _warehouseProductsError;
@@ -45,6 +46,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         widget.initialFilter != 'out_of_stock') {
       _openFolder = widget.initialFilter;
     }
+    _showProductsDirectly = widget.initialFilter == 'low' ||
+        widget.initialFilter == 'in_stock' ||
+        widget.initialFilter == 'out_of_stock';
     _loadWarehouseProductsIfNeeded();
   }
 
@@ -58,6 +62,13 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         widget.initialFilter != 'out_of_stock') {
       setState(() {
         _openFolder = widget.initialFilter;
+      });
+    } else if (widget.initialFilter != oldWidget.initialFilter) {
+      setState(() {
+        _openFolder = null;
+        _showProductsDirectly = widget.initialFilter == 'low' ||
+            widget.initialFilter == 'in_stock' ||
+            widget.initialFilter == 'out_of_stock';
       });
     }
     if (widget.warehouseId != oldWidget.warehouseId) {
@@ -118,6 +129,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     final productsAsync = ref.watch(productsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
     final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
+    final isWarehouseRoute =
+        widget.warehouseId != null && widget.warehouseId!.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor(context),
@@ -268,7 +281,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                 ],
               ),
             ),
-          if (widget.warehouseId != null && widget.warehouseId!.trim().isNotEmpty)
+          if (widget.warehouseId != null &&
+              widget.warehouseId!.trim().isNotEmpty)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -328,6 +342,53 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               ),
             ),
           ),
+          if (_openFolder == null &&
+              _searchQuery.isEmpty &&
+              !isWarehouseRoute) ...[
+            Container(
+              width: double.infinity,
+              color: AppTheme.surfaceColor(context),
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppTheme.inputFillColor(context),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.borderColor(context)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _ProductViewModeButton(
+                        label: 'Folders',
+                        icon: Icons.folder_rounded,
+                        selected: !_showProductsDirectly,
+                        onTap: () {
+                          setState(() {
+                            _showProductsDirectly = false;
+                            _openFolder = null;
+                          });
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: _ProductViewModeButton(
+                        label: 'Products',
+                        icon: Icons.inventory_2_rounded,
+                        selected: _showProductsDirectly,
+                        onTap: () {
+                          setState(() {
+                            _showProductsDirectly = true;
+                            _openFolder = null;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
 
           // Main content
           Expanded(
@@ -354,8 +415,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         .where((p) => _warehouseProductIds.contains(p.id))
                         .toList()
                     : allProducts;
-                final isWarehouseMode =
-                    widget.warehouseId != null && widget.warehouseId!.trim().isNotEmpty;
+                final isWarehouseMode = widget.warehouseId != null &&
+                    widget.warehouseId!.trim().isNotEmpty;
 
                 // ── Search mode (cross-folder) ──
                 if (_searchQuery.isNotEmpty) {
@@ -371,11 +432,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                   return _buildProductGrid(results, 'Search Results', role);
                 }
 
-                // ── Flat Filtered Product Mode (In Stock / Out of Stock / Low Stock) ──
-                final isFlatProductMode = widget.initialFilter == 'in_stock' ||
-                    widget.initialFilter == 'out_of_stock' ||
-                    widget.initialFilter == 'low';
-                if (isFlatProductMode && _openFolder == null) {
+                // Direct product mode. Folder mode below still respects the same filters.
+                if (_showProductsDirectly && _openFolder == null) {
                   var filteredProducts = sourceProducts;
                   if (widget.initialFilter == 'in_stock') {
                     filteredProducts =
@@ -388,12 +446,14 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         .where((p) => p.quantity <= p.threshold)
                         .toList();
                   }
-                  
+
                   final title = widget.initialFilter == 'in_stock'
                       ? 'In Stock Products'
                       : (widget.initialFilter == 'out_of_stock'
                           ? 'Out of Stock Products'
-                          : 'Low Stock Products');
+                          : (widget.initialFilter == 'low'
+                              ? 'Low Stock Products'
+                              : 'All Products'));
                   return _buildProductGrid(filteredProducts, title, role);
                 }
 
@@ -408,8 +468,9 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         .where((p) => p.quantity <= p.threshold)
                         .toList();
                   } else if (widget.initialFilter == 'out_of_stock') {
-                    warehouseProducts =
-                        warehouseProducts.where((p) => p.quantity == 0).toList();
+                    warehouseProducts = warehouseProducts
+                        .where((p) => p.quantity == 0)
+                        .toList();
                   }
                   return _buildProductGrid(
                       warehouseProducts,
@@ -462,9 +523,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       final alerts = catProds
                           .where((p) => p.quantity <= p.threshold)
                           .length;
-                      final outOfStock = catProds
-                          .where((p) => p.quantity == 0)
-                          .length;
+                      final outOfStock =
+                          catProds.where((p) => p.quantity == 0).length;
                       return _FolderData(
                         name: cat,
                         count: catProds.length,
@@ -482,7 +542,8 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     } else if (widget.initialFilter == 'low') {
                       foldersList = folders.where((f) => f.alerts > 0).toList();
                     } else if (widget.initialFilter == 'out_of_stock') {
-                      foldersList = folders.where((f) => f.outOfStock > 0).toList();
+                      foldersList =
+                          folders.where((f) => f.outOfStock > 0).toList();
                     }
 
                     return RefreshIndicator(
@@ -880,6 +941,59 @@ class _MiniStat extends StatelessWidget {
           fontSize: 9,
           color: isAlert ? AppTheme.warning : Colors.white,
           fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
+class _ProductViewModeButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _ProductViewModeButton({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 16,
+              color: selected
+                  ? Colors.white
+                  : AppTheme.secondaryTextColor(context),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected
+                    ? Colors.white
+                    : AppTheme.secondaryTextColor(context),
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
         ),
       ),
     );

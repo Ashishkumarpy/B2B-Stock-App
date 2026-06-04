@@ -68,8 +68,17 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   String _getCleanNotes(String? notes) {
     if (notes == null) return '';
     var clean = notes.trim();
-    clean = clean.replaceFirst(RegExp(r'^Customer:\s*[^|]+(\|)?', caseSensitive: false), '').trim();
-    clean = clean.replaceFirst(RegExp(r'^\d+\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*\d+\s*(?:pcs)?\s*(\|)?', caseSensitive: false), '').trim();
+    clean = clean
+        .replaceFirst(
+            RegExp(r'^Customer:\s*[^|]+(\|)?', caseSensitive: false), '')
+        .trim();
+    clean = clean
+        .replaceFirst(
+            RegExp(
+                r'^\d+\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*\d+\s*(?:pcs)?\s*(\|)?',
+                caseSensitive: false),
+            '')
+        .trim();
     return clean;
   }
 
@@ -149,7 +158,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               _applyStockInPrefs(match);
             }
           });
-          _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: true);
+          _refreshStockOutWarehouses(
+              autoRouteWarehouse: true, autoRouteColor: true);
         }
       }
     });
@@ -275,8 +285,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     try {
       final client = ref.read(apiClientProvider);
       final productId = Uri.encodeQueryComponent(product.id);
-      final response = await client.get('/products/$productId/stock-distribution');
-      final list = (response is Map ? response['data'] : null) as List? ?? const [];
+      final response =
+          await client.get('/products/$productId/stock-distribution');
+      final list =
+          (response is Map ? response['data'] : null) as List? ?? const [];
       final rows = list
           .whereType<Map>()
           .map((row) => Map<String, dynamic>.from(row))
@@ -291,7 +303,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       if (_type == TransactionType.stockOut && rows.isNotEmpty) {
         final currentColor = _selectedColor.trim().toLowerCase();
         final currentHasStock = rows.any((r) =>
-            (r['color_name']?.toString() ?? '').trim().toLowerCase() == currentColor &&
+            (r['color_name']?.toString() ?? '').trim().toLowerCase() ==
+                currentColor &&
             (int.tryParse(r['quantity']?.toString() ?? '0') ?? 0) > 0);
 
         if (!currentHasStock) {
@@ -344,24 +357,27 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     }
 
     final targetColor = _selectedColor.trim().toLowerCase();
-    
+
     // 1. Group stocks by warehouse (filtered by selected color for the dashboard/warning state)
     final warehouseQtyMap = <String, int>{};
     final warehouseDetailMap = <String, Map<String, dynamic>>{};
-    
+
     for (final row in _productStockDistribution) {
       final wid = row['warehouse_id']?.toString() ?? '';
       if (wid.isEmpty) continue;
-      
-      final rowColor = (row['color_name']?.toString() ?? '').trim().toLowerCase();
-      
-      if (targetColor.isNotEmpty && targetColor != 'default' && rowColor != targetColor) {
+
+      final rowColor =
+          (row['color_name']?.toString() ?? '').trim().toLowerCase();
+
+      if (targetColor.isNotEmpty &&
+          targetColor != 'default' &&
+          rowColor != targetColor) {
         continue;
       }
-      
+
       final qty = int.tryParse(row['quantity']?.toString() ?? '0') ?? 0;
       if (qty <= 0) continue;
-      
+
       warehouseQtyMap[wid] = (warehouseQtyMap[wid] ?? 0) + qty;
       warehouseDetailMap[wid] = row;
     }
@@ -376,8 +392,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       };
     }).toList();
 
-    warehouseRows.sort((a, b) => (b['available_quantity'] as int).compareTo(a['available_quantity'] as int));
-    
+    warehouseRows.sort((a, b) => (b['available_quantity'] as int)
+        .compareTo(a['available_quantity'] as int));
+
     // Calculate all warehouses where the product has any stock (unfiltered for dropdown free selection)
     final allWarehouseIdsWithStock = _productStockDistribution
         .map((r) => r['warehouse_id']?.toString() ?? '')
@@ -387,15 +404,15 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     // 2. Group available colors (unfiltered by warehouse for dropdown free selection)
     final colorQtyMap = <String, int>{};
     final colorNameMap = <String, String>{};
-    
+
     for (final row in _productStockDistribution) {
       final colorName = (row['color_name']?.toString() ?? '').trim();
       if (colorName.isEmpty) continue;
-      
+
       final key = colorName.toLowerCase();
       final qty = int.tryParse(row['quantity']?.toString() ?? '0') ?? 0;
       if (qty <= 0) continue;
-      
+
       colorQtyMap[key] = (colorQtyMap[key] ?? 0) + qty;
       colorNameMap[key] = colorName;
     }
@@ -407,12 +424,17 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       };
     }).toList();
 
-    colorRows.sort((a, b) => (a['color_name'] as String).toLowerCase().compareTo((b['color_name'] as String).toLowerCase()));
+    colorRows.sort((a, b) => (a['color_name'] as String)
+        .toLowerCase()
+        .compareTo((b['color_name'] as String).toLowerCase()));
 
     setState(() {
-      _stockOutWarehouseStockRows = warehouseRows; // Filtered by color for dashboard
-      _stockOutWarehouseIdsWithStock = allWarehouseIdsWithStock; // All stocked warehouses for dropdown
-      _stockOutColorRows = colorRows; // All stocked colors for dropdown (free selection)
+      _stockOutWarehouseStockRows =
+          warehouseRows; // Filtered by color for dashboard
+      _stockOutWarehouseIdsWithStock =
+          allWarehouseIdsWithStock; // All stocked warehouses for dropdown
+      _stockOutColorRows =
+          colorRows; // All stocked colors for dropdown (free selection)
 
       // If the currently selected warehouse has no stock for this color, auto-switch to one that does
       final targetColorWarehouseIds = warehouseRows
@@ -421,9 +443,11 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           .toSet();
 
       if (autoRouteWarehouse) {
-        if (_selectedWarehouseId != null && !targetColorWarehouseIds.contains(_selectedWarehouseId)) {
+        if (_selectedWarehouseId != null &&
+            !targetColorWarehouseIds.contains(_selectedWarehouseId)) {
           if (targetColorWarehouseIds.isNotEmpty) {
-            _selectedWarehouseId = warehouseRows.first['warehouse_id']?.toString();
+            _selectedWarehouseId =
+                warehouseRows.first['warehouse_id']?.toString();
           }
         }
       }
@@ -443,11 +467,13 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               final qty = int.tryParse(r['quantity']?.toString() ?? '0') ?? 0;
               return wid == _selectedWarehouseId && qty > 0;
             })
-            .map((r) => (r['color_name']?.toString() ?? '').trim().toLowerCase())
+            .map(
+                (r) => (r['color_name']?.toString() ?? '').trim().toLowerCase())
             .toSet();
 
         final currentColor = _selectedColor.trim().toLowerCase();
-        if (!colorsInSelectedWarehouse.contains(currentColor) && colorsInSelectedWarehouse.isNotEmpty) {
+        if (!colorsInSelectedWarehouse.contains(currentColor) &&
+            colorsInSelectedWarehouse.isNotEmpty) {
           final firstStockedColor = _productStockDistribution.firstWhere(
             (r) {
               final wid = r['warehouse_id']?.toString() ?? '';
@@ -457,13 +483,17 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             orElse: () => <String, dynamic>{},
           );
           if (firstStockedColor.isNotEmpty) {
-            _selectedColor = firstStockedColor['color_name']?.toString() ?? 'Default';
+            _selectedColor =
+                firstStockedColor['color_name']?.toString() ?? 'Default';
           }
         }
       }
 
-      final availableColorNames = colorRows.map((r) => r['color_name'].toString().trim().toLowerCase()).toSet();
-      if (_selectedColor.trim().isNotEmpty && !availableColorNames.contains(_selectedColor.trim().toLowerCase())) {
+      final availableColorNames = colorRows
+          .map((r) => r['color_name'].toString().trim().toLowerCase())
+          .toSet();
+      if (_selectedColor.trim().isNotEmpty &&
+          !availableColorNames.contains(_selectedColor.trim().toLowerCase())) {
         _selectedColor = colorRows.isNotEmpty
             ? (colorRows.first['color_name']?.toString() ?? 'Default')
             : 'Default';
@@ -558,6 +588,35 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       return;
     }
 
+    if (!_isEditingOlderThan12Hours &&
+        (_selectedWarehouseId == null ||
+            _selectedWarehouseId!.trim().isEmpty ||
+            _selectedWarehouseId == 'default')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a warehouse.'),
+          backgroundColor: AppTheme.danger,
+        ),
+      );
+      return;
+    }
+    if (!_isEditingOlderThan12Hours) {
+      final activeWarehouses = ref.read(activeWarehousesProvider).value ?? [];
+      final selectedWarehouseExists = activeWarehouses.any(
+        (w) => w['id']?.toString() == _selectedWarehouseId,
+      );
+      if (!selectedWarehouseExists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('Please select an active warehouse from the server list.'),
+            backgroundColor: AppTheme.danger,
+          ),
+        );
+        return;
+      }
+    }
+
     // Validation for Stock Out
     if (_type == TransactionType.stockOut && !_isEditingOlderThan12Hours) {
       if (_selectedWarehouseId == null ||
@@ -586,11 +645,13 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         final oldColor = widget.initialColorName ?? 'Default';
 
         if (oldType == TransactionType.stockOut) {
-          if (oldColor.trim().toLowerCase() == _selectedColor.trim().toLowerCase()) {
+          if (oldColor.trim().toLowerCase() ==
+              _selectedColor.trim().toLowerCase()) {
             availableQty += oldQty;
           }
         } else if (oldType == TransactionType.stockIn) {
-          if (oldColor.trim().toLowerCase() == _selectedColor.trim().toLowerCase()) {
+          if (oldColor.trim().toLowerCase() ==
+              _selectedColor.trim().toLowerCase()) {
             availableQty -= oldQty;
           }
         }
@@ -638,8 +699,11 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
       if (_isEditing) {
         await client.patch('/transactions/${widget.transactionId}', {
+          'product_id': _selectedProduct!.id,
           'type': _type == TransactionType.stockIn ? 'stock_in' : 'stock_out',
           'quantity': qty,
+          'color_name': _selectedColor,
+          'warehouse_id': _selectedWarehouseId,
           'notes': finalNotes.isEmpty ? null : finalNotes,
           'worker_name': workerName,
           'cartons': cartonsText.isNotEmpty ? int.tryParse(cartonsText) : null,
@@ -653,10 +717,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           'quantity': qty,
           'color_name': _selectedColor,
           'notes': finalNotes,
-          'warehouse_id':
-              (_selectedWarehouseId == null || _selectedWarehouseId == 'default')
-                  ? null
-                  : _selectedWarehouseId,
+          'warehouse_id': (_selectedWarehouseId == null ||
+                  _selectedWarehouseId == 'default')
+              ? null
+              : _selectedWarehouseId,
           'worker_name': workerName,
           if (cartonsText.isNotEmpty) 'cartons': int.tryParse(cartonsText),
           'pcs_per_carton': resolvedPcsPerCarton,
@@ -709,8 +773,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               _applyStockInPrefs(p);
             }
           });
-          _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: true);
-          _refreshStockOutColors(autoRouteWarehouse: true, autoRouteColor: true);
+          _refreshStockOutWarehouses(
+              autoRouteWarehouse: true, autoRouteColor: true);
+          _refreshStockOutColors(
+              autoRouteWarehouse: true, autoRouteColor: true);
           Navigator.pop(context);
         },
       ),
@@ -720,7 +786,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   @override
   Widget build(BuildContext context) {
     ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
-      warehousesProvider,
+      activeWarehousesProvider,
       (previous, next) {
         if (next.hasValue && _selectedWarehouseId == null) {
           final list = next.value ?? [];
@@ -738,7 +804,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _prefetchProductImages(products);
     });
-    final warehousesAsync = ref.watch(warehousesProvider);
+    final warehousesAsync = ref.watch(activeWarehousesProvider);
     final warehouses = warehousesAsync.value ?? [];
     final warehouseOptionsRaw = (_type == TransactionType.stockOut &&
             _selectedProduct != null &&
@@ -856,7 +922,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, color: Colors.amber.shade800, size: 20),
+                      Icon(Icons.info_outline_rounded,
+                          color: Colors.amber.shade800, size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -891,11 +958,18 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           ? null
                           : () {
                               setState(() => _type = TransactionType.stockIn);
-                              _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: true);
-                              _refreshStockOutColors(autoRouteWarehouse: true, autoRouteColor: true);
+                              _refreshStockOutWarehouses(
+                                  autoRouteWarehouse: true,
+                                  autoRouteColor: true);
+                              _refreshStockOutColors(
+                                  autoRouteWarehouse: true,
+                                  autoRouteColor: true);
                             },
                       child: Opacity(
-                        opacity: _isEditingOlderThan12Hours && _type != TransactionType.stockIn ? 0.4 : 1.0,
+                        opacity: _isEditingOlderThan12Hours &&
+                                _type != TransactionType.stockIn
+                            ? 0.4
+                            : 1.0,
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
@@ -952,11 +1026,18 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   _selectedColor = 'Default';
                                 }
                               });
-                              _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: true);
-                              _refreshStockOutColors(autoRouteWarehouse: true, autoRouteColor: true);
+                              _refreshStockOutWarehouses(
+                                  autoRouteWarehouse: true,
+                                  autoRouteColor: true);
+                              _refreshStockOutColors(
+                                  autoRouteWarehouse: true,
+                                  autoRouteColor: true);
                             },
                       child: Opacity(
-                        opacity: _isEditingOlderThan12Hours && _type != TransactionType.stockOut ? 0.4 : 1.0,
+                        opacity: _isEditingOlderThan12Hours &&
+                                _type != TransactionType.stockOut
+                            ? 0.4
+                            : 1.0,
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
@@ -1018,17 +1099,18 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 onTap: _isEditingOlderThan12Hours
                     ? null
                     : () {
-                        final filteredProducts = _type == TransactionType.stockOut
-                            ? products.where((p) => p.quantity > 0).toList()
-                            : products;
+                        final filteredProducts =
+                            _type == TransactionType.stockOut
+                                ? products.where((p) => p.quantity > 0).toList()
+                                : products;
                         _openProductPicker(filteredProducts);
                       },
                 borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                 child: Opacity(
                   opacity: _isEditingOlderThan12Hours ? 0.6 : 1.0,
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: AppTheme.surfaceColor(context),
                       borderRadius: BorderRadius.circular(AppTheme.radiusLG),
@@ -1058,38 +1140,38 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   ),
                                 ),
                         ),
-                      Row(
-                        children: [
-                          if (_selectedProduct != null) ...[
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryLight,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text(
-                                'Available: ${_selectedProduct!.quantity}',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppTheme.primary,
+                        Row(
+                          children: [
+                            if (_selectedProduct != null) ...[
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryLight,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Available: ${_selectedProduct!.quantity}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primary,
+                                  ),
                                 ),
                               ),
+                              const SizedBox(width: 8),
+                            ],
+                            Icon(
+                              Icons.keyboard_arrow_down_rounded,
+                              color: AppTheme.mutedTextColor(context),
                             ),
-                            const SizedBox(width: 8),
                           ],
-                          Icon(
-                            Icons.keyboard_arrow_down_rounded,
-                            color: AppTheme.mutedTextColor(context),
-                          ),
-                        ],
-                      ),
-                    ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
               const SizedBox(height: 20),
 
               // WAREHOUSE & COLOR ROW
@@ -1116,7 +1198,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           child: Opacity(
                             opacity: _isEditingOlderThan12Hours ? 0.6 : 1.0,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
                               decoration: BoxDecoration(
                                 color: AppTheme.surfaceColor(context),
                                 borderRadius:
@@ -1143,13 +1226,14 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                           warehouseOptions.isEmpty)
                                       ? [
                                           DropdownMenuItem(
-                                            value: 'default',
+                                            value: '__no_stock__',
                                             child: Text(
                                               'No warehouse has stock for this color',
                                               style: TextStyle(
                                                   fontSize: 13,
-                                                  color: AppTheme.primaryTextColor(
-                                                      context)),
+                                                  color:
+                                                      AppTheme.primaryTextColor(
+                                                          context)),
                                               overflow: TextOverflow.ellipsis,
                                             ),
                                           ),
@@ -1157,23 +1241,28 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                       : warehouses.isEmpty
                                           ? [
                                               DropdownMenuItem(
-                                                value: 'default',
+                                                value: '__none__',
                                                 child: Text(
-                                                  'Main Warehouse - Primary Location',
+                                                  warehousesAsync.isLoading
+                                                      ? 'Loading warehouses...'
+                                                      : 'No active warehouses on server',
                                                   style: TextStyle(
                                                       fontSize: 13,
-                                                      color:
-                                                          AppTheme.primaryTextColor(
+                                                      color: AppTheme
+                                                          .primaryTextColor(
                                                               context)),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               ),
                                             ]
                                           : warehouseOptions.map((w) {
-                                              final name = w['name']?.toString() ??
-                                                  'Main Warehouse';
+                                              final name =
+                                                  w['name']?.toString() ??
+                                                      'Main Warehouse';
                                               final loc =
-                                                  w['location']?.toString() ?? '';
+                                                  w['location']?.toString() ??
+                                                      '';
                                               final display = loc.isNotEmpty
                                                   ? '$name - $loc'
                                                   : name;
@@ -1183,21 +1272,27 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                                   display,
                                                   style: TextStyle(
                                                       fontSize: 13,
-                                                      color:
-                                                          AppTheme.primaryTextColor(
+                                                      color: AppTheme
+                                                          .primaryTextColor(
                                                               context)),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               );
                                             }).toList(),
                                   onChanged: _isEditingOlderThan12Hours
                                       ? null
                                       : (val) {
-                                          if (val == 'default') return;
+                                          if (val == null ||
+                                              val.startsWith('__')) {
+                                            return;
+                                          }
                                           setState(() {
                                             _selectedWarehouseId = val;
                                           });
-                                          _refreshStockOutColors(autoRouteColor: true, autoRouteWarehouse: false);
+                                          _refreshStockOutColors(
+                                              autoRouteColor: true,
+                                              autoRouteWarehouse: false);
                                         },
                                 ),
                               ),
@@ -1337,7 +1432,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           child: Opacity(
                             opacity: _isEditingOlderThan12Hours ? 0.6 : 1.0,
                             child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 12),
                               decoration: BoxDecoration(
                                 color: AppTheme.surfaceColor(context),
                                 borderRadius:
@@ -1355,7 +1451,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                           (_type != TransactionType.stockOut
                                               ? _selectedProduct!
                                                   .colorStocks.isNotEmpty
-                                              : stockOutColorRowsDeduped.isNotEmpty)
+                                              : stockOutColorRowsDeduped
+                                                  .isNotEmpty)
                                       ? (_type == TransactionType.stockOut
                                           ? stockOutColorRowsDeduped.map((c) {
                                               final cName =
@@ -1369,24 +1466,27 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                                   '$cName ($cQty)',
                                                   style: TextStyle(
                                                       fontSize: 13,
-                                                      color:
-                                                          AppTheme.primaryTextColor(
+                                                      color: AppTheme
+                                                          .primaryTextColor(
                                                               context)),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               );
                                             }).toList()
-                                          : _selectedProduct!.colorStocks.map((c) {
+                                          : _selectedProduct!.colorStocks
+                                              .map((c) {
                                               return DropdownMenuItem(
                                                 value: c.color,
                                                 child: Text(
                                                   '${c.color} (${c.quantity})',
                                                   style: TextStyle(
                                                       fontSize: 13,
-                                                      color:
-                                                          AppTheme.primaryTextColor(
+                                                      color: AppTheme
+                                                          .primaryTextColor(
                                                               context)),
-                                                  overflow: TextOverflow.ellipsis,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
                                                 ),
                                               );
                                             }).toList())
@@ -1397,8 +1497,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                               'Default',
                                               style: TextStyle(
                                                   fontSize: 13,
-                                                  color: AppTheme.primaryTextColor(
-                                                      context)),
+                                                  color:
+                                                      AppTheme.primaryTextColor(
+                                                          context)),
                                             ),
                                           ),
                                         ],
@@ -1409,7 +1510,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                             setState(() {
                                               _selectedColor = val;
                                             });
-                                            _refreshStockOutWarehouses(autoRouteWarehouse: true, autoRouteColor: false);
+                                            _refreshStockOutWarehouses(
+                                                autoRouteWarehouse: true,
+                                                autoRouteColor: false);
                                           }
                                         },
                                 ),
@@ -1458,7 +1561,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 color: AppTheme.mutedTextColor(context),
                                 fontSize: 13),
                             fillColor: _isEditingOlderThan12Hours
-                                ? AppTheme.inputFillColor(context).withOpacity(0.5)
+                                ? AppTheme.inputFillColor(context)
+                                    .withOpacity(0.5)
                                 : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
@@ -1473,7 +1577,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                               borderRadius:
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
-                                  color: AppTheme.borderColor(context).withOpacity(0.5)),
+                                  color: AppTheme.borderColor(context)
+                                      .withOpacity(0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -1518,7 +1623,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 color: AppTheme.mutedTextColor(context),
                                 fontSize: 13),
                             fillColor: _isEditingOlderThan12Hours
-                                ? AppTheme.inputFillColor(context).withOpacity(0.5)
+                                ? AppTheme.inputFillColor(context)
+                                    .withOpacity(0.5)
                                 : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
@@ -1533,7 +1639,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                               borderRadius:
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
-                                  color: AppTheme.borderColor(context).withOpacity(0.5)),
+                                  color: AppTheme.borderColor(context)
+                                      .withOpacity(0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -1584,7 +1691,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 color: AppTheme.mutedTextColor(context),
                                 fontSize: 13),
                             fillColor: _isEditingOlderThan12Hours
-                                ? AppTheme.inputFillColor(context).withOpacity(0.5)
+                                ? AppTheme.inputFillColor(context)
+                                    .withOpacity(0.5)
                                 : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
@@ -1599,7 +1707,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                               borderRadius:
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
-                                  color: AppTheme.borderColor(context).withOpacity(0.5)),
+                                  color: AppTheme.borderColor(context)
+                                      .withOpacity(0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -1841,6 +1950,7 @@ class ProductPickerModal extends StatefulWidget {
 class _ProductPickerModalState extends State<ProductPickerModal> {
   String? _selectedCategory;
   String _searchQuery = '';
+  bool _showProductsDirectly = false;
   final _searchController = TextEditingController();
 
   @override
@@ -1879,7 +1989,10 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
     displayProducts.sort((a, b) => a.code.compareTo(b.code));
 
     final isSearching = _searchQuery.isNotEmpty;
-    final isRoot = _selectedCategory == null && !isSearching;
+    final isRoot =
+        _selectedCategory == null && !isSearching && !_showProductsDirectly;
+    final shouldShowFolders =
+        _selectedCategory == null && !isSearching && !_showProductsDirectly;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
@@ -1915,6 +2028,8 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
                         if (isSearching) {
                           _searchQuery = '';
                           _searchController.clear();
+                        } else if (_showProductsDirectly) {
+                          _showProductsDirectly = false;
                         } else {
                           _selectedCategory = null;
                         }
@@ -1926,7 +2041,10 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
                 Text(
                   isSearching
                       ? 'Search Results'
-                      : (_selectedCategory ?? 'Choose product code...'),
+                      : (_selectedCategory ??
+                          (_showProductsDirectly
+                              ? 'Choose product'
+                              : 'Choose product code...')),
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -1942,7 +2060,50 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
               ],
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
+
+          if (!isSearching && _selectedCategory == null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppTheme.inputFillColor(context),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppTheme.borderColor(context)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _PickerModeButton(
+                        label: 'Folders',
+                        selected: !_showProductsDirectly,
+                        onTap: () {
+                          setState(() {
+                            _showProductsDirectly = false;
+                            _selectedCategory = null;
+                          });
+                        },
+                      ),
+                    ),
+                    Expanded(
+                      child: _PickerModeButton(
+                        label: 'Products',
+                        selected: _showProductsDirectly,
+                        onTap: () {
+                          setState(() {
+                            _showProductsDirectly = true;
+                            _selectedCategory = null;
+                          });
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
 
           // Search bar
           Padding(
@@ -1996,7 +2157,7 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-              child: isRoot
+              child: shouldShowFolders
                   ? GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -2132,16 +2293,34 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
                                       MainAxisAlignment.spaceBetween,
                                   children: [
                                     Expanded(
-                                      child: Text(
-                                        p.code,
-                                        style: TextStyle(
-                                          fontFamily: 'monospace',
-                                          fontWeight: FontWeight.w900,
-                                          fontSize: 13,
-                                          color: AppTheme.primary,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            p.code,
+                                            style: TextStyle(
+                                              fontFamily: 'monospace',
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 13,
+                                              color: AppTheme.primary,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '${p.name} - ${p.category}',
+                                            style: TextStyle(
+                                              fontSize: 10.5,
+                                              color: AppTheme.mutedTextColor(
+                                                  context),
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                     const SizedBox(width: 12),
@@ -2170,6 +2349,43 @@ class _ProductPickerModalState extends State<ProductPickerModal> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PickerModeButton extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _PickerModeButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(9),
+      child: Container(
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? AppTheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color:
+                selected ? Colors.white : AppTheme.secondaryTextColor(context),
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
       ),
     );
   }

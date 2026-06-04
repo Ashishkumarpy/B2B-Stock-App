@@ -43,6 +43,12 @@ export default function ProductsPage() {
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [newCategory, setNewCategory] = useState('');
   const warehouseId = searchParams.get('warehouseId');
+  const viewType = searchParams.get('view');
+  const [productViewMode, setProductViewMode] = useState<'folders' | 'products'>(
+    viewType === 'all' || viewType === 'in_stock' || viewType === 'out_of_stock' || warehouseId
+      ? 'products'
+      : 'folders'
+  );
   const [warehouseStocks, setWarehouseStocks] = useState<Record<string, number> | null>(null);
   const [selectedWarehouseName, setSelectedWarehouseName] = useState<string | null>(null);
   
@@ -188,6 +194,17 @@ export default function ProductsPage() {
     }
   }, [searchParams, openAdd]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setProductViewMode(
+        viewType === 'all' || viewType === 'in_stock' || viewType === 'out_of_stock' || warehouseId
+          ? 'products'
+          : 'folders'
+      );
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [viewType, warehouseId]);
+
   const onModalSuccess = async () => {
     const returnTo = returnToRef.current;
     returnToRef.current = null;
@@ -242,15 +259,19 @@ export default function ProductsPage() {
 
   const visibleFolders = folderSummaries.filter((f) => {
     if (warehouseId && f.products.length === 0) return false;
+    if (viewType === 'in_stock' && f.totalQty <= 0) return false;
+    if (viewType === 'out_of_stock' && !f.products.some((p) => {
+      const qty = warehouseStocks ? (warehouseStocks[p.id] ?? 0) : p.quantity;
+      return qty === 0;
+    })) return false;
     if (!query) return true;
     if (f.name.toLowerCase().includes(query)) return true;
     return f.products.some(p => p.name.toLowerCase().includes(query) || p.code.toLowerCase().includes(query));
   });
 
-  const viewType = searchParams.get('view');
   const isFilteredView = viewType === 'all' || viewType === 'in_stock' || viewType === 'out_of_stock';
 
-  const searchedProducts = useMemo(() => {
+  const searchedProducts = (() => {
     if (query) {
       return filteredProducts
         .filter(
@@ -278,8 +299,11 @@ export default function ProductsPage() {
     if (warehouseId) {
       return [...filteredProducts].sort(sortProductsByCode);
     }
+    if (productViewMode === 'products') {
+      return [...filteredProducts].sort(sortProductsByCode);
+    }
     return [];
-  }, [query, viewType, filteredProducts, warehouseStocks, warehouseId]);
+  })();
 
 
 
@@ -363,10 +387,30 @@ export default function ProductsPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-full max-w-sm rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 px-4 py-2.5 text-sm text-white placeholder-slate-400 dark:placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
         />
-        <button onClick={openCreateCategory} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500">+ Create Folder</button>
+        <div className="flex flex-wrap items-center gap-2">
+          {!query && (
+            <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 dark:border-white/10 dark:bg-white/5">
+              <button
+                type="button"
+                onClick={() => setProductViewMode('folders')}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${productViewMode === 'folders' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300'}`}
+              >
+                Folders
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductViewMode('products')}
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${productViewMode === 'products' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-300'}`}
+              >
+                Products
+              </button>
+            </div>
+          )}
+          <button onClick={openCreateCategory} className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-500">+ Create Folder</button>
+        </div>
       </div>
 
-      {query || isFilteredView || warehouseId ? (
+      {query || productViewMode === 'products' ? (
         <div className="card p-4 md:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-slate-800 dark:text-white">
@@ -375,7 +419,7 @@ export default function ProductsPage() {
             {isFilteredView && (
               <button
                 type="button"
-                onClick={() => router.push('/products')}
+                onClick={() => setProductViewMode('folders')}
                 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
               >
                 View Folders

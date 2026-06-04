@@ -1,6 +1,7 @@
 'use client';
 
 import NextImage from 'next/image';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { serverDelete, serverGet, ServerApiError } from '../../../lib/server_api';
@@ -137,8 +138,11 @@ export default function ProductDetailAdminPage() {
   }, [productId, router]);
 
   useEffect(() => {
-    load();
-    setSelectedImageIndex(0);
+    const timer = window.setTimeout(() => {
+      load();
+      setSelectedImageIndex(0);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [load, productId]);
 
   const product = useMemo(
@@ -433,7 +437,16 @@ export default function ProductDetailAdminPage() {
           <div className="card p-5">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-white">Transactions</h2>
-              <span className="text-xs text-slate-400 dark:text-gray-500">{productTransactions.length} entries</span>
+              {productTransactions.length > 0 ? (
+                <Link
+                  href={`/products/${encodeURIComponent(product.id)}/transactions`}
+                  className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 transition hover:border-indigo-400 hover:text-indigo-600 dark:border-white/10 dark:text-gray-300 dark:hover:border-indigo-400 dark:hover:text-indigo-300"
+                >
+                  View all ({productTransactions.length})
+                </Link>
+              ) : (
+                <span className="text-xs text-slate-400 dark:text-gray-500">0 entries</span>
+              )}
             </div>
             <div className="space-y-2">
               {productTransactions.slice(0, 20).map((txn) => {

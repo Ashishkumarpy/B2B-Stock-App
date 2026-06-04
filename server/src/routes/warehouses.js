@@ -229,6 +229,7 @@ warehousesRouter.post(
     const name = String(payload.name || '').trim();
     const code = String(payload.code || '').trim();
     const location = String(payload.location || '').trim();
+    const locationUrl = String(payload.location_url || '').trim();
 
     if (!name) {
       return res.status(400).json({ error: 'name is required' });
@@ -240,6 +241,7 @@ warehousesRouter.post(
         name,
         code: code === '' ? null : code,
         location: location === '' ? null : location,
+        location_url: locationUrl === '' ? null : locationUrl,
         is_active: true
       })
       .select('*')
@@ -269,6 +271,10 @@ warehousesRouter.put(
     if (typeof payload.location === 'string') {
       const location = payload.location.trim();
       updateRow.location = location === '' ? null : location;
+    }
+    if (typeof payload.location_url === 'string') {
+      const locationUrl = payload.location_url.trim();
+      updateRow.location_url = locationUrl === '' ? null : locationUrl;
     }
     if (typeof payload.is_active === 'boolean') {
       updateRow.is_active = payload.is_active;

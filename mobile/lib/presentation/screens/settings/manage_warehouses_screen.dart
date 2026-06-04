@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../providers/warehouses_provider.dart';
 import '../../providers/api_client_provider.dart';
+import '../../providers/warehouses_provider.dart';
 import '../../widgets/skeleton_loading.dart';
 
 class ManageWarehousesScreen extends ConsumerWidget {
@@ -10,7 +10,7 @@ class ManageWarehousesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final warehousesAsync = ref.watch(warehousesProvider);
+    final warehousesAsync = ref.watch(allWarehousesProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -18,7 +18,8 @@ class ManageWarehousesScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.add_location_alt_rounded),
-            onPressed: () => _showAddWarehouseDialog(context, ref),
+            tooltip: 'Add warehouse',
+            onPressed: () => _showWarehouseDialog(context, ref),
           ),
         ],
       ),
@@ -31,72 +32,145 @@ class ManageWarehousesScreen extends ConsumerWidget {
                     Icon(Icons.warehouse_outlined,
                         size: 64, color: Colors.grey.shade300),
                     const SizedBox(height: 16),
-                    Text('No warehouses yet',
-                        style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontWeight: FontWeight.bold)),
+                    Text(
+                      'No warehouses yet',
+                      style: TextStyle(
+                        color: Colors.grey.shade500,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    Text('Tap + to add your first warehouse',
-                        style: TextStyle(
-                            color: Colors.grey.shade400, fontSize: 12)),
+                    Text(
+                      'Tap + to add your first warehouse',
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 12,
+                      ),
+                    ),
                   ],
                 ),
               )
             : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(warehousesProvider),
+                onRefresh: () async {
+                  ref.invalidate(allWarehousesProvider);
+                  ref.invalidate(activeWarehousesProvider);
+                },
                 child: ListView.builder(
                   padding: const EdgeInsets.all(AppTheme.sp16),
                   itemCount: warehouses.length,
                   itemBuilder: (context, index) {
                     final warehouse = warehouses[index];
-                    final name = warehouse['name'] as String? ?? '?';
+                    final name = warehouse['name'] as String? ?? 'Warehouse';
                     final location = warehouse['location'] as String? ?? '';
                     final code = warehouse['code'] as String? ?? '';
+                    final locationUrl =
+                        warehouse['location_url'] as String? ?? '';
+                    final isActive = warehouse['is_active'] as bool? ?? true;
+
                     return Card(
                       margin: const EdgeInsets.only(bottom: AppTheme.sp12),
                       shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusLG)),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                      ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.sp16, vertical: AppTheme.sp8),
+                          horizontal: AppTheme.sp16,
+                          vertical: 10,
+                        ),
                         leading: Container(
                           padding: const EdgeInsets.all(AppTheme.sp8),
                           decoration: BoxDecoration(
-                            color: AppTheme.success.withValues(alpha: 0.1),
+                            color:
+                                (isActive ? AppTheme.success : AppTheme.danger)
+                                    .withValues(alpha: 0.1),
                             borderRadius:
                                 BorderRadius.circular(AppTheme.radiusMD),
                           ),
-                          child: const Icon(Icons.warehouse_rounded,
-                              color: AppTheme.success, size: 22),
+                          child: Icon(
+                            Icons.warehouse_rounded,
+                            color:
+                                isActive ? AppTheme.success : AppTheme.danger,
+                            size: 22,
+                          ),
                         ),
-                        title: Text(name,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        title: Row(
                           children: [
-                            if (location.isNotEmpty) Text(location),
-                            if (code.isNotEmpty)
-                              Text('Code: $code',
-                                  style: TextStyle(
-                                      color: Colors.grey.shade500,
-                                      fontSize: 11)),
+                            Expanded(
+                              child: Text(
+                                name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isActive
+                                    ? AppTheme.success.withValues(alpha: 0.12)
+                                    : AppTheme.danger.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                              child: Text(
+                                isActive ? 'Active' : 'Inactive',
+                                style: TextStyle(
+                                  color: isActive
+                                      ? AppTheme.success
+                                      : AppTheme.danger,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded,
-                              color: AppTheme.danger),
-                          onPressed: () =>
-                              _confirmDelete(context, ref, warehouse),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (code.isNotEmpty)
+                                Text(
+                                  'Code: $code',
+                                  style: TextStyle(
+                                    color: Colors.grey.shade500,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              if (location.isNotEmpty) Text(location),
+                              if (locationUrl.isNotEmpty)
+                                Text(
+                                  locationUrl,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: AppTheme.primary,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        trailing: TextButton.icon(
+                          icon: const Icon(Icons.edit_rounded, size: 16),
+                          label: const Text('Edit'),
+                          onPressed: () => _showWarehouseDialog(
+                            context,
+                            ref,
+                            warehouse: warehouse,
+                          ),
                         ),
                       ),
                     );
                   },
                 ),
               ),
-        loading: () =>
-            const Center(child: SkeletonList(count: 4, height: 80)),
+        loading: () => const Center(child: SkeletonList(count: 4, height: 86)),
         error: (err, _) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -104,13 +178,16 @@ class ManageWarehousesScreen extends ConsumerWidget {
               const Icon(Icons.error_outline_rounded,
                   color: AppTheme.danger, size: 48),
               const SizedBox(height: 16),
-              Text('$err',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppTheme.danger)),
+              Text(
+                '$err',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppTheme.danger),
+              ),
               const SizedBox(height: 16),
               ElevatedButton(
-                  onPressed: () => ref.invalidate(warehousesProvider),
-                  child: const Text('Retry')),
+                onPressed: () => ref.invalidate(allWarehousesProvider),
+                child: const Text('Retry'),
+              ),
             ],
           ),
         ),
@@ -118,112 +195,157 @@ class ManageWarehousesScreen extends ConsumerWidget {
     );
   }
 
-  void _showAddWarehouseDialog(BuildContext context, WidgetRef ref) {
-    final nameController = TextEditingController();
-    final locationController = TextEditingController();
-    final codeController = TextEditingController();
+  void _showWarehouseDialog(
+    BuildContext context,
+    WidgetRef ref, {
+    Map<String, dynamic>? warehouse,
+  }) {
+    final isEditing = warehouse != null;
+    final nameController =
+        TextEditingController(text: warehouse?['name']?.toString() ?? '');
+    final codeController =
+        TextEditingController(text: warehouse?['code']?.toString() ?? '');
+    final locationController =
+        TextEditingController(text: warehouse?['location']?.toString() ?? '');
+    final locationUrlController = TextEditingController(
+        text: warehouse?['location_url']?.toString() ?? '');
+    var isActive = warehouse?['is_active'] as bool? ?? true;
+    var isSaving = false;
 
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Warehouse'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Warehouse Name *',
-                prefixIcon: Icon(Icons.warehouse_rounded),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            title: Text(isEditing ? 'Edit Warehouse' : 'Add Warehouse'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Warehouse Name *',
+                      prefixIcon: Icon(Icons.warehouse_rounded),
+                    ),
+                    textCapitalization: TextCapitalization.words,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: codeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Code',
+                      prefixIcon: Icon(Icons.tag_rounded),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: locationController,
+                    decoration: const InputDecoration(
+                      labelText: 'Location / Address',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: locationUrlController,
+                    keyboardType: TextInputType.url,
+                    decoration: const InputDecoration(
+                      labelText: 'Location URL',
+                      prefixIcon: Icon(Icons.map_outlined),
+                    ),
+                  ),
+                  if (isEditing) ...[
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Active warehouse'),
+                      value: isActive,
+                      onChanged: (value) {
+                        setDialogState(() {
+                          isActive = value;
+                        });
+                      },
+                    ),
+                  ],
+                ],
               ),
-              textCapitalization: TextCapitalization.words,
             ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: locationController,
-              decoration: const InputDecoration(
-                labelText: 'Location / Address',
-                prefixIcon: Icon(Icons.location_on_outlined),
+            actions: [
+              TextButton(
+                onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
               ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: codeController,
-              decoration: const InputDecoration(
-                labelText: 'Code (optional)',
-                prefixIcon: Icon(Icons.tag_rounded),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
-          ElevatedButton(
-            onPressed: () async {
-              final name = nameController.text.trim();
-              if (name.isEmpty) return;
-              try {
-                final client = ref.read(apiClientProvider);
-                await client.post('/warehouses', {
-                  'name': name,
-                  'location': locationController.text.trim(),
-                  'code': codeController.text.trim(),
-                });
-                ref.invalidate(warehousesProvider);
-                if (ctx.mounted) Navigator.pop(ctx);
-              } catch (e) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                        content: Text('Error: $e'),
-                        backgroundColor: AppTheme.danger),
-                  );
-                }
-              }
-            },
-            child: const Text('Add Warehouse'),
-          ),
-        ],
-      ),
-    );
-  }
+              ElevatedButton(
+                onPressed: isSaving
+                    ? null
+                    : () async {
+                        final name = nameController.text.trim();
+                        if (name.isEmpty) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            const SnackBar(
+                              content: Text('Warehouse name is required.'),
+                              backgroundColor: AppTheme.danger,
+                            ),
+                          );
+                          return;
+                        }
 
-  void _confirmDelete(
-      BuildContext context, WidgetRef ref, Map<String, dynamic> warehouse) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Warehouse'),
-        content: Text(
-            'Delete ${warehouse['name']}? Products linked to this warehouse will need to be reassigned.'),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              try {
-                final client = ref.read(apiClientProvider);
-                await client.delete('/warehouses/${warehouse['id']}');
-                ref.invalidate(warehousesProvider);
-                if (ctx.mounted) Navigator.pop(ctx);
-              } catch (e) {
-                if (ctx.mounted) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(
-                        content: Text('Error: $e'),
-                        backgroundColor: AppTheme.danger),
-                  );
-                }
-              }
-            },
-            child: const Text('Delete',
-                style: TextStyle(color: AppTheme.danger)),
-          ),
-        ],
+                        setDialogState(() => isSaving = true);
+                        try {
+                          final client = ref.read(apiClientProvider);
+                          final payload = {
+                            'name': name,
+                            'code': codeController.text.trim(),
+                            'location': locationController.text.trim(),
+                            'location_url': locationUrlController.text.trim(),
+                            if (isEditing) 'is_active': isActive,
+                          };
+
+                          if (isEditing) {
+                            await client.putJson(
+                              '/warehouses/${warehouse['id']}',
+                              payload,
+                            );
+                          } else {
+                            await client.post('/warehouses', payload);
+                          }
+
+                          ref.invalidate(allWarehousesProvider);
+                          ref.invalidate(activeWarehousesProvider);
+                          if (ctx.mounted) Navigator.pop(ctx);
+                        } catch (e) {
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: $e'),
+                                backgroundColor: AppTheme.danger,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (ctx.mounted) {
+                            setDialogState(() => isSaving = false);
+                          }
+                        }
+                      },
+                child: Text(
+                  isSaving
+                      ? 'Saving...'
+                      : isEditing
+                          ? 'Save Changes'
+                          : 'Add Warehouse',
+                ),
+              ),
+            ],
+          );
+        },
       ),
-    );
+    ).whenComplete(() {
+      nameController.dispose();
+      codeController.dispose();
+      locationController.dispose();
+      locationUrlController.dispose();
+    });
   }
 }

@@ -164,6 +164,7 @@ export default function StockPage() {
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerCategory, setPickerCategory] = useState<string | null>(null);
+  const [pickerView, setPickerView] = useState<'folders' | 'products'>('folders');
   const prefetchedQueryRef = useRef<string | null>(null);
   const [stockPrefs, setStockPrefs] = useState<StockEntryPrefMap>({});
   const [productStockDistribution, setProductStockDistribution] = useState<StockDistributionRow[]>([]);
@@ -735,6 +736,7 @@ export default function StockPage() {
     setShowProductPicker(false);
     setPickerSearch('');
     setPickerCategory(null);
+    setPickerView('folders');
   }, [editingTransactionId, fetchStockDistribution, form.type]);
 
   const allWarehouseIdsWithStock = useMemo(() => {
@@ -1598,6 +1600,7 @@ export default function StockPage() {
                 else {
                   setShowProductPicker(false);
                   setPickerSearch('');
+                  setPickerView('folders');
                 }
               }}
               className="stock-soft-control flex min-w-[40px] items-center justify-center rounded-lg border p-2"
@@ -1616,6 +1619,39 @@ export default function StockPage() {
             />
           </div>
 
+          <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="stock-secondary text-xs font-bold uppercase tracking-wider">
+                Available stock filter
+              </p>
+              <p className="stock-muted mt-1 text-xs">
+                Choose by folder or show products directly.
+              </p>
+            </div>
+            <div className="stock-soft-control flex w-fit rounded-xl border p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setPickerView('folders');
+                  setPickerCategory(null);
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${pickerView === 'folders' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
+              >
+                Folders
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPickerView('products');
+                  setPickerCategory(null);
+                }}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${pickerView === 'products' ? 'stock-segment-active-primary shadow-md' : 'stock-segment'}`}
+              >
+                Products
+              </button>
+            </div>
+          </div>
+
           <div className="flex-1 overflow-y-auto">
             {pickerSearch ? (
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
@@ -1632,6 +1668,30 @@ export default function StockPage() {
                       <p className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-sm">{p.code}</p>
                       <p className="stock-muted mt-0.5 truncate text-[10px]">{p.name}</p>
                       <p className="mt-2 text-xs text-indigo-700 dark:text-indigo-400">{p.quantity} in stock</p>
+                    </button>
+                  ))}
+              </div>
+            ) : pickerView === 'products' ? (
+              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+                {[...pickerProducts]
+                  .sort((a, b) => a.code.localeCompare(b.code))
+                  .map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleProductPicked(p)}
+                      className="stock-modal-panel text-left rounded-xl border p-4 transition hover:border-indigo-500/50 hover:bg-indigo-500/10"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-mono font-bold text-indigo-700 dark:text-indigo-400 text-sm">{p.code}</p>
+                          <p className="stock-muted mt-0.5 truncate text-[10px]">{p.name}</p>
+                        </div>
+                        <span className="stock-primary-badge shrink-0 rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider">
+                          {p.quantity}
+                        </span>
+                      </div>
+                      <p className="stock-muted mt-3 truncate text-[10px]">{p.category || 'Uncategorized'}</p>
                     </button>
                   ))}
               </div>

@@ -6,6 +6,7 @@ import '../../presentation/screens/main_shell.dart';
 import '../../presentation/screens/dashboard/dashboard_screen.dart';
 import '../../presentation/screens/products/product_list_screen.dart';
 import '../../presentation/screens/products/product_detail_screen.dart';
+import '../../presentation/screens/products/product_transaction_history_screen.dart';
 import '../../presentation/screens/products/add_product_screen.dart';
 import '../../presentation/screens/products/bulk_import_products_screen.dart';
 import '../../domain/entities/product.dart';
@@ -209,7 +210,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
               final transactionId = state.uri.queryParameters['transactionId'];
               final createdAt = state.uri.queryParameters['createdAt'];
               final workerId = state.uri.queryParameters['workerId'];
-              
+
               final initialType = switch (typeRaw) {
                 'in' => TransactionType.stockIn,
                 'out' => TransactionType.stockOut,
@@ -232,6 +233,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   createdAt: createdAt,
                   workerId: workerId,
                 ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/product-history/:id',
+            pageBuilder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _buildPage(
+                state,
+                ProductTransactionHistoryScreen(productId: id),
               );
             },
           ),
