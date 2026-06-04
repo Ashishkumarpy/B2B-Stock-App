@@ -186,7 +186,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen bg-slate-50 dark:bg-[#0a0a0f] text-slate-800 dark:text-white">
       <Sidebar />
-      <div className="flex min-h-screen flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar
           name={name}
           email={email}
@@ -203,7 +203,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
             router.replace('/login');
           }}
         />
-        <main className="flex-1 overflow-auto p-6">{children}</main>
+        <main className="flex-1 overflow-auto p-3 sm:p-4 xl:p-6">{children}</main>
       </div>
     </div>
   );

@@ -112,6 +112,12 @@ body {
   transition: background-color 0.2s, border-color 0.2s;
 }
 
+@media (min-width: 768px) and (max-width: 1279px) {
+  :root {
+    --sidebar-w: 76px;
+  }
+}
+
 /* ── Glass card ─────────────────────────────────────── */
 .card {
   background: linear-gradient(180deg, var(--bg-card), var(--bg-surface));
@@ -158,6 +164,26 @@ body {
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--border-color);
   transition: border-color 0.2s;
+}
+
+.data-table {
+  min-width: 760px;
+}
+
+.card:has(.data-table) {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .data-table td,
+  .data-table th {
+    padding: 0.7rem 0.75rem;
+  }
+
+  .data-table {
+    min-width: 820px;
+  }
 }
 
 .data-table tr:last-child td {
