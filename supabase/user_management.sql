@@ -147,6 +147,10 @@ $$ LANGUAGE sql SECURITY DEFINER;
 CREATE OR REPLACE FUNCTION public.assign_default_permissions()
 RETURNS TRIGGER AS $$
 BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.role IS NOT DISTINCT FROM NEW.role THEN
+    RETURN NEW;
+  END IF;
+
   IF NEW.role = 'admin' THEN
     NEW.perm_products := true;
     NEW.perm_inventory := true;

@@ -13,6 +13,26 @@ function normalizePhone(phoneRaw) {
   return keepPlus ? `+${digits}` : digits;
 }
 
+const PERMISSION_KEYS = [
+  'perm_products',
+  'perm_inventory',
+  'perm_orders',
+  'perm_reports',
+  'perm_users',
+  'perm_settings'
+];
+
+function buildPermissionUpdate(permissions) {
+  const update = {};
+  if (!permissions) return update;
+  for (const key of PERMISSION_KEYS) {
+    if (permissions[key] !== undefined) {
+      update[key] = !!permissions[key];
+    }
+  }
+  return update;
+}
+
 // Fetch activity logs for the User Management dashboard
 usersRouter.get('/activities', authRequired, requirePermission('perm_users'), async (req, res) => {
   const limit = parseInt(req.query.limit) || 100;
@@ -198,15 +218,9 @@ usersRouter.post('/', authRequired, requirePermission('perm_users'), async (req,
       name,
       role: role || 'worker',
       is_active: is_active !== false,
-      perm_products: !!permissions?.perm_products,
-      perm_inventory: !!permissions?.perm_inventory,
-      perm_orders: !!permissions?.perm_orders,
-      perm_reports: !!permissions?.perm_reports,
-      perm_users: !!permissions?.perm_users,
-      perm_settings: !!permissions?.perm_settings,
     };
 
-    const { data: profile, error: profileError } = await supabaseAdmin
+    let { data: profile, error: profileError } = await supabaseAdmin
       .from('users')
       .update(payload)
       .eq('id', authUser.id)
@@ -214,6 +228,18 @@ usersRouter.post('/', authRequired, requirePermission('perm_users'), async (req,
       .single();
 
     if (profileError) return res.status(400).json({ error: profileError.message });
+
+    const permissionUpdate = buildPermissionUpdate(permissions);
+    if (Object.keys(permissionUpdate).length > 0) {
+      const permissionRes = await supabaseAdmin
+        .from('users')
+        .update(permissionUpdate)
+        .eq('id', authUser.id)
+        .select('*')
+        .single();
+      if (permissionRes.error) return res.status(400).json({ error: permissionRes.error.message });
+      profile = permissionRes.data;
+    }
 
     // 3. Assign warehouses
     if (Array.isArray(warehouses) && warehouses.length > 0) {
@@ -314,15 +340,6 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
       if (role !== undefined) profileUpdate.role = role;
       if (is_active !== undefined) profileUpdate.is_active = is_active;
 
-      if (permissions) {
-        if (permissions.perm_products !== undefined) profileUpdate.perm_products = permissions.perm_products;
-        if (permissions.perm_inventory !== undefined) profileUpdate.perm_inventory = permissions.perm_inventory;
-        if (permissions.perm_orders !== undefined) profileUpdate.perm_orders = permissions.perm_orders;
-        if (permissions.perm_reports !== undefined) profileUpdate.perm_reports = permissions.perm_reports;
-        if (permissions.perm_users !== undefined) profileUpdate.perm_users = permissions.perm_users;
-        if (permissions.perm_settings !== undefined) profileUpdate.perm_settings = permissions.perm_settings;
-      }
-
       const authUpdates = {};
       if (email && email !== existingUser.email) {
         authUpdates.email = email;
@@ -338,7 +355,7 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
       }
 
       // Update User Profile
-      const { data: updatedProfile, error: updateErr } = await supabaseAdmin
+      let { data: updatedProfile, error: updateErr } = await supabaseAdmin
         .from('users')
         .update(profileUpdate)
         .eq('id', id)
@@ -346,6 +363,18 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
         .single();
 
       if (updateErr) return res.status(400).json({ error: updateErr.message });
+
+      const permissionUpdate = buildPermissionUpdate(permissions);
+      if (Object.keys(permissionUpdate).length > 0) {
+        const permissionRes = await supabaseAdmin
+          .from('users')
+          .update(permissionUpdate)
+          .eq('id', id)
+          .select('*')
+          .single();
+        if (permissionRes.error) return res.status(400).json({ error: permissionRes.error.message });
+        updatedProfile = permissionRes.data;
+      }
 
       // Update phone in workers table if provided
       if (phone !== undefined) {
@@ -489,15 +518,9 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
         name: name || existingWorker.name,
         role: role || existingWorker.role || 'worker',
         is_active: is_active !== undefined ? is_active : existingWorker.is_active ?? true,
-        perm_products: !!permissions?.perm_products,
-        perm_inventory: !!permissions?.perm_inventory,
-        perm_orders: !!permissions?.perm_orders,
-        perm_reports: !!permissions?.perm_reports,
-        perm_users: !!permissions?.perm_users,
-        perm_settings: !!permissions?.perm_settings,
       };
 
-      const { data: profile, error: profileError } = await supabaseAdmin
+      let { data: profile, error: profileError } = await supabaseAdmin
         .from('users')
         .update(payload)
         .eq('id', authUser.id)
@@ -505,6 +528,18 @@ usersRouter.patch('/:id', authRequired, requirePermission('perm_users'), async (
         .single();
 
       if (profileError) return res.status(400).json({ error: profileError.message });
+
+      const permissionUpdate = buildPermissionUpdate(permissions);
+      if (Object.keys(permissionUpdate).length > 0) {
+        const permissionRes = await supabaseAdmin
+          .from('users')
+          .update(permissionUpdate)
+          .eq('id', authUser.id)
+          .select('*')
+          .single();
+        if (permissionRes.error) return res.status(400).json({ error: permissionRes.error.message });
+        profile = permissionRes.data;
+      }
 
       // 3. Link existing workers table row to authUser
       // First, delete the auto-created worker record to avoid unique user_id constraint violation

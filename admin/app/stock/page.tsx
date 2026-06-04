@@ -857,6 +857,8 @@ export default function StockPage() {
       if (editingTransactionId) {
         await serverPatch(`/transactions/${encodeURIComponent(editingTransactionId)}`, {
           type: form.type,
+          color_name: form.color_name.trim(),
+          warehouse_id: form.warehouse_id || undefined,
           quantity: form.quantity,
           cartons: form.cartons ? Number(form.cartons) : null,
           pcs_per_carton: form.pcsPerCarton ? Number(form.pcsPerCarton) : null,

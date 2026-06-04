@@ -417,6 +417,8 @@ transactionsRouter.patch(
     if (oldRes.error) return res.status(400).json({ error: oldRes.error.message });
     if (!oldRes.data) return res.status(404).json({ error: 'Transaction not found' });
     const oldTx = oldRes.data;
+    const requestedWarehouseId = String(payload.warehouse_id ?? oldTx.warehouse_id ?? '').trim();
+    let requestedColorName = String(payload.color_name ?? oldTx.color_name ?? 'Default').trim() || 'Default';
 
     // Check if the transaction is older than 12 hours
     const createdAtTime = new Date(oldTx.created_at).getTime();
@@ -429,11 +431,15 @@ transactionsRouter.patch(
 
       const payloadPcs = payload.pcs_per_carton !== undefined && payload.pcs_per_carton !== null ? (payload.pcs_per_carton === '' ? null : Number(payload.pcs_per_carton)) : null;
       const oldPcs = oldTx.pcs_per_carton ?? null;
+      const oldWarehouseId = String(oldTx.warehouse_id || '').trim();
+      const oldColorName = String(oldTx.color_name || 'Default').trim() || 'Default';
 
       if (
         type !== String(oldTx.type || '') ||
         quantity !== Number(oldTx.quantity || 0) ||
         workerName !== String(oldTx.worker_name || '') ||
+        requestedWarehouseId !== oldWarehouseId ||
+        requestedColorName.toLowerCase() !== oldColorName.toLowerCase() ||
         payloadCartons !== oldCartons ||
         payloadPcs !== oldPcs
       ) {
@@ -457,10 +463,13 @@ transactionsRouter.patch(
     }
 
     const productId = String(oldTx.product_id || '').trim();
-    const warehouseId = String(oldTx.warehouse_id || '').trim();
-    const colorName = String(oldTx.color_name || 'Default').trim() || 'Default';
-    if (!productId || !warehouseId) {
+    const oldWarehouseId = String(oldTx.warehouse_id || '').trim();
+    const oldColorName = String(oldTx.color_name || 'Default').trim() || 'Default';
+    if (!productId || !oldWarehouseId) {
       return res.status(400).json({ error: 'Existing transaction is missing product/warehouse' });
+    }
+    if (!requestedWarehouseId) {
+      return res.status(400).json({ error: 'warehouse_id is required' });
     }
 
     const oldQty = Number(oldTx.quantity || 0);
@@ -468,13 +477,34 @@ transactionsRouter.patch(
     const newSigned = type === 'stock_in' ? quantity : -quantity;
     const delta = newSigned - oldSigned;
 
-    const productRes = await supabaseAdmin
-      .from('products')
-      .select('id,quantity,color_stocks')
-      .eq('id', productId)
-      .maybeSingle();
+    const [productRes, warehousesRes, stockRowsRes] = await Promise.all([
+      supabaseAdmin
+        .from('products')
+        .select('id,quantity,color_stocks')
+        .eq('id', productId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('warehouses')
+        .select('id,name,is_active')
+        .eq('is_active', true),
+      supabaseAdmin
+        .from('warehouse_product_stocks')
+        .select('warehouse_id,product_id,color_name,quantity')
+        .eq('product_id', productId)
+        .limit(10000),
+    ]);
     if (productRes.error) return res.status(400).json({ error: productRes.error.message });
     if (!productRes.data) return res.status(400).json({ error: 'Product not found for transaction' });
+    if (warehousesRes.error) return res.status(400).json({ error: warehousesRes.error.message });
+    if (stockRowsRes.error) return res.status(400).json({ error: stockRowsRes.error.message });
+
+    const activeWarehouse = (warehousesRes.data || []).find(
+      (w) => String(w.id) === requestedWarehouseId,
+    );
+    if (!activeWarehouse) {
+      return res.status(400).json({ error: 'Selected warehouse is invalid or inactive.' });
+    }
+    const requestedWarehouseName = String(activeWarehouse.name || 'Warehouse');
 
     const currentProductQty = Number(productRes.data.quantity || 0);
     const nextProductQty = currentProductQty + delta;
@@ -485,38 +515,80 @@ transactionsRouter.patch(
     const colorStocks = Array.isArray(productRes.data.color_stocks)
       ? productRes.data.color_stocks.map((x) => ({ ...x }))
       : [];
-    const normalizedTargetColor = colorName.toLowerCase();
-    let colorIdx = colorStocks.findIndex((entry) =>
-      String(entry?.color || '').trim().toLowerCase() === normalizedTargetColor,
+
+    const matchingProductColor = colorStocks.find((entry) =>
+      String(entry?.color || '').trim().toLowerCase() === requestedColorName.toLowerCase(),
     );
-    if (colorIdx === -1 && normalizedTargetColor !== 'default') {
-      colorStocks.push({ color: colorName, quantity: 0 });
-      colorIdx = colorStocks.length - 1;
+    if (matchingProductColor?.color) {
+      requestedColorName = String(matchingProductColor.color).trim() || requestedColorName;
     }
-    if (colorIdx !== -1) {
+
+    const colorDeltas = new Map();
+    const addColorDelta = (color, amount) => {
+      const normalized = String(color || 'Default').trim() || 'Default';
+      if (normalized.toLowerCase() === 'default') return;
+      const key = normalized.toLowerCase();
+      colorDeltas.set(key, {
+        color: normalized,
+        delta: (colorDeltas.get(key)?.delta || 0) + amount,
+      });
+    };
+    addColorDelta(oldColorName, -oldSigned);
+    addColorDelta(requestedColorName, newSigned);
+
+    for (const entry of colorDeltas.values()) {
+      let colorIdx = colorStocks.findIndex((stock) =>
+        String(stock?.color || '').trim().toLowerCase() === entry.color.toLowerCase(),
+      );
+      if (colorIdx === -1) {
+        colorStocks.push({ color: entry.color, quantity: 0 });
+        colorIdx = colorStocks.length - 1;
+      }
       const currentColorQty = Number(colorStocks[colorIdx]?.quantity || 0);
-      const nextColorQty = currentColorQty + delta;
+      const nextColorQty = currentColorQty + entry.delta;
       if (!Number.isFinite(nextColorQty) || nextColorQty < 0) {
-        return res.status(400).json({ error: `Edit would make color stock negative for ${colorName}.` });
+        return res.status(400).json({ error: `Edit would make color stock negative for ${entry.color}.` });
       }
       colorStocks[colorIdx].quantity = Math.trunc(nextColorQty);
     }
 
-    const warehouseStockRes = await supabaseAdmin
-      .from('warehouse_product_stocks')
-      .select('quantity')
-      .eq('warehouse_id', warehouseId)
-      .eq('product_id', productId)
-      .eq('color_name', colorName)
-      .maybeSingle();
-    if (warehouseStockRes.error) return res.status(400).json({ error: warehouseStockRes.error.message });
-    if (!warehouseStockRes.data) {
-      return res.status(400).json({ error: `No stock row found in warehouse for color ${colorName}.` });
+    const warehouseRowsByKey = new Map();
+    for (const row of stockRowsRes.data || []) {
+      const key = `${String(row.warehouse_id)}::${String(row.color_name || 'Default').trim().toLowerCase()}`;
+      warehouseRowsByKey.set(key, row);
     }
-    const currentWarehouseQty = Number(warehouseStockRes.data.quantity || 0);
-    const nextWarehouseQty = currentWarehouseQty + delta;
-    if (!Number.isFinite(nextWarehouseQty) || nextWarehouseQty < 0) {
-      return res.status(400).json({ error: `Edit would make warehouse stock negative for ${colorName}.` });
+
+    const warehouseDeltas = new Map();
+    const addWarehouseDelta = (warehouseId, color, amount) => {
+      const colorName = String(color || 'Default').trim() || 'Default';
+      const key = `${warehouseId}::${colorName.toLowerCase()}`;
+      warehouseDeltas.set(key, {
+        warehouse_id: warehouseId,
+        product_id: productId,
+        color_name: colorName,
+        delta: (warehouseDeltas.get(key)?.delta || 0) + amount,
+      });
+    };
+    addWarehouseDelta(oldWarehouseId, oldColorName, -oldSigned);
+    addWarehouseDelta(requestedWarehouseId, requestedColorName, newSigned);
+
+    const warehouseUpserts = [];
+    for (const entry of warehouseDeltas.values()) {
+      const key = `${entry.warehouse_id}::${entry.color_name.toLowerCase()}`;
+      const currentWarehouseQty = Number(warehouseRowsByKey.get(key)?.quantity || 0);
+      const nextWarehouseQty = currentWarehouseQty + entry.delta;
+      if (!Number.isFinite(nextWarehouseQty) || nextWarehouseQty < 0) {
+        return res.status(400).json({
+          error: `Edit would make warehouse stock negative for ${entry.color_name}.`,
+        });
+      }
+      warehouseUpserts.push({
+        warehouse_id: entry.warehouse_id,
+        product_id: entry.product_id,
+        color_name: entry.color_name,
+        quantity: Math.trunc(nextWarehouseQty),
+        updated_at: new Date().toISOString(),
+      });
     }
 
     const updatedProductRes = await supabaseAdmin
@@ -530,20 +602,20 @@ transactionsRouter.patch(
       .maybeSingle();
     if (updatedProductRes.error) return res.status(400).json({ error: updatedProductRes.error.message });
 
-    const updatedWarehouseRes = await supabaseAdmin
-      .from('warehouse_product_stocks')
-      .update({ quantity: Math.trunc(nextWarehouseQty), updated_at: new Date().toISOString() })
-      .eq('warehouse_id', warehouseId)
-      .eq('product_id', productId)
-      .eq('color_name', colorName)
-      .select('warehouse_id')
-      .maybeSingle();
-    if (updatedWarehouseRes.error) return res.status(400).json({ error: updatedWarehouseRes.error.message });
+    if (warehouseUpserts.length > 0) {
+      const updatedWarehouseRes = await supabaseAdmin
+        .from('warehouse_product_stocks')
+        .upsert(warehouseUpserts, { onConflict: 'warehouse_id,product_id,color_name' });
+      if (updatedWarehouseRes.error) return res.status(400).json({ error: updatedWarehouseRes.error.message });
+    }
 
     const updatedTxRes = await supabaseAdmin
       .from('transactions')
       .update({
         type,
+        color_name: requestedColorName,
+        warehouse_id: requestedWarehouseId,
+        warehouse_name: requestedWarehouseName,
         quantity,
         notes,
         worker_name: workerName,
