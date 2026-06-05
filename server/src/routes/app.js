@@ -14,6 +14,19 @@ let cachedVersion = {
 };
 let cacheExpiry = 0; // Epoch ms
 
+function normalizeReleaseTag(tag, fallback = '1.2.0') {
+  const normalized = String(tag || fallback)
+    .trim()
+    .replace(/^[vV][\s._-]*/, '')
+    .replace(/^\.+/, '');
+  return normalized || fallback;
+}
+
+function parseBuildNumberFromTag(tag) {
+  const match = String(tag || '').match(/\+(\d+)(?:\D|$)/);
+  return match ? Number(match[1]) : null;
+}
+
 async function fetchLatestGitHubRelease() {
   try {
     const headers = {
@@ -45,8 +58,9 @@ async function fetchLatestGitHubRelease() {
     }
     const data = await response.json();
     
-    // Parse tag_name (e.g. "v1.2.0" -> "1.2.0")
-    const tagName = String(data.tag_name || '1.2.0').replace(/^v/, '');
+    // Parse tag_name (e.g. "v1.2.0" or "v.1.2.0" -> "1.2.0")
+    const tagName = normalizeReleaseTag(data.tag_name, '1.2.0');
+    const buildNumber = parseBuildNumberFromTag(data.tag_name);
     
     // Try to find direct APK download link in assets
     let downloadUrl = data.html_url || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest';
@@ -67,7 +81,7 @@ async function fetchLatestGitHubRelease() {
 
     cachedVersion = {
       latestVersion: tagName,
-      buildNumber: 6, // Default/fallback build number
+      buildNumber,
       releaseDate: data.published_at ? data.published_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
       downloadUrl: downloadUrl,
       assetUrl: assetUrl,
@@ -155,7 +169,8 @@ appRouter.post('/github-webhook', async (req, res) => {
   console.log('Received GitHub webhook. Action:', action);
 
   if (action === 'published' && release) {
-    const tagName = String(release.tag_name || '').replace(/^v/, '');
+    const tagName = normalizeReleaseTag(release.tag_name, '');
+    const buildNumber = parseBuildNumberFromTag(release.tag_name);
     
     // Try to find direct APK download link in assets
     let downloadUrl = release.html_url || 'https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest';
@@ -179,7 +194,7 @@ appRouter.post('/github-webhook', async (req, res) => {
       // 1. Instantly update server cache with the new release info
       cachedVersion = {
         latestVersion: tagName,
-        buildNumber: 6,
+        buildNumber,
         releaseDate: release.published_at ? release.published_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
         downloadUrl: downloadUrl,
         assetUrl: assetUrl,

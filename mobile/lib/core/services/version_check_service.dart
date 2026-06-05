@@ -28,6 +28,7 @@ class VersionCheckService {
     try {
       final packageInfo = await PackageInfo.fromPlatform();
       final currentVersion = packageInfo.version;
+      final currentBuildNumber = packageInfo.buildNumber;
 
       final client = ref.read(apiClientProvider);
       final data = await client.get('/app/version');
@@ -39,7 +40,12 @@ class VersionCheckService {
         final releaseNotes =
             data['releaseNotes'] as String? ?? 'Bug fixes and improvements.';
 
-        if (_isNewer(latestVersion, currentVersion)) {
+        if (isUpdateAvailable(
+          latestVersion: latestVersion,
+          latestBuildNumber: data['buildNumber'],
+          currentVersion: currentVersion,
+          currentBuildNumber: currentBuildNumber,
+        )) {
           final box = await Hive.openBox(_boxName);
           final lastDismissed = box.get(_lastDismissedKey);
 
@@ -82,14 +88,15 @@ class VersionCheckService {
     }
   }
 
-  /// Compares two version strings safely, ignoring suffixes (e.g. "+4", "-beta")
-  static bool _isNewer(String latest, String current) {
+  static bool isUpdateAvailable({
+    required String latestVersion,
+    Object? latestBuildNumber,
+    required String currentVersion,
+    Object? currentBuildNumber,
+  }) {
     try {
-      final cleanLatest = latest.split('+').first.split('-').first.trim();
-      final cleanCurrent = current.split('+').first.split('-').first.trim();
-
-      List<int> latestParts = cleanLatest.split('.').map((s) => int.tryParse(s) ?? 0).toList();
-      List<int> currentParts = cleanCurrent.split('.').map((s) => int.tryParse(s) ?? 0).toList();
+      final latestParts = _versionParts(latestVersion);
+      final currentParts = _versionParts(currentVersion);
 
       final maxLength = latestParts.length > currentParts.length ? latestParts.length : currentParts.length;
       for (var i = 0; i < maxLength; i++) {
@@ -98,11 +105,39 @@ class VersionCheckService {
         if (latestVal > currentVal) return true;
         if (latestVal < currentVal) return false;
       }
-      return false;
+
+      final latestBuild = _parseBuildNumber(latestBuildNumber);
+      final currentBuild = _parseBuildNumber(currentBuildNumber);
+      if (latestBuild == null || currentBuild == null) return false;
+      return latestBuild > currentBuild;
     } catch (e) {
       debugPrint('Error parsing versions: $e');
       return false;
     }
+  }
+
+  static List<int> _versionParts(String version) {
+    final clean = version
+        .split('+')
+        .first
+        .split('-')
+        .first
+        .trim()
+        .replaceFirst(RegExp(r'^[vV][\s._-]*'), '')
+        .replaceFirst(RegExp(r'^\.+'), '');
+
+    final parts = clean
+        .split('.')
+        .where((part) => part.trim().isNotEmpty)
+        .map((part) => int.tryParse(part.trim()) ?? 0)
+        .toList();
+    return parts.isEmpty ? [0] : parts;
+  }
+
+  static int? _parseBuildNumber(Object? value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString().trim());
   }
 
   static void _showUpdateDialog(
