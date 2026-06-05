@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'core/constants/app_constants.dart';
@@ -14,15 +13,6 @@ import 'core/services/mobile_push_notifications.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  try {
-    await Supabase.initialize(
-      url: AppConstants.supabaseUrl,
-      anonKey: AppConstants.supabaseAnonKey,
-    );
-  } catch (e) {
-    AppLog.d('Supabase initialization failed: $e');
-  }
 
   try {
     // Initialize Push Notifications

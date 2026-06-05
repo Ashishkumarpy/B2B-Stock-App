@@ -14,8 +14,7 @@ dependencies:
   flutter_riverpod: ^2.5.1
   riverpod_annotation: ^2.3.5
 
-  # Supabase Backend
-  supabase_flutter: ^2.5.4
+  # Push notifications
   firebase_core: ^4.1.1
   firebase_messaging: ^16.0.1
   flutter_local_notifications: ^19.4.2
@@ -77,6 +76,6 @@ flutter:
 
 flutter_launcher_icons:
   android: "launcher_icon"
-  image_path: "assets/images/Logo_padded.png"
+  image_path: "assets/images/Logo_launcher.png"
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/images/Logo_padded.png"
+  adaptive_icon_foreground: "assets/images/Logo_launcher.png"

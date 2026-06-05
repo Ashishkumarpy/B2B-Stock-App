@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../providers/api_client_provider.dart';
 import '../../providers/warehouses_provider.dart';
+import '../../widgets/connection_warning.dart';
 import '../../widgets/skeleton_loading.dart';
 
 class ManageWarehousesScreen extends ConsumerWidget {
@@ -171,25 +172,9 @@ class ManageWarehousesScreen extends ConsumerWidget {
                 ),
               ),
         loading: () => const Center(child: SkeletonList(count: 4, height: 86)),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline_rounded,
-                  color: AppTheme.danger, size: 48),
-              const SizedBox(height: 16),
-              Text(
-                '$err',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.danger),
-              ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(allWarehousesProvider),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+        error: (err, _) => ConnectionWarning(
+          error: err,
+          onRetry: () => ref.invalidate(allWarehousesProvider),
         ),
       ),
     );

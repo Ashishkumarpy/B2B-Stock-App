@@ -22,6 +22,78 @@ function badRequestFromDbError(error, fallback = 'Request failed') {
   return message;
 }
 
+const PERMISSION_KEYS = [
+  'perm_products',
+  'perm_inventory',
+  'perm_orders',
+  'perm_reports',
+  'perm_users',
+  'perm_settings'
+];
+
+function defaultPermissionsForRole(role) {
+  if (role === 'manager') {
+    return {
+      perm_products: false,
+      perm_inventory: true,
+      perm_orders: true,
+      perm_reports: true,
+      perm_users: true,
+      perm_settings: false
+    };
+  }
+  return {
+    perm_products: false,
+    perm_inventory: true,
+    perm_orders: false,
+    perm_reports: false,
+    perm_users: false,
+    perm_settings: false
+  };
+}
+
+function buildPermissionUpdate(permissions, role, { useDefaults = false } = {}) {
+  const source = permissions && typeof permissions === 'object'
+    ? permissions
+    : useDefaults
+      ? defaultPermissionsForRole(role)
+      : {};
+  const update = {};
+  for (const key of PERMISSION_KEYS) {
+    if (source[key] !== undefined) {
+      update[key] = !!source[key];
+    }
+  }
+  return update;
+}
+
+async function attachLinkedUserPermissions(workers) {
+  const rows = workers ?? [];
+  const userIds = [...new Set(rows.map(row => row.user_id).filter(Boolean))];
+  if (userIds.length === 0) return rows;
+
+  const { data: linkedUsers, error } = await supabaseAdmin
+    .from('users')
+    .select(`id,${PERMISSION_KEYS.join(',')}`)
+    .in('id', userIds);
+
+  if (error) throw error;
+
+  const usersById = new Map((linkedUsers ?? []).map(user => [user.id, user]));
+  return rows.map(row => {
+    const linkedUser = usersById.get(row.user_id);
+    if (!linkedUser) return row;
+
+    const merged = { ...row };
+    for (const key of PERMISSION_KEYS) {
+      if (linkedUser[key] !== undefined && linkedUser[key] !== null) {
+        merged[key] = linkedUser[key];
+      }
+    }
+    return merged;
+  });
+}
+
 // Get all workers (filtered by warehouse scope for managers)
 workersRouter.get('/', authRequired, requirePermission('perm_users'), async (req, res) => {
   const sessionRole = String(req.session?.role || '').trim();
@@ -31,9 +103,14 @@ workersRouter.get('/', authRequired, requirePermission('perm_users'), async (req
     const { data, error } = await supabaseAdmin
       .from('workers')
       .select('*')
+      .in('role', ['worker', 'manager'])
       .order('created_at', { ascending: false });
     if (error) return res.status(500).json({ error: error.message });
-    return res.json({ data });
+    try {
+      return res.json({ data: await attachLinkedUserPermissions(data) });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
   }
 
   if (sessionRole === 'manager') {
@@ -68,7 +145,10 @@ workersRouter.get('/', authRequired, requirePermission('perm_users'), async (req
     }
 
     // 3. Fetch workers belonging to these user accounts or matching the worker IDs directly
-    let query = supabaseAdmin.from('workers').select('*');
+    let query = supabaseAdmin
+      .from('workers')
+      .select('*')
+      .in('role', ['worker', 'manager']);
     
     const orConditions = [];
     if (workerUserIds.length > 0) {
@@ -85,7 +165,11 @@ workersRouter.get('/', authRequired, requirePermission('perm_users'), async (req
     const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) return res.status(500).json({ error: error.message });
-    return res.json({ data });
+    try {
+      return res.json({ data: await attachLinkedUserPermissions(data) });
+    } catch (e) {
+      return res.status(500).json({ error: e.message });
+    }
   }
 
   // Workers cannot manage users
@@ -100,6 +184,9 @@ workersRouter.post('/', authRequired, requirePermission('perm_users'), async (re
   const role = String(payload.role || 'worker').trim();
   const canAccessStock =
     payload.can_access_stock === undefined ? true : Boolean(payload.can_access_stock);
+  const permissionUpdate = buildPermissionUpdate(payload.permissions, role, {
+    useDefaults: true
+  });
 
   if (!name) return res.status(400).json({ error: 'name is required' });
   if (!phone) return res.status(400).json({ error: 'phone is required' });
@@ -114,9 +201,10 @@ workersRouter.post('/', authRequired, requirePermission('perm_users'), async (re
     name,
     phone,
     role,
-    can_access_stock: canAccessStock,
     is_active: payload.is_active === undefined ? true : Boolean(payload.is_active),
-    email: payload.email ? String(payload.email).trim() : null
+    email: payload.email ? String(payload.email).trim() : null,
+    ...permissionUpdate,
+    can_access_stock: permissionUpdate.perm_inventory ?? canAccessStock
   };
 
   const { data, error } = await supabaseAdmin
@@ -157,6 +245,9 @@ workersRouter.put('/:id', authRequired, requirePermission('perm_users'), async (
   if (loadError || !existingWorker) {
     return res.status(404).json({ error: 'Worker not found' });
   }
+  if (existingWorker.role === 'admin') {
+    return res.status(403).json({ error: 'Admin accounts cannot be edited from Manage Workers.' });
+  }
 
   // Warehouse check for managers
   if (sessionRole === 'manager') {
@@ -174,7 +265,10 @@ workersRouter.put('/:id', authRequired, requirePermission('perm_users'), async (
   const phone = normalizePhone(payload.phone);
   const role = String(payload.role || 'worker').trim();
   const canAccessStock =
-    payload.can_access_stock === undefined ? true : Boolean(payload.can_access_stock);
+    payload.can_access_stock === undefined
+      ? existingWorker.can_access_stock ?? true
+      : Boolean(payload.can_access_stock);
+  const permissionUpdate = buildPermissionUpdate(payload.permissions, role);
 
   if (!name) return res.status(400).json({ error: 'name is required' });
   if (!phone) return res.status(400).json({ error: 'phone is required' });
@@ -189,9 +283,10 @@ workersRouter.put('/:id', authRequired, requirePermission('perm_users'), async (
     name,
     phone,
     role,
-    can_access_stock: canAccessStock,
     is_active: payload.is_active === undefined ? true : Boolean(payload.is_active),
-    email: payload.email ? String(payload.email).trim() : null
+    email: payload.email ? String(payload.email).trim() : null,
+    ...permissionUpdate,
+    can_access_stock: permissionUpdate.perm_inventory ?? canAccessStock
   };
 
   const { data, error } = await supabaseAdmin
@@ -203,6 +298,32 @@ workersRouter.put('/:id', authRequired, requirePermission('perm_users'), async (
 
   if (error) {
     return res.status(400).json({ error: badRequestFromDbError(error, 'Failed to update worker') });
+  }
+
+  if (existingWorker.user_id) {
+    const linkedUserUpdate = {
+      name,
+      role,
+      is_active: sanitized.is_active
+    };
+
+    const { error: userProfileError } = await supabaseAdmin
+      .from('users')
+      .update(linkedUserUpdate)
+      .eq('id', existingWorker.user_id);
+    if (userProfileError) {
+      return res.status(400).json({ error: userProfileError.message });
+    }
+
+    if (Object.keys(permissionUpdate).length > 0) {
+      const { error: userPermissionError } = await supabaseAdmin
+        .from('users')
+        .update(permissionUpdate)
+        .eq('id', existingWorker.user_id);
+      if (userPermissionError) {
+        return res.status(400).json({ error: userPermissionError.message });
+      }
+    }
   }
 
   // Log activity
@@ -232,6 +353,9 @@ workersRouter.delete('/:id', authRequired, requirePermission('perm_users'), asyn
 
   if (loadError || !existingWorker) {
     return res.status(404).json({ error: 'Worker not found' });
+  }
+  if (existingWorker.role === 'admin') {
+    return res.status(403).json({ error: 'Admin accounts cannot be removed from Manage Workers.' });
   }
 
   // Warehouse check for managers

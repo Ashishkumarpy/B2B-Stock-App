@@ -6,13 +6,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:share_plus/share_plus.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/transactions_provider.dart';
+import '../../widgets/connection_warning.dart';
 import '../../widgets/status_badge.dart';
 import '../../widgets/transaction_activity_card.dart';
 import '../../../core/utils/formatters.dart';
@@ -68,7 +68,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
     final productsAsync = ref.watch(productsProvider);
     final productTxsAsync =
         ref.watch(productTransactionsProvider(widget.productId));
-    final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
+    final user = ref.watch(currentUserProvider);
 
     return productsAsync.when(
       data: (products) {
@@ -157,7 +157,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   ),
                 ),
                 actions: [
-                  if (role.canManageProducts)
+                  if (user?.canManageProducts == true)
                     IconButton(
                       icon: Icon(Icons.edit_rounded, color: AppTheme.primary),
                       tooltip: 'Edit Product',
@@ -483,7 +483,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       const SizedBox(height: 16),
 
                       // Ã¢â€â‚¬Ã¢â€â‚¬ Stock Action Buttons Ã¢â€â‚¬Ã¢â€â‚¬
-                      if (role.canRecordStock) ...[
+                      if (user?.canRecordStock == true) ...[
                         Row(
                           children: [
                             Expanded(
@@ -684,7 +684,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             ],
           ),
           // Ã¢â€â‚¬Ã¢â€â‚¬ FAB: Quick Stock Entry Ã¢â€â‚¬Ã¢â€â‚¬
-          floatingActionButton: role.canRecordStock
+          floatingActionButton: user?.canRecordStock == true
               ? FloatingActionButton.extended(
                   onPressed: () => _showStockEntrySheet(context, product),
                   icon: Icon(Icons.add_rounded),
@@ -698,7 +698,12 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
       },
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (err, _) => Scaffold(body: Center(child: Text('Error: $err'))),
+      error: (err, _) => Scaffold(
+        body: ConnectionWarning(
+          error: err,
+          onRetry: () => ref.invalidate(productsProvider),
+        ),
+      ),
     );
   }
 

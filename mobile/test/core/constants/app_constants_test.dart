@@ -13,11 +13,10 @@ void main() {
       expect(UserRole.admin.canRecordStock, isTrue);
     });
 
-    test('manager can review operations but cannot manage users or products',
-        () {
-      expect(UserRole.manager.canManageUsers, isFalse);
+    test('manager can review operations and manage workers by default', () {
+      expect(UserRole.manager.canManageUsers, isTrue);
       expect(UserRole.manager.canManageProducts, isFalse);
-      expect(UserRole.manager.canManageWarehouses, isTrue);
+      expect(UserRole.manager.canManageWarehouses, isFalse);
       expect(UserRole.manager.canViewAnalytics, isTrue);
       expect(UserRole.manager.canViewWorkerActivity, isTrue);
       expect(UserRole.manager.canViewStockActivity, isTrue);

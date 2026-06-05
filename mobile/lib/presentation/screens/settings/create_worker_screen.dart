@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/connection_messages.dart';
+import '../../providers/api_client_provider.dart';
 
 class CreateWorkerScreen extends ConsumerStatefulWidget {
   const CreateWorkerScreen({super.key});
@@ -28,10 +29,9 @@ class _CreateWorkerScreenState extends ConsumerState<CreateWorkerScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final supabase = Supabase.instance.client;
+      final client = ref.read(apiClientProvider);
 
-      // 1. Create the worker record in the public.workers table
-      await supabase.from('workers').insert({
+      await client.post('/workers', {
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'role': 'worker',
@@ -48,7 +48,7 @@ class _CreateWorkerScreenState extends ConsumerState<CreateWorkerScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Error creating worker: $e'),
+              content: Text(userFriendlyErrorMessage(e)),
               backgroundColor: AppTheme.danger),
         );
       }
@@ -98,10 +98,12 @@ class _CreateWorkerScreenState extends ConsumerState<CreateWorkerScreen> {
                 ),
                 keyboardType: TextInputType.phone,
                 validator: (val) {
-                  if (val == null || val.isEmpty)
+                  if (val == null || val.isEmpty) {
                     return 'Please enter a phone number';
-                  if (!val.startsWith('+'))
+                  }
+                  if (!val.startsWith('+')) {
                     return 'Include country code (e.g., +91)';
+                  }
                   return null;
                 },
               ),

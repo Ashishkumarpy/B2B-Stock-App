@@ -176,7 +176,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     } catch (e) {
       AppLog.d('Failed to unregister push token during logout: $e');
     }
-    
+
     // Reset version check state on logout
     VersionCheckService.resetSessionCheck();
 
@@ -193,6 +193,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
       email: json['email'] ?? '',
       role: _mapRole(json['role']),
       phone: json['phone'],
+      permissions: json['permissions'] is Map
+          ? UserPermissions.fromJson(
+              Map<String, dynamic>.from(json['permissions'] as Map),
+              _mapRole(json['role']),
+            )
+          : null,
     );
   }
 

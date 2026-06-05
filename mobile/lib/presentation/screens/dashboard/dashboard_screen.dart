@@ -12,6 +12,7 @@ import '../../widgets/skeleton_loading.dart';
 import '../../widgets/stock_chart_widget.dart';
 import '../../providers/settings_provider.dart';
 import '../../providers/warehouse_stock_summary_provider.dart';
+import '../../../domain/entities/app_user.dart';
 import '../../../domain/entities/product.dart';
 import '../../../core/utils/formatters.dart';
 
@@ -51,7 +52,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final categoriesAsync = ref.watch(categoriesProvider);
     final warehouseStockSummaryAsync = ref.watch(warehouseStockSummaryProvider);
     final user = ref.watch(authStateProvider).user;
-    final role = user?.role ?? UserRole.customer;
 
     final lowStockCount = productsAsync.maybeWhen(
       data: (p) => p.where((x) => x.stockStatus == StockStatus.lowStock).length,
@@ -103,7 +103,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       icon: Icon(Icons.notifications_none_rounded,
                           color: AppTheme.primaryTextColor(context)),
                       onPressed: () =>
-                          _showNotificationsBottomSheet(context, role),
+                          _showNotificationsBottomSheet(context, user),
                     ),
                     if (lowStockCount > 0)
                       Positioned(
@@ -135,11 +135,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(height: 16),
 
                   // Stats Row
-                  _buildStatsSection(productsAsync, transactionsAsync, role),
+                  _buildStatsSection(productsAsync, transactionsAsync, user),
                   const SizedBox(height: 20),
 
                   // Quick Actions
-                  _buildQuickActions(role),
+                  _buildQuickActions(user),
                   const SizedBox(height: 20),
 
                   // Warehouse Stock Dashboard
@@ -147,7 +147,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(height: 20),
 
                   // Stock Movement Chart
-                  if (role.canViewStockActivity) ...[
+                  if (user?.canViewStockActivity == true) ...[
                     _buildChartSection(transactionsAsync),
                     const SizedBox(height: 20),
                   ],
@@ -157,7 +157,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   const SizedBox(height: 20),
 
                   // Recent Transactions
-                  if (role.canViewStockActivity)
+                  if (user?.canViewStockActivity == true)
                     _buildRecentActivitySection(transactionsAsync),
                 ]),
               ),
@@ -335,7 +335,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget _buildStatsSection(
     AsyncValue<List<dynamic>> productsAsync,
     AsyncValue<List<dynamic>> transactionsAsync,
-    UserRole role,
+    AppUser? user,
   ) {
     final totalProducts = productsAsync.maybeWhen(
       data: (p) => p.length,
@@ -426,7 +426,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 value: '+$stockIn',
                 icon: Icons.south_west_rounded,
                 color: AppTheme.success,
-                onTap: role.canViewStockActivity
+                onTap: user?.canViewStockActivity == true
                     ? () => context
                         .push('/stock-activity?type=stockIn&dateMode=today')
                     : null,
@@ -439,7 +439,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 value: '-$stockOut',
                 icon: Icons.north_east_rounded,
                 color: AppTheme.danger,
-                onTap: role.canViewStockActivity
+                onTap: user?.canViewStockActivity == true
                     ? () => context
                         .push('/stock-activity?type=stockOut&dateMode=today')
                     : null,
@@ -451,16 +451,16 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickActions(UserRole role) {
+  Widget _buildQuickActions(AppUser? user) {
     final actions = <Widget>[
-      if (role.canRecordStock)
+      if (user?.canRecordStock == true)
         _QuickActionBtn(
           label: 'Stock In',
           icon: Icons.add_circle_rounded,
           color: AppTheme.success,
           onTap: () => context.push('/stock-entry?type=in'),
         ),
-      if (role.canRecordStock)
+      if (user?.canRecordStock == true)
         _QuickActionBtn(
           label: 'Stock Out',
           icon: Icons.remove_circle_rounded,
@@ -473,7 +473,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         color: AppTheme.primary,
         onTap: () => context.go('/products'),
       ),
-      if (role.canViewAnalytics)
+      if (user?.canViewAnalytics == true)
         _QuickActionBtn(
           label: 'Analytics',
           icon: Icons.bar_chart_rounded,
@@ -776,7 +776,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
-  void _showNotificationsBottomSheet(BuildContext context, UserRole role) {
+  void _showNotificationsBottomSheet(BuildContext context, AppUser? user) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -863,10 +863,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       // Custom Tab List
                       Expanded(
                         child: DefaultTabController(
-                          length: role.canViewStockActivity ? 2 : 1,
+                          length: user?.canViewStockActivity == true ? 2 : 1,
                           child: Column(
                             children: [
-                              if (role.canViewStockActivity)
+                              if (user?.canViewStockActivity == true)
                                 TabBar(
                                   indicatorColor: AppTheme.primary,
                                   labelColor: AppTheme.primary,
@@ -886,7 +886,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                                     _buildAlertsTab(
                                         lowStockProds, scrollController),
                                     // 2. Activity Log View
-                                    if (role.canViewStockActivity)
+                                    if (user?.canViewStockActivity == true)
                                       _buildActivityTab(
                                           recentTxs, scrollController),
                                   ],

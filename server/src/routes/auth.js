@@ -13,6 +13,19 @@ import { logActivity } from '../activity_logger.js';
 
 export const authRouter = express.Router();
 
+function sessionPermissions(user) {
+  const isAdmin = user.role === 'admin';
+  const isManager = user.role === 'manager';
+  return {
+    perm_products: user.perm_products ?? isAdmin,
+    perm_inventory: user.perm_inventory ?? (isAdmin || isManager || user.role === 'worker'),
+    perm_orders: user.perm_orders ?? (isAdmin || isManager),
+    perm_reports: user.perm_reports ?? (isAdmin || isManager),
+    perm_users: user.perm_users ?? (isAdmin || isManager),
+    perm_settings: user.perm_settings ?? isAdmin
+  };
+}
+
 authRouter.post('/login', async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'email and password required' });
@@ -35,7 +48,8 @@ authRouter.post('/login', async (req, res) => {
       sub: user.id,
       email: user.email,
       name: user.name,
-      role: user.role
+      role: user.role,
+      permissions: sessionPermissions(user)
     };
     const token = signSession(session);
 
@@ -149,7 +163,8 @@ authRouter.post('/worker/verify-otp', async (req, res) => {
       email: '',
       name: result.user.name,
       role: result.user.role,
-      phone: result.user.phone
+      phone: result.user.phone,
+      permissions: result.user.permissions
     };
     const token = signSession(session);
     res.cookie(config.cookieName, token, {

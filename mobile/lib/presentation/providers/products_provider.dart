@@ -1,64 +1,67 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/product.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
+import '../../core/services/server_api_client.dart';
+import '../../core/utils/connection_messages.dart';
+import 'api_client_provider.dart';
 
-final productsProvider = StateNotifierProvider<ProductsNotifier, AsyncValue<List<Product>>>((ref) {
-  return ProductsNotifier();
+final productsProvider =
+    StateNotifierProvider<ProductsNotifier, AsyncValue<List<Product>>>((ref) {
+  return ProductsNotifier(ref.watch(apiClientProvider));
 });
 
 class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
-  ProductsNotifier() : super(const AsyncValue.loading()) {
+  ProductsNotifier([this._client]) : super(const AsyncValue.loading()) {
     _init();
   }
 
-  final _supabase = Supabase.instance.client;
-  RealtimeChannel? _subscription;
+  final ServerApiClient? _client;
+  Timer? _refreshTimer;
 
   Future<void> _init() async {
     await fetchProducts();
-    _setupRealtime();
+    _refreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _fetchProducts(silent: true),
+    );
   }
 
-  Future<void> fetchProducts() async {
+  Future<void> fetchProducts() => _fetchProducts();
+
+  Future<void> _fetchProducts({bool silent = false}) async {
     try {
-      state = const AsyncValue.loading();
-      
-      final data = await _supabase
-          .from('products')
-          .select()
-          .order('name', ascending: true);
-      
-      final products = (data as List).map((json) => _mapToProduct(json)).toList();
+      if (!silent) state = const AsyncValue.loading();
+
+      final client = _client;
+      if (client == null) {
+        throw ServerApiException(connectionWarningMessage, 0);
+      }
+
+      final json = await client.get('/products?limit=1000&page=1');
+      final rows = (json is Map ? json['data'] : null) as List? ?? const [];
+      final products = rows
+          .whereType<Map>()
+          .map((row) => _mapToProduct(Map<String, dynamic>.from(row)))
+          .toList();
       state = AsyncValue.data(products);
     } catch (e, st) {
       AppLog.d('Error fetching products: $e');
-      state = AsyncValue.error(e, st);
+      if (!silent || !state.hasValue) {
+        state = AsyncValue.error(e, st);
+      }
     }
-  }
-
-  void _setupRealtime() {
-    _subscription = _supabase
-        .channel('public:products')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'products',
-          callback: (payload) {
-            AppLog.d('Real-time product change: ${payload.eventType}');
-            fetchProducts(); // Refresh on any change
-          },
-        )
-        .subscribe();
   }
 
   Product _mapToProduct(Map<String, dynamic> json) {
     // Mapping from Supabase Snake Case to Dart Camel Case
-    final imagesList = (json['images'] as List?)?.map((i) => ProductImage.fromMap(i as Map<String, dynamic>)).toList() ?? [];
-    
+    final imagesList = (json['images'] as List?)
+            ?.map((i) => ProductImage.fromMap(i as Map<String, dynamic>))
+            .toList() ??
+        [];
+
     final colorStocks = <ProductColorStock>[];
     dynamic rawColorStocks = json['color_stocks'];
 
@@ -107,14 +110,19 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       costPrice: (json['cost_price'] as num?)?.toDouble(),
       pcsPerCarton: (json['pcs_per_carton'] as num?)?.toInt(),
-      imageUrl: json['image_url'] ?? (imagesList.isNotEmpty ? imagesList.first.url : null),
+      imageUrl: json['image_url'] ??
+          (imagesList.isNotEmpty ? imagesList.first.url : null),
       images: imagesList,
       unit: json['unit'],
       colorStocks: colorStocks,
       description: json['description'],
       stockStatus: _mapStatus(json['stock_status']),
-      updatedAt: json['updated_at'] != null ? DateTime.parse(json['updated_at']).toLocal() : null,
-      createdAt: json['created_at'] != null ? DateTime.parse(json['created_at']).toLocal() : null,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at']).toLocal()
+          : null,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at']).toLocal()
+          : null,
     );
   }
 
@@ -131,7 +139,7 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
 
   @override
   void dispose() {
-    _subscription?.unsubscribe();
+    _refreshTimer?.cancel();
     super.dispose();
   }
 }

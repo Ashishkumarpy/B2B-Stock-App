@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/product.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/transactions_provider.dart';
+import '../../widgets/connection_warning.dart';
 import '../../widgets/transaction_activity_card.dart';
 
 class ProductTransactionHistoryScreen extends ConsumerWidget {
@@ -54,45 +55,9 @@ class ProductTransactionHistoryScreen extends ConsumerWidget {
       ),
       body: txsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.error_outline_rounded,
-                  color: AppTheme.danger,
-                  size: 42,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Could not load product history',
-                  style: TextStyle(
-                    color: AppTheme.primaryTextColor(context),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$error',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppTheme.secondaryTextColor(context),
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    ref.invalidate(productTransactionsProvider(productId));
-                  },
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
+        error: (error, _) => ConnectionWarning(
+          error: error,
+          onRetry: () => ref.invalidate(productTransactionsProvider(productId)),
         ),
         data: (transactions) {
           if (transactions.isEmpty) {

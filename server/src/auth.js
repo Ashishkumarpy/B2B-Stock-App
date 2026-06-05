@@ -40,6 +40,47 @@ export function requireRole(roles) {
   };
 }
 
+function defaultPermissionsForRole(role) {
+  if (role === 'admin') {
+    return {
+      perm_products: true,
+      perm_inventory: true,
+      perm_orders: true,
+      perm_reports: true,
+      perm_users: true,
+      perm_settings: true
+    };
+  }
+  if (role === 'manager') {
+    return {
+      perm_products: false,
+      perm_inventory: true,
+      perm_orders: true,
+      perm_reports: true,
+      perm_users: true,
+      perm_settings: false
+    };
+  }
+  return {
+    perm_products: false,
+    perm_inventory: true,
+    perm_orders: false,
+    perm_reports: false,
+    perm_users: false,
+    perm_settings: false
+  };
+}
+
+function applyPermissionDefaults(user) {
+  const defaults = defaultPermissionsForRole(user.role);
+  for (const key of Object.keys(defaults)) {
+    if (user[key] === undefined || user[key] === null) {
+      user[key] = defaults[key];
+    }
+  }
+  return user;
+}
+
 export function requirePermission(permission) {
   return async (req, res, next) => {
     try {
@@ -86,6 +127,8 @@ export function requirePermission(permission) {
         };
       }
 
+      user = applyPermissionDefaults(user);
+
       if (!user.is_active) {
         return res.status(403).json({ error: 'Account is disabled. Please contact admin.' });
       }
@@ -114,7 +157,7 @@ export async function loginWithEmailPassword(email, password) {
 
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('users')
-    .select('id,name,email,role,created_at')
+    .select('id,name,email,role,created_at,perm_products,perm_inventory,perm_orders,perm_reports,perm_users,perm_settings')
     .eq('id', data.user.id)
     .maybeSingle();
   if (profileError) {
@@ -159,7 +202,7 @@ export async function requestWorkerOtp(phoneRaw, clientToken) {
 
   const { data: worker, error: workerError } = await supabaseAdmin
     .from('workers')
-    .select('id,name,phone,role,is_active,can_access_stock')
+    .select('id,name,phone,role,is_active,can_access_stock,perm_products,perm_inventory,perm_orders,perm_reports,perm_users,perm_settings')
     .eq('phone', phone)
     .maybeSingle();
 
@@ -176,13 +219,6 @@ export async function requestWorkerOtp(phoneRaw, clientToken) {
     e.code = 'WORKER_INACTIVE';
     throw e;
   }
-  if (!worker.can_access_stock) {
-    const e = new Error('Stock access disabled');
-    // @ts-ignore
-    e.code = 'WORKER_STOCK_DISABLED';
-    throw e;
-  }
-
   const isTestPhone = phone === '+919999999999' || phone === '6309705929';
   const otp = isTestPhone ? '123456' : String(Math.floor(100000 + Math.random() * 900000));
   
@@ -276,7 +312,7 @@ export async function verifyWorkerOtp(phoneRaw, otpRaw) {
 
   const { data: worker, error: workerError } = await supabaseAdmin
     .from('workers')
-    .select('id,user_id,email,name,phone,role,is_active,can_access_stock')
+    .select('id,user_id,email,name,phone,role,is_active,can_access_stock,perm_products,perm_inventory,perm_orders,perm_reports,perm_users,perm_settings')
     .eq('id', challenge.worker_id)
     .maybeSingle();
   if (workerError) throw workerError;
@@ -301,7 +337,15 @@ export async function verifyWorkerOtp(phoneRaw, otpRaw) {
       name: worker.name || 'Worker',
       phone: worker.phone || phone,
       role,
-      email: worker.email || null
+      email: worker.email || null,
+      permissions: {
+        perm_products: worker.perm_products ?? false,
+        perm_inventory: worker.perm_inventory ?? true,
+        perm_orders: worker.perm_orders ?? role === 'manager',
+        perm_reports: worker.perm_reports ?? role === 'manager',
+        perm_users: worker.perm_users ?? role === 'manager',
+        perm_settings: worker.perm_settings ?? false
+      }
     }
   };
 }

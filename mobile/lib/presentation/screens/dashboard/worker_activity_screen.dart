@@ -5,6 +5,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/transactions_provider.dart';
+import '../../widgets/connection_warning.dart';
 import '../../widgets/skeleton_loading.dart';
 import '../../../core/utils/formatters.dart';
 
@@ -26,7 +27,8 @@ class WorkerActivityScreen extends ConsumerWidget {
           }
 
           return RefreshIndicator(
-            onRefresh: () => ref.read(transactionsProvider.notifier).fetchTransactions(),
+            onRefresh: () =>
+                ref.read(transactionsProvider.notifier).fetchTransactions(),
             child: ListView.separated(
               padding: const EdgeInsets.all(AppTheme.sp16),
               itemCount: transactions.length,
@@ -42,20 +44,10 @@ class WorkerActivityScreen extends ConsumerWidget {
           padding: EdgeInsets.all(AppTheme.sp16),
           child: SkeletonList(count: 8, height: 72),
         ),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: AppTheme.danger),
-              const SizedBox(height: AppTheme.sp16),
-              Text('Failed to load activity', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: () => ref.read(transactionsProvider.notifier).fetchTransactions(),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+        error: (err, _) => ConnectionWarning(
+          error: err,
+          onRetry: () =>
+              ref.read(transactionsProvider.notifier).fetchTransactions(),
         ),
       ),
     );
@@ -80,11 +72,13 @@ class _ActivityTile extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppTheme.sp8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isStockIn ? Icons.add_circle_outline : Icons.remove_circle_outline,
+              isStockIn
+                  ? Icons.add_circle_outline
+                  : Icons.remove_circle_outline,
               color: color,
               size: 20,
             ),
@@ -100,7 +94,10 @@ class _ActivityTile extends StatelessWidget {
                 ),
                 Text(
                   '${transaction.workerName} • ${transaction.warehouseName ?? 'Main'}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppTheme.textSecondary),
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: AppTheme.textSecondary),
                 ),
               ],
             ),
@@ -118,7 +115,10 @@ class _ActivityTile extends StatelessWidget {
               ),
               Text(
                 dateStr,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(fontSize: 10),
               ),
             ],
           ),

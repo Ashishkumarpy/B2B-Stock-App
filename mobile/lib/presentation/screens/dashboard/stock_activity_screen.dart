@@ -7,6 +7,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/api_client_provider.dart';
+import '../../widgets/connection_warning.dart';
 import '../../widgets/skeleton_loading.dart';
 import '../../widgets/transaction_activity_card.dart';
 
@@ -326,21 +327,10 @@ class _StockActivityScreenState extends ConsumerState<StockActivityScreen> {
           padding: EdgeInsets.all(AppTheme.sp16),
           child: SkeletonList(count: 8, height: 72),
         ),
-        error: (error, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error_outline, size: 48, color: AppTheme.danger),
-              const SizedBox(height: AppTheme.sp16),
-              Text('Error: $error'),
-              const SizedBox(height: 8),
-              ElevatedButton(
-                onPressed: () =>
-                    ref.read(transactionsProvider.notifier).fetchTransactions(),
-                child: const Text('Retry'),
-              ),
-            ],
-          ),
+        error: (error, _) => ConnectionWarning(
+          error: error,
+          onRetry: () =>
+              ref.read(transactionsProvider.notifier).fetchTransactions(),
         ),
         data: (txns) {
           // Apply active filters

@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:csv/csv.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/connection_messages.dart';
+import '../../providers/api_client_provider.dart';
 import '../../providers/products_provider.dart';
 
 class BulkImportProductsScreen extends ConsumerStatefulWidget {
@@ -54,7 +55,7 @@ class _BulkImportProductsScreenState
 
     setState(() => _isImporting = true);
     try {
-      final supabase = Supabase.instance.client;
+      final client = ref.read(apiClientProvider);
       final headers =
           _csvData![0].map((e) => e.toString().trim().toLowerCase()).toList();
 
@@ -89,7 +90,9 @@ class _BulkImportProductsScreenState
       }
 
       if (productsToInsert.isNotEmpty) {
-        await supabase.from('products').upsert(productsToInsert);
+        for (final product in productsToInsert) {
+          await client.post('/products', product);
+        }
         ref.invalidate(productsProvider);
 
         if (mounted) {
@@ -107,7 +110,7 @@ class _BulkImportProductsScreenState
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-              content: Text('Import failed: $e'),
+              content: Text(userFriendlyErrorMessage(e)),
               backgroundColor: AppTheme.danger),
         );
       }
@@ -162,9 +165,9 @@ class _BulkImportProductsScreenState
     return Container(
       padding: const EdgeInsets.all(AppTheme.sp16),
       decoration: BoxDecoration(
-        color: AppTheme.primary.withOpacity(0.05),
+        color: AppTheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-        border: Border.all(color: AppTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,7 +202,8 @@ class _BulkImportProductsScreenState
         padding: const EdgeInsets.symmetric(vertical: 40),
         decoration: BoxDecoration(
           border: Border.all(
-              color: Colors.grey.withOpacity(0.3), style: BorderStyle.solid),
+              color: Colors.grey.withValues(alpha: 0.3),
+              style: BorderStyle.solid),
           borderRadius: BorderRadius.circular(AppTheme.radiusLG),
         ),
         child: Column(
@@ -232,7 +236,7 @@ class _BulkImportProductsScreenState
         Container(
           height: 200,
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey.withOpacity(0.1)),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
             borderRadius: BorderRadius.circular(AppTheme.radiusMD),
           ),
           child: ListView.separated(

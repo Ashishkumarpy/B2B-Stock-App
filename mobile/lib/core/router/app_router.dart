@@ -54,7 +54,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       }
 
       final isLoggedIn = authState.user != null;
-      final role = authState.user?.role;
+      final user = authState.user;
       final isProductManageRoute = path == '/add-product' ||
           path == '/bulk-import-products' ||
           path == '/edit-product';
@@ -80,45 +80,45 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return '/login?from=${Uri.encodeComponent(location)}';
       }
       if (isLoggedIn &&
-          role != null &&
+          user != null &&
           isProductManageRoute &&
-          !role.canManageProducts) {
+          !user.canManageProducts) {
         return '/';
       }
       if (isLoggedIn &&
-          role != null &&
+          user != null &&
           isUserManageRoute &&
-          !role.canManageUsers) {
+          !user.canManageUsers) {
         return '/';
       }
       if (isLoggedIn &&
-          role != null &&
+          user != null &&
           isWarehouseManageRoute &&
-          !role.canManageWarehouses) {
+          !user.canManageWarehouses) {
         return '/';
       }
       if (isLoggedIn &&
-          role != null &&
+          user != null &&
           isAnalyticsRoute &&
-          !role.canViewAnalytics) {
+          !user.canViewAnalytics) {
         return '/';
       }
       if (isLoggedIn &&
-          role != null &&
+          user != null &&
           isWorkerActivityRoute &&
-          !role.canViewWorkerActivity) {
+          !user.canViewWorkerActivity) {
         return '/';
       }
       if (isLoggedIn &&
-          role != null &&
+          user != null &&
           isStockActivityRoute &&
-          !role.canViewStockActivity) {
+          !user.canViewStockActivity) {
         return '/';
       }
       if (isLoggedIn &&
-          role != null &&
+          user != null &&
           isStockEntryRoute &&
-          !role.canRecordStock) {
+          !user.canRecordStock) {
         return '/';
       }
       if (isLoggedIn && isOnLogin) {

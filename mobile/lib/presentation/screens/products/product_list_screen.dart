@@ -3,13 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../core/constants/app_constants.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/categories_provider.dart';
 import '../../providers/api_client_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/product_card.dart';
+import '../../widgets/connection_warning.dart';
 import '../../widgets/skeleton_loading.dart';
+import '../../../domain/entities/app_user.dart';
 import '../../../domain/entities/product.dart';
 
 class ProductListScreen extends ConsumerStatefulWidget {
@@ -111,10 +112,11 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
         _warehouseProductIds = <String>{};
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isLoadingWarehouseProducts = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoadingWarehouseProducts = false;
+        });
+      }
     }
   }
 
@@ -128,7 +130,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   Widget build(BuildContext context) {
     final productsAsync = ref.watch(productsProvider);
     final categoriesAsync = ref.watch(categoriesProvider);
-    final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
+    final user = ref.watch(currentUserProvider);
     final isWarehouseRoute =
         widget.warehouseId != null && widget.warehouseId!.trim().isNotEmpty;
 
@@ -170,7 +172,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               )
             : null,
         actions: [
-          if (role.canManageProducts)
+          if (user?.canManageProducts == true)
             IconButton(
               icon: Icon(Icons.add_box_rounded, color: AppTheme.primary),
               onPressed: () => context.go('/add-product'),
@@ -429,7 +431,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                               .toLowerCase()
                               .contains(_searchQuery.toLowerCase()))
                       .toList();
-                  return _buildProductGrid(results, 'Search Results', role);
+                  return _buildProductGrid(results, 'Search Results', user);
                 }
 
                 // Direct product mode. Folder mode below still respects the same filters.
@@ -454,7 +456,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                           : (widget.initialFilter == 'low'
                               ? 'Low Stock Products'
                               : 'All Products'));
-                  return _buildProductGrid(filteredProducts, title, role);
+                  return _buildProductGrid(filteredProducts, title, user);
                 }
 
                 // ── Warehouse mode should always show products directly ──
@@ -477,7 +479,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                       widget.warehouseName?.trim().isNotEmpty == true
                           ? '${widget.warehouseName} Products'
                           : 'Warehouse Products',
-                      role);
+                      user);
                 }
 
                 // ── Inside a folder ──
@@ -498,14 +500,14 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                         folderProducts.where((p) => p.quantity == 0).toList();
                   }
 
-                  return _buildProductGrid(folderProducts, _openFolder!, role);
+                  return _buildProductGrid(folderProducts, _openFolder!, user);
                 }
 
                 // ── Folder view (default) ──
                 return categoriesAsync.when(
                   data: (categories) {
                     if (categories.isEmpty) {
-                      return _buildEmptyFolders(role);
+                      return _buildEmptyFolders(user);
                     }
 
                     // Build folder summaries
@@ -573,30 +575,16 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
                     padding: EdgeInsets.all(12),
                     child: SkeletonList(count: 4, height: 160),
                   ),
-                  error: (e, _) => Center(child: Text('$e')),
+                  error: (e, _) => ConnectionWarning(error: e),
                 );
               },
               loading: () => const Padding(
                 padding: EdgeInsets.all(12),
                 child: SkeletonList(count: 4, height: 160),
               ),
-              error: (err, _) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.error_outline_rounded,
-                        color: AppTheme.danger, size: 48),
-                    const SizedBox(height: 12),
-                    Text('$err',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppTheme.danger)),
-                    const SizedBox(height: 12),
-                    ElevatedButton(
-                      onPressed: () => ref.invalidate(productsProvider),
-                      child: Text('Retry'),
-                    ),
-                  ],
-                ),
+              error: (err, _) => ConnectionWarning(
+                error: err,
+                onRetry: () => ref.invalidate(productsProvider),
               ),
             ),
           ),
@@ -606,7 +594,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
   }
 
   Widget _buildProductGrid(
-      List<Product> products, String title, UserRole role) {
+      List<Product> products, String title, AppUser? user) {
     if (products.isEmpty) {
       return Center(
         child: Column(
@@ -646,10 +634,10 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
           return ProductCard(
             product: product,
             onTap: () => context.push('/products/${product.id}'),
-            onEdit: role.canManageProducts
+            onEdit: user?.canManageProducts == true
                 ? () => context.push('/edit-product', extra: product)
                 : null,
-            onDelete: role.canManageProducts
+            onDelete: user?.canManageProducts == true
                 ? () => _confirmDeleteProduct(context, ref, product)
                 : null,
           );
@@ -658,7 +646,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
     );
   }
 
-  Widget _buildEmptyFolders(UserRole role) {
+  Widget _buildEmptyFolders(AppUser? user) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -676,7 +664,7 @@ class _ProductListScreenState extends ConsumerState<ProductListScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: AppTheme.mutedTextColor(context), fontSize: 12)),
-          if (role.canManageProducts) ...[
+          if (user?.canManageProducts == true) ...[
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () => context.go('/add-product'),

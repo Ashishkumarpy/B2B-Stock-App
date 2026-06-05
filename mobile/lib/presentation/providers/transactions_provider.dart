@@ -1,14 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/transaction.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
+import '../../core/services/server_api_client.dart';
+import '../../core/utils/connection_messages.dart';
 import 'api_client_provider.dart';
 
 final transactionsProvider =
     StateNotifierProvider<TransactionsNotifier, AsyncValue<List<Transaction>>>(
         (ref) {
-  return TransactionsNotifier();
+  return TransactionsNotifier(ref.watch(apiClientProvider));
 });
 
 final productTransactionsProvider =
@@ -61,64 +62,36 @@ final productTransactionsProvider =
 
 class TransactionsNotifier
     extends StateNotifier<AsyncValue<List<Transaction>>> {
-  TransactionsNotifier() : super(const AsyncValue.loading()) {
+  TransactionsNotifier([this._client]) : super(const AsyncValue.loading()) {
     _init();
   }
 
-  final _supabase = Supabase.instance.client;
-  RealtimeChannel? _subscription;
+  final ServerApiClient? _client;
 
   Future<void> _init() async {
     await fetchTransactions();
-    _setupRealtime();
   }
 
   Future<void> fetchTransactions() async {
     try {
       state = const AsyncValue.loading();
 
-      const pageSize = 1000;
-      const maxRows = 5000;
-      final allRows = <dynamic>[];
-      var from = 0;
-
-      while (allRows.length < maxRows) {
-        final to = from + pageSize - 1;
-        final batch = await _supabase
-            .from('transactions')
-            .select()
-            .order('created_at', ascending: false)
-            .range(from, to);
-
-        final rows = (batch as List);
-        if (rows.isEmpty) break;
-        allRows.addAll(rows);
-        if (rows.length < pageSize) break;
-        from += pageSize;
+      final client = _client;
+      if (client == null) {
+        throw ServerApiException(connectionWarningMessage, 0);
       }
 
-      final transactions =
-          allRows.map((json) => _mapToTransaction(json)).toList();
+      final json = await client.get('/transactions?limit=5000&page=1');
+      final rows = (json is Map ? json['data'] : null) as List? ?? const [];
+      final transactions = rows
+          .whereType<Map>()
+          .map((row) => _mapToTransaction(Map<String, dynamic>.from(row)))
+          .toList();
       state = AsyncValue.data(transactions);
     } catch (e, st) {
       AppLog.d('Error fetching transactions: $e');
       state = AsyncValue.error(e, st);
     }
-  }
-
-  void _setupRealtime() {
-    _subscription = _supabase
-        .channel('public:transactions')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'transactions',
-          callback: (payload) {
-            AppLog.d('Real-time transaction change: ${payload.eventType}');
-            fetchTransactions();
-          },
-        )
-        .subscribe();
   }
 
   Transaction _mapToTransaction(Map<String, dynamic> json) {
@@ -141,11 +114,5 @@ class TransactionsNotifier
           DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String())
               .toLocal(),
     );
-  }
-
-  @override
-  void dispose() {
-    _subscription?.unsubscribe();
-    super.dispose();
   }
 }

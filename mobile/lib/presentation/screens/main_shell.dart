@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../core/constants/app_constants.dart';
 import '../../core/theme/app_theme.dart';
+import '../../domain/entities/app_user.dart';
 import '../providers/auth_provider.dart';
 
 class MainShell extends ConsumerWidget {
@@ -15,23 +15,42 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final role = ref.watch(currentUserProvider)?.role ?? UserRole.customer;
+    final user = ref.watch(currentUserProvider);
+    final location = GoRouterState.of(context).uri.path;
+    final backToDashboard = _goesToDashboardOnBack(location);
 
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: _BottomNavBar(
-        location: GoRouterState.of(context).uri.path,
-        role: role,
+    return PopScope<void>(
+      canPop: !backToDashboard,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop || !backToDashboard) return;
+        context.go('/');
+      },
+      child: Scaffold(
+        body: child,
+        bottomNavigationBar: _BottomNavBar(
+          location: location,
+          user: user,
+        ),
       ),
     );
+  }
+
+  bool _goesToDashboardOnBack(String location) {
+    return const {
+      '/products',
+      '/stock-activity',
+      '/stock-entry',
+      '/analytics',
+      '/settings',
+    }.contains(location);
   }
 }
 
 class _BottomNavBar extends StatelessWidget {
   final String location;
-  final UserRole role;
+  final AppUser? user;
 
-  const _BottomNavBar({required this.location, required this.role});
+  const _BottomNavBar({required this.location, required this.user});
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +84,7 @@ class _BottomNavBar extends StatelessWidget {
                   onTap: () => context.go('/products'),
                 ),
               ),
-              if (role.canViewStockActivity)
+              if (user?.canViewStockActivity == true)
                 Expanded(
                   child: _NavBarItem(
                     icon: Icons.swap_vert_circle_outlined,
@@ -76,7 +95,7 @@ class _BottomNavBar extends StatelessWidget {
                     onTap: () => context.go('/stock-activity'),
                   ),
                 )
-              else if (role.canRecordStock)
+              else if (user?.canRecordStock == true)
                 Expanded(
                   child: _NavBarItem(
                     icon: Icons.swap_vert_circle_outlined,
@@ -86,7 +105,7 @@ class _BottomNavBar extends StatelessWidget {
                     onTap: () => context.go('/stock-entry'),
                   ),
                 ),
-              if (role.canViewAnalytics)
+              if (user?.canViewAnalytics == true)
                 Expanded(
                   child: _NavBarItem(
                     icon: Icons.analytics_outlined,

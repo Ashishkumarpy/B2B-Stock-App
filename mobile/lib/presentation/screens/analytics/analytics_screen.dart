@@ -6,6 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../providers/products_provider.dart';
 import '../../providers/transactions_provider.dart';
+import '../../widgets/connection_warning.dart';
 import '../../../domain/entities/product.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../../core/utils/formatters.dart';
@@ -22,7 +23,20 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   int? _selectedYear;
 
   String _formatDate(DateTime d) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
     return '${months[d.month - 1]} ${d.day.toString().padLeft(2, '0')}, ${d.year}';
   }
 
@@ -70,11 +84,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               ],
             ),
           ),
-          loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-          error: (err, _) => Center(child: Text('Transactions Error: $err')),
+          loading: () => const Center(
+              child: CircularProgressIndicator(color: AppTheme.primary)),
+          error: (err, _) => ConnectionWarning(error: err),
         ),
-        loading: () => const Center(child: CircularProgressIndicator(color: AppTheme.primary)),
-        error: (err, _) => Center(child: Text('Products Error: $err')),
+        loading: () => const Center(
+            child: CircularProgressIndicator(color: AppTheme.primary)),
+        error: (err, _) => ConnectionWarning(error: err),
       ),
     );
   }
@@ -118,7 +134,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   Widget _buildFilterBar(List<Transaction> transactions) {
     // Scan transactions for all unique years
-    final availableYears = transactions.map((t) => t.createdAt.year).toSet().toList()
+    final availableYears = transactions
+        .map((t) => t.createdAt.year)
+        .toSet()
+        .toList()
       ..sort((a, b) => b.compareTo(a));
     if (availableYears.isEmpty) {
       availableYears.add(DateTime.now().year);
@@ -136,7 +155,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         children: [
           const Text(
             'Interactive Filters',
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textPrimary),
+            style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textPrimary),
           ),
           const SizedBox(height: 8),
           Row(
@@ -147,20 +169,29 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   icon: Icon(
                     Icons.calendar_today_rounded,
                     size: 14,
-                    color: _selectedDate != null ? AppTheme.primary : AppTheme.textSecondary,
+                    color: _selectedDate != null
+                        ? AppTheme.primary
+                        : AppTheme.textSecondary,
                   ),
                   label: Text(
-                    _selectedDate != null ? _formatDate(_selectedDate!) : 'Select Date',
+                    _selectedDate != null
+                        ? _formatDate(_selectedDate!)
+                        : 'Select Date',
                     style: TextStyle(
-                      color: _selectedDate != null ? AppTheme.primary : AppTheme.textSecondary,
+                      color: _selectedDate != null
+                          ? AppTheme.primary
+                          : AppTheme.textSecondary,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                     side: BorderSide(
-                      color: _selectedDate != null ? AppTheme.primary : Colors.grey.withValues(alpha: 0.2),
+                      color: _selectedDate != null
+                          ? AppTheme.primary
+                          : Colors.grey.withValues(alpha: 0.2),
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppTheme.radiusMD),
@@ -184,7 +215,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               if (_selectedDate != null) ...[
                 const SizedBox(width: 4),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: AppTheme.danger, size: 20),
+                  icon: const Icon(Icons.close_rounded,
+                      color: AppTheme.danger, size: 20),
                   onPressed: () => setState(() => _selectedDate = null),
                 ),
               ],
@@ -196,23 +228,33 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(AppTheme.radiusMD),
                   border: Border.all(
-                    color: _selectedYear != null ? AppTheme.primary : Colors.grey.withValues(alpha: 0.2),
+                    color: _selectedYear != null
+                        ? AppTheme.primary
+                        : Colors.grey.withValues(alpha: 0.2),
                   ),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<int?>(
                     value: _selectedYear,
-                    hint: const Text('Year', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
-                    icon: const Icon(Icons.arrow_drop_down_rounded, color: AppTheme.textSecondary),
+                    hint: const Text('Year',
+                        style: TextStyle(
+                            fontSize: 11.5, fontWeight: FontWeight.w600)),
+                    icon: const Icon(Icons.arrow_drop_down_rounded,
+                        color: AppTheme.textSecondary),
                     items: [
                       const DropdownMenuItem<int?>(
                         value: null,
-                        child: Text('All Years', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
+                        child: Text('All Years',
+                            style: TextStyle(
+                                fontSize: 11.5, fontWeight: FontWeight.w600)),
                       ),
                       ...availableYears.map((y) => DropdownMenuItem<int?>(
-                        value: y,
-                        child: Text('$y', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600)),
-                      )),
+                            value: y,
+                            child: Text('$y',
+                                style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w600)),
+                          )),
                     ],
                     onChanged: (val) {
                       setState(() {
@@ -232,14 +274,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.2),
+      style: const TextStyle(
+          fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 0.2),
     );
   }
 
   Widget _buildOverviewCards(List<Product> products) {
     final totalItems = products.length;
     final totalStock = products.fold<int>(0, (sum, p) => sum + p.quantity);
-    final lowStock = products.where((p) => p.stockStatus == StockStatus.lowStock).length;
+    final lowStock =
+        products.where((p) => p.stockStatus == StockStatus.lowStock).length;
 
     return Row(
       children: [
@@ -268,13 +312,26 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
   Widget _buildMonthlyTransactionFlow(List<Transaction> transactions) {
     final today = DateTime.now();
-    final monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    
+    final monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
     // 1. Calculate Today's / Selected Date's Stats
     final filterDate = _selectedDate ?? today;
     int stockInSum = 0;
     int stockOutSum = 0;
-    
+
     for (final t in transactions) {
       final tDate = t.createdAt;
       if (tDate.year == filterDate.year &&
@@ -332,11 +389,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     }
 
     final double maxVal = monthlyTrend
-        .map((m) => m.stockIn > m.stockOut ? m.stockIn.toDouble() : m.stockOut.toDouble())
+        .map((m) => m.stockIn > m.stockOut
+            ? m.stockIn.toDouble()
+            : m.stockOut.toDouble())
         .reduce((a, b) => a > b ? a : b);
     final double computedMax = maxVal == 0 ? 100.0 : maxVal * 1.15;
 
-    final dateLabel = _selectedDate != null ? _formatDate(_selectedDate!) : 'Today';
+    final dateLabel =
+        _selectedDate != null ? _formatDate(_selectedDate!) : 'Today';
     final String dateParams;
     if (_selectedDate != null) {
       final dateStr = _selectedDate!.toIso8601String().substring(0, 10);
@@ -367,11 +427,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     maxY: computedMax,
                     barTouchData: BarTouchData(
                       touchTooltipData: BarTouchTooltipData(
-                        getTooltipColor: (_) => Colors.black.withValues(alpha: 0.8),
+                        getTooltipColor: (_) =>
+                            Colors.black.withValues(alpha: 0.8),
                         getTooltipItem: (group, groupIndex, rod, rodIndex) {
                           return BarTooltipItem(
                             '${rodIndex == 0 ? "IN: " : "OUT: "}${rod.toY.toInt()}',
-                            const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                            const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11),
                           );
                         },
                       ),
@@ -400,9 +464,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                           },
                         ),
                       ),
-                      leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
                     ),
                     gridData: const FlGridData(show: false),
                     borderData: FlBorderData(show: false),
@@ -442,15 +509,24 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     children: [
                       Icon(Icons.circle, color: AppTheme.primary, size: 10),
                       SizedBox(width: 6),
-                      Text('Stock In', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+                      Text('Stock In',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textSecondary)),
                     ],
                   ),
                   SizedBox(width: 24),
                   Row(
                     children: [
-                      Icon(Icons.circle, color: AppTheme.primaryLight, size: 10),
+                      Icon(Icons.circle,
+                          color: AppTheme.primaryLight, size: 10),
                       SizedBox(width: 6),
-                      Text('Stock Out', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary)),
+                      Text('Stock Out',
+                          style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.textSecondary)),
                     ],
                   ),
                 ],
@@ -466,7 +542,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               value: '$stockInSum',
               icon: Icons.trending_up_rounded,
               color: AppTheme.primary,
-              onTap: () => context.push('/stock-activity?type=stockIn$dateParams'),
+              onTap: () =>
+                  context.push('/stock-activity?type=stockIn$dateParams'),
             ),
             const SizedBox(width: AppTheme.sp12),
             _TransactionSummaryCard(
@@ -474,15 +551,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               value: '$stockOutSum',
               icon: Icons.trending_down_rounded,
               color: AppTheme.danger,
-              onTap: () => context.push('/stock-activity?type=stockOut$dateParams'),
+              onTap: () =>
+                  context.push('/stock-activity?type=stockOut$dateParams'),
             ),
           ],
         ),
         const SizedBox(height: AppTheme.sp12),
         _NetFlowCard(
           label: 'Net Flow ($dateLabel)',
-          value: '${stockInSum - stockOutSum >= 0 ? "+" : ""}${stockInSum - stockOutSum}',
-          color: (stockInSum - stockOutSum) >= 0 ? AppTheme.success : AppTheme.danger,
+          value:
+              '${stockInSum - stockOutSum >= 0 ? "+" : ""}${stockInSum - stockOutSum}',
+          color: (stockInSum - stockOutSum) >= 0
+              ? AppTheme.success
+              : AppTheme.danger,
           onTap: () => context.push('/stock-activity?type=both$dateParams'),
         ),
       ],
@@ -553,11 +634,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   return Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.circle, color: colors[e.key % colors.length], size: 8),
+                      Icon(Icons.circle,
+                          color: colors[e.key % colors.length], size: 8),
                       const SizedBox(width: 4),
                       Text(
                         e.value.key,
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textSecondary),
                       ),
                     ],
                   );
@@ -571,8 +656,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   }
 
   Widget _buildHealthStats(List<Product> products) {
-    final lowStock = products.where((p) => p.stockStatus == StockStatus.lowStock).length;
-    final outOfStock = products.where((p) => p.stockStatus == StockStatus.outOfStock).length;
+    final lowStock =
+        products.where((p) => p.stockStatus == StockStatus.lowStock).length;
+    final outOfStock =
+        products.where((p) => p.stockStatus == StockStatus.outOfStock).length;
     final healthy = products.length - lowStock - outOfStock;
 
     return Column(
@@ -601,9 +688,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
-  Widget _buildFinancialValueCards(List<Product> products, List<Transaction> transactions) {
-    final totalPriceValue = products.fold<double>(0.0, (sum, p) => sum + (p.price * p.quantity));
-    final outStockValue = products.where((p) => p.quantity == 0).fold<double>(0.0, (sum, p) => sum + (p.price * p.threshold));
+  Widget _buildFinancialValueCards(
+      List<Product> products, List<Transaction> transactions) {
+    final totalPriceValue =
+        products.fold<double>(0.0, (sum, p) => sum + (p.price * p.quantity));
+    final outStockValue = products
+        .where((p) => p.quantity == 0)
+        .fold<double>(0.0, (sum, p) => sum + (p.price * p.threshold));
 
     double inStockValue = 0.0;
     double estimatedRevenue = 0.0;
@@ -842,10 +933,13 @@ class _HealthRow extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(label,
+                style:
+                    const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             Text(
               '$count',
-              style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 14),
+              style: TextStyle(
+                  color: color, fontWeight: FontWeight.w900, fontSize: 14),
             ),
           ],
         ),
@@ -869,7 +963,8 @@ class _PulseIndicator extends StatefulWidget {
   State<_PulseIndicator> createState() => _PulseIndicatorState();
 }
 
-class _PulseIndicatorState extends State<_PulseIndicator> with SingleTickerProviderStateMixin {
+class _PulseIndicatorState extends State<_PulseIndicator>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
 
   @override
@@ -970,7 +1065,10 @@ class _TransactionSummaryCard extends StatelessWidget {
                         label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                        style: const TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.textSecondary),
                       ),
                     ),
                   ],
@@ -978,7 +1076,8 @@ class _TransactionSummaryCard extends StatelessWidget {
                 const SizedBox(height: 12),
                 Text(
                   value,
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: color),
+                  style: TextStyle(
+                      fontSize: 20, fontWeight: FontWeight.w900, color: color),
                 ),
               ],
             ),
@@ -1025,7 +1124,10 @@ class _NetFlowCard extends StatelessWidget {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.textSecondary),
+                    style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.textSecondary),
                   ),
                   const SizedBox(height: 4),
                   const Text(
@@ -1036,7 +1138,8 @@ class _NetFlowCard extends StatelessWidget {
               ),
               Text(
                 value,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: color),
+                style: TextStyle(
+                    fontSize: 22, fontWeight: FontWeight.w900, color: color),
               ),
             ],
           ),

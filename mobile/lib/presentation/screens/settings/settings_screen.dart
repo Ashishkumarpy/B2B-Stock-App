@@ -97,7 +97,8 @@ class SettingsScreen extends ConsumerWidget {
                 label: 'Push Notifications',
                 subtitle: 'Enable all app notifications',
                 value: settings.pushNotifications,
-                onChanged: (v) => ref.read(settingsProvider.notifier).setPushNotifications(v),
+                onChanged: (v) =>
+                    ref.read(settingsProvider.notifier).setPushNotifications(v),
               ),
               const Divider(height: 1),
               _SwitchTile(
@@ -107,7 +108,8 @@ class SettingsScreen extends ConsumerWidget {
                 subtitle: 'Notify when items fall below threshold',
                 value: settings.lowStockAlerts,
                 enabled: settings.pushNotifications,
-                onChanged: (v) => ref.read(settingsProvider.notifier).setLowStockAlerts(v),
+                onChanged: (v) =>
+                    ref.read(settingsProvider.notifier).setLowStockAlerts(v),
               ),
               const Divider(height: 1),
               _SwitchTile(
@@ -116,7 +118,8 @@ class SettingsScreen extends ConsumerWidget {
                 label: 'Weekly Report',
                 subtitle: 'Receive a weekly stock summary',
                 value: settings.weeklyReport,
-                onChanged: (v) => ref.read(settingsProvider.notifier).setWeeklyReport(v),
+                onChanged: (v) =>
+                    ref.read(settingsProvider.notifier).setWeeklyReport(v),
               ),
               const Divider(height: 1),
               _SwitchTile(
@@ -125,7 +128,8 @@ class SettingsScreen extends ConsumerWidget {
                 label: 'In-App Update Alerts',
                 subtitle: 'Notify when new updates are available',
                 value: settings.inAppUpdates,
-                onChanged: (v) => ref.read(settingsProvider.notifier).setInAppUpdates(v),
+                onChanged: (v) =>
+                    ref.read(settingsProvider.notifier).setInAppUpdates(v),
               ),
             ]),
             const SizedBox(height: AppTheme.sp24),
@@ -179,7 +183,7 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppTheme.sp24),
             const _SectionHeader(title: 'Account'),
             _SettingsCard(children: [
-              if (user?.role.canManageWarehouses == true) ...[
+              if (user?.canManageWarehouses == true) ...[
                 _ActionTile(
                   icon: Icons.warehouse_rounded,
                   label: 'Manage Warehouses',
@@ -188,7 +192,7 @@ class SettingsScreen extends ConsumerWidget {
                 ),
                 const Divider(height: 1),
               ],
-              if (user?.role.canManageUsers == true) ...[
+              if (user?.canManageUsers == true) ...[
                 _ActionTile(
                   icon: Icons.people_rounded,
                   label: 'Manage Workers',

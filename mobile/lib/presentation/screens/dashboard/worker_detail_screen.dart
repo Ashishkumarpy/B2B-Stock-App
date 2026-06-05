@@ -8,6 +8,7 @@ import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/transaction.dart';
 import '../../providers/transactions_provider.dart';
 import '../../providers/workers_provider.dart';
+import '../../widgets/connection_warning.dart';
 import '../../widgets/skeleton_loading.dart';
 
 class WorkerDetailScreen extends ConsumerWidget {
@@ -30,7 +31,10 @@ class WorkerDetailScreen extends ConsumerWidget {
           padding: EdgeInsets.all(AppTheme.sp16),
           child: SkeletonList(count: 4, height: 96),
         ),
-        error: (error, _) => Center(child: Text('Error: $error')),
+        error: (error, _) => ConnectionWarning(
+          error: error,
+          onRetry: () => ref.invalidate(workersProvider),
+        ),
         data: (workers) {
           final worker =
               workers.where((w) => '${w['id']}' == userId).firstOrNull;
@@ -181,9 +185,9 @@ class _MetricCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(AppTheme.sp16),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
+        color: color.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-        border: Border.all(color: color.withOpacity(0.16)),
+        border: Border.all(color: color.withValues(alpha: 0.16)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -220,7 +224,7 @@ class _WorkerTransactionTile extends StatelessWidget {
       leading: Container(
         padding: const EdgeInsets.all(AppTheme.sp8),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           shape: BoxShape.circle,
         ),
         child: Icon(

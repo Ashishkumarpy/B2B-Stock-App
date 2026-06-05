@@ -36,11 +36,6 @@ class AppConstants {
 
   // ── Pagination ──────────────────────────────────────────────────────────
   static const int pageSize = 20;
-
-  // ── Supabase ────────────────────────────────────────────────────────────
-  static const String supabaseUrl = 'https://itojengshxuxuarljomc.supabase.co';
-  static const String supabaseAnonKey =
-      'sb_publishable_uaK-4d0HllpDttD8itUuZw_QMRkEIbi';
 }
 
 /// User roles in the system
@@ -57,11 +52,9 @@ enum UserRole {
         UserRole.customer => 'Customer',
       };
 
-  bool get canManageUsers => this == UserRole.admin;
-  bool get canManageProducts =>
-      this == UserRole.admin || this == UserRole.manager;
-  bool get canManageWarehouses =>
-      this == UserRole.admin || this == UserRole.manager;
+  bool get canManageUsers => this == UserRole.admin || this == UserRole.manager;
+  bool get canManageProducts => this == UserRole.admin;
+  bool get canManageWarehouses => this == UserRole.admin;
   bool get canViewAnalytics =>
       this != UserRole.worker && this != UserRole.customer;
   bool get canViewWorkerActivity =>

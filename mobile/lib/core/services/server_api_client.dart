@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../logging/app_log.dart';
+import '../utils/connection_messages.dart';
 
 class ServerApiClient {
   final String baseUrl;
@@ -24,7 +25,7 @@ class ServerApiClient {
     } catch (e) {
       AppLog.d('GET $path failed: $e');
       if (e is http.ClientException || e is SocketException) {
-        throw ServerApiException('Network error: Please check your internet connection.', 0);
+        throw ServerApiException(connectionWarningMessage, 0);
       }
       rethrow;
     }
@@ -43,7 +44,7 @@ class ServerApiClient {
     } catch (e) {
       AppLog.d('POST $path failed: $e');
       if (e is http.ClientException || e is SocketException) {
-        throw ServerApiException('Network error: Please check your internet connection.', 0);
+        throw ServerApiException(connectionWarningMessage, 0);
       }
       rethrow;
     }
@@ -58,14 +59,14 @@ class ServerApiClient {
         request.headers['Authorization'] = 'Bearer $token';
       }
       request.files.add(await http.MultipartFile.fromPath('file', filePath));
-      
+
       final streamedResponse = await request.send();
       final response = await http.Response.fromStream(streamedResponse);
       return _handleResponse(response);
     } catch (e) {
       AppLog.d('Multipart POST $path failed: $e');
       if (e is http.ClientException || e is SocketException) {
-        throw ServerApiException('Network error: Please check your internet connection.', 0);
+        throw ServerApiException(connectionWarningMessage, 0);
       }
       rethrow;
     }
@@ -82,7 +83,7 @@ class ServerApiClient {
     } catch (e) {
       AppLog.d('PATCH $path failed: $e');
       if (e is http.ClientException || e is SocketException) {
-        throw ServerApiException('Network error: Please check your internet connection.', 0);
+        throw ServerApiException(connectionWarningMessage, 0);
       }
       rethrow;
     }
@@ -99,7 +100,7 @@ class ServerApiClient {
     } catch (e) {
       AppLog.d('PUT $path failed: $e');
       if (e is http.ClientException || e is SocketException) {
-        throw ServerApiException('Network error: Please check your internet connection.', 0);
+        throw ServerApiException(connectionWarningMessage, 0);
       }
       rethrow;
     }
@@ -115,7 +116,7 @@ class ServerApiClient {
     } catch (e) {
       AppLog.d('DELETE $path failed: $e');
       if (e is http.ClientException || e is SocketException) {
-        throw ServerApiException('Network error: Please check your internet connection.', 0);
+        throw ServerApiException(connectionWarningMessage, 0);
       }
       rethrow;
     }

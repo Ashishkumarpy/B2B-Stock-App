@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../domain/entities/app_user.dart';
 import '../../providers/workers_provider.dart';
 import '../../providers/api_client_provider.dart';
+import '../../widgets/connection_warning.dart';
 import '../../widgets/skeleton_loading.dart';
 
 class ManageWorkersScreen extends ConsumerWidget {
@@ -23,188 +26,183 @@ class ManageWorkersScreen extends ConsumerWidget {
         ],
       ),
       body: workersAsync.when(
-        data: (workers) => workers.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.people_outline_rounded,
-                        size: 64, color: AppTheme.mutedTextColor(context)),
-                    const SizedBox(height: 16),
-                    Text('No workers yet',
-                        style: TextStyle(
-                            color: AppTheme.secondaryTextColor(context),
-                            fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text('Tap + to add your first worker',
-                        style: TextStyle(
-                            color: AppTheme.mutedTextColor(context),
-                            fontSize: 12)),
-                  ],
-                ),
-              )
-            : RefreshIndicator(
-                onRefresh: () async => ref.invalidate(workersProvider),
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(AppTheme.sp16),
-                  itemCount: workers.length,
-                  itemBuilder: (context, index) {
-                    final worker = workers[index];
-                    final name = worker['name'] as String? ?? '?';
-                    final phone = worker['phone'] as String? ?? '';
-                    final isActive = worker['is_active'] as bool? ?? true;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: AppTheme.sp12),
-                      shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppTheme.radiusLG)),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: AppTheme.sp16, vertical: AppTheme.sp8),
-                        leading: CircleAvatar(
-                          backgroundColor:
-                              AppTheme.primary.withValues(alpha: 0.1),
-                          child: Text(
-                            name[0].toUpperCase(),
-                            style: TextStyle(
-                                color: AppTheme.primary,
-                                fontWeight: FontWeight.bold),
+        data: (workers) {
+          final manageableWorkers =
+              workers.where(_isManageableWorkerProfile).toList();
+          return manageableWorkers.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.people_outline_rounded,
+                          size: 64, color: AppTheme.mutedTextColor(context)),
+                      const SizedBox(height: 16),
+                      Text('No workers yet',
+                          style: TextStyle(
+                              color: AppTheme.secondaryTextColor(context),
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text('Tap + to add your first worker',
+                          style: TextStyle(
+                              color: AppTheme.mutedTextColor(context),
+                              fontSize: 12)),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () async => ref.invalidate(workersProvider),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(AppTheme.sp16),
+                    itemCount: manageableWorkers.length,
+                    itemBuilder: (context, index) {
+                      final worker = manageableWorkers[index];
+                      final name = worker['name'] as String? ?? '?';
+                      final phone = worker['phone'] as String? ?? '';
+                      final isActive = worker['is_active'] as bool? ?? true;
+                      final permissionLabels = _permissionLabels(worker);
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: AppTheme.sp12),
+                        shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(AppTheme.radiusLG)),
+                        child: ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: AppTheme.sp16,
+                              vertical: AppTheme.sp8),
+                          leading: CircleAvatar(
+                            backgroundColor:
+                                AppTheme.primary.withValues(alpha: 0.1),
+                            child: Text(
+                              name[0].toUpperCase(),
+                              style: TextStyle(
+                                  color: AppTheme.primary,
+                                  fontWeight: FontWeight.bold),
+                            ),
                           ),
-                        ),
-                        title: Text(name,
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (phone.isNotEmpty) Text(phone),
-                            const SizedBox(height: 6),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                // Role Badge
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: (worker['role'] == 'manager'
-                                            ? Colors.purple
-                                            : AppTheme.primary)
-                                        .withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    (worker['role'] as String? ?? 'worker')
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: worker['role'] == 'manager'
-                                          ? Colors.purple
-                                          : AppTheme.primary,
-                                    ),
-                                  ),
-                                ),
-                                // Active / Inactive Badge
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: isActive
-                                        ? AppTheme.success
-                                            .withValues(alpha: 0.1)
-                                        : Colors.grey.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    isActive ? 'ACTIVE' : 'INACTIVE',
-                                    style: TextStyle(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.bold,
-                                      color: isActive
-                                          ? AppTheme.success
-                                          : Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                                // Stock Access Badge
-                                if (worker['can_access_stock'] as bool? ?? true)
+                          title: Text(name,
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (phone.isNotEmpty) Text(phone),
+                              const SizedBox(height: 6),
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 4,
+                                children: [
+                                  // Role Badge
                                   Container(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 6, vertical: 2),
                                     decoration: BoxDecoration(
-                                      color: Colors.blue.withValues(alpha: 0.1),
+                                      color: (worker['role'] == 'manager'
+                                              ? Colors.purple
+                                              : AppTheme.primary)
+                                          .withValues(alpha: 0.1),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
-                                      'STOCK ACCESS',
+                                      (worker['role'] as String? ?? 'worker')
+                                          .toUpperCase(),
                                       style: TextStyle(
                                         fontSize: 9,
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.blue,
+                                        color: worker['role'] == 'manager'
+                                            ? Colors.purple
+                                            : AppTheme.primary,
                                       ),
                                     ),
                                   ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        trailing: PopupMenuButton<String>(
-                          icon: Icon(Icons.more_vert_rounded),
-                          onSelected: (value) {
-                            if (value == 'edit') {
-                              _showEditWorkerDialog(context, ref, worker);
-                            } else if (value == 'delete') {
-                              _confirmDelete(context, ref, worker);
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(
-                              value: 'edit',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.edit_outlined, size: 20),
-                                  SizedBox(width: 8),
-                                  Text('Edit'),
+                                  // Active / Inactive Badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: isActive
+                                          ? AppTheme.success
+                                              .withValues(alpha: 0.1)
+                                          : Colors.grey.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      isActive ? 'ACTIVE' : 'INACTIVE',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: isActive
+                                            ? AppTheme.success
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                  ...permissionLabels.map(
+                                    (label) => Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            Colors.blue.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        label.toUpperCase(),
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.blue,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                                 ],
                               ),
-                            ),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete_outline_rounded,
-                                      size: 20, color: AppTheme.danger),
-                                  SizedBox(width: 8),
-                                  Text('Delete',
-                                      style: TextStyle(color: AppTheme.danger)),
-                                ],
+                            ],
+                          ),
+                          trailing: PopupMenuButton<String>(
+                            icon: Icon(Icons.more_vert_rounded),
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showEditWorkerDialog(context, ref, worker);
+                              } else if (value == 'delete') {
+                                _confirmDelete(context, ref, worker);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Edit'),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline_rounded,
+                                        size: 20, color: AppTheme.danger),
+                                    SizedBox(width: 8),
+                                    Text('Delete',
+                                        style:
+                                            TextStyle(color: AppTheme.danger)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+                      );
+                    },
+                  ),
+                );
+        },
         loading: () => const Center(child: SkeletonList(count: 5, height: 80)),
-        error: (err, _) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.error_outline_rounded,
-                  color: AppTheme.danger, size: 48),
-              const SizedBox(height: 16),
-              Text('$err',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AppTheme.danger)),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                  onPressed: () => ref.invalidate(workersProvider),
-                  child: Text('Retry')),
-            ],
-          ),
+        error: (err, _) => ConnectionWarning(
+          error: err,
+          onRetry: () => ref.invalidate(workersProvider),
         ),
       ),
     );
@@ -268,6 +266,22 @@ class ManageWorkersScreen extends ConsumerWidget {
       ),
     );
   }
+
+  List<String> _permissionLabels(Map<String, dynamic> worker) {
+    final labels = <String>[];
+    if (_permissionValue(worker, 'perm_products')) labels.add('Products');
+    if (_permissionValue(worker, 'perm_inventory')) labels.add('Inventory');
+    if (_permissionValue(worker, 'perm_orders')) labels.add('Orders');
+    if (_permissionValue(worker, 'perm_reports')) labels.add('Reports');
+    if (_permissionValue(worker, 'perm_users')) labels.add('Workers');
+    if (_permissionValue(worker, 'perm_settings')) labels.add('Settings');
+    return labels.isEmpty ? ['No access'] : labels;
+  }
+
+  bool _isManageableWorkerProfile(Map<String, dynamic> worker) {
+    final role = worker['role']?.toString().trim().toLowerCase();
+    return role == 'worker' || role == 'manager';
+  }
 }
 
 class _WorkerFormBottomSheet extends StatefulWidget {
@@ -288,7 +302,12 @@ class _WorkerFormBottomSheetState extends State<_WorkerFormBottomSheet> {
   late final TextEditingController _phoneController;
   late final TextEditingController _emailController;
   late String _role;
-  late bool _canAccessStock;
+  late bool _permProducts;
+  late bool _permInventory;
+  late bool _permOrders;
+  late bool _permReports;
+  late bool _permUsers;
+  late bool _permSettings;
   late bool _isActive;
   bool _isLoading = false;
 
@@ -303,7 +322,19 @@ class _WorkerFormBottomSheetState extends State<_WorkerFormBottomSheet> {
     _emailController =
         TextEditingController(text: worker?['email'] as String? ?? '');
     _role = worker?['role'] as String? ?? 'worker';
-    _canAccessStock = worker?['can_access_stock'] as bool? ?? true;
+    final defaults = UserPermissions.defaultsForRole(_roleFromString(_role));
+    _permProducts =
+        _permissionValue(worker, 'perm_products', fallback: defaults.products);
+    _permInventory = _permissionValue(worker, 'perm_inventory',
+        fallback: worker?['can_access_stock'] as bool? ?? defaults.inventory);
+    _permOrders =
+        _permissionValue(worker, 'perm_orders', fallback: defaults.orders);
+    _permReports =
+        _permissionValue(worker, 'perm_reports', fallback: defaults.reports);
+    _permUsers =
+        _permissionValue(worker, 'perm_users', fallback: defaults.users);
+    _permSettings =
+        _permissionValue(worker, 'perm_settings', fallback: defaults.settings);
     _isActive = worker?['is_active'] as bool? ?? true;
   }
 
@@ -347,7 +378,15 @@ class _WorkerFormBottomSheetState extends State<_WorkerFormBottomSheet> {
         'name': name,
         'phone': phone,
         'role': _role,
-        'can_access_stock': _canAccessStock,
+        'can_access_stock': _permInventory,
+        'permissions': {
+          'perm_products': _permProducts,
+          'perm_inventory': _permInventory,
+          'perm_orders': _permOrders,
+          'perm_reports': _permReports,
+          'perm_users': _permUsers,
+          'perm_settings': _permSettings,
+        },
         'is_active': _isActive,
         'email': email.isNotEmpty ? email : null,
       };
@@ -473,7 +512,7 @@ class _WorkerFormBottomSheetState extends State<_WorkerFormBottomSheet> {
                   child: _buildRoleCard(
                     roleValue: 'manager',
                     title: 'Manager',
-                    description: 'Full Access',
+                    description: 'Custom Access',
                     icon: Icons.manage_accounts_outlined,
                     selectedColor: Colors.purple,
                   ),
@@ -482,16 +521,56 @@ class _WorkerFormBottomSheetState extends State<_WorkerFormBottomSheet> {
             ),
             const SizedBox(height: AppTheme.sp24),
 
-            // Toggles
-            SwitchListTile(
-              title: Text('Can Access Stock'),
-              subtitle: Text('Allows recording stock movements'),
-              value: _canAccessStock,
-              activeThumbColor: AppTheme.primary,
-              contentPadding: EdgeInsets.zero,
-              onChanged: (val) {
-                setState(() => _canAccessStock = val);
-              },
+            Text(
+              'Section Access',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.secondaryTextColor(context),
+              ),
+            ),
+            const SizedBox(height: AppTheme.sp8),
+            _PermissionTile(
+              title: 'Products',
+              subtitle: 'Create, edit prices, and delete products',
+              icon: Icons.inventory_2_outlined,
+              value: _permProducts,
+              onChanged: (val) => setState(() => _permProducts = val),
+            ),
+            _PermissionTile(
+              title: 'Inventory',
+              subtitle: 'Stock in, stock out, and activity logs',
+              icon: Icons.swap_vert_circle_outlined,
+              value: _permInventory,
+              onChanged: (val) => setState(() => _permInventory = val),
+            ),
+            _PermissionTile(
+              title: 'Orders',
+              subtitle: 'Access order workflows when available',
+              icon: Icons.receipt_long_outlined,
+              value: _permOrders,
+              onChanged: (val) => setState(() => _permOrders = val),
+            ),
+            _PermissionTile(
+              title: 'Reports',
+              subtitle: 'Analytics, reports, and exports',
+              icon: Icons.analytics_outlined,
+              value: _permReports,
+              onChanged: (val) => setState(() => _permReports = val),
+            ),
+            _PermissionTile(
+              title: 'Workers',
+              subtitle: 'Manage workers and view worker activity',
+              icon: Icons.people_outline_rounded,
+              value: _permUsers,
+              onChanged: (val) => setState(() => _permUsers = val),
+            ),
+            _PermissionTile(
+              title: 'Settings',
+              subtitle: 'Manage warehouses and app-level settings',
+              icon: Icons.settings_outlined,
+              value: _permSettings,
+              onChanged: (val) => setState(() => _permSettings = val),
             ),
             if (isEdit) ...[
               const Divider(),
@@ -559,6 +638,7 @@ class _WorkerFormBottomSheetState extends State<_WorkerFormBottomSheet> {
       onTap: () {
         setState(() {
           _role = roleValue;
+          _applyRoleDefaults(roleValue);
         });
       },
       child: AnimatedContainer(
@@ -609,4 +689,64 @@ class _WorkerFormBottomSheetState extends State<_WorkerFormBottomSheet> {
       ),
     );
   }
+
+  void _applyRoleDefaults(String roleValue) {
+    final defaults =
+        UserPermissions.defaultsForRole(_roleFromString(roleValue));
+    _permProducts = defaults.products;
+    _permInventory = defaults.inventory;
+    _permOrders = defaults.orders;
+    _permReports = defaults.reports;
+    _permUsers = defaults.users;
+    _permSettings = defaults.settings;
+  }
+}
+
+class _PermissionTile extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _PermissionTile({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      title: Text(title),
+      subtitle: Text(subtitle),
+      secondary: Icon(icon, color: AppTheme.primary),
+      value: value,
+      activeThumbColor: AppTheme.primary,
+      contentPadding: EdgeInsets.zero,
+      onChanged: onChanged,
+    );
+  }
+}
+
+bool _permissionValue(
+  Map<String, dynamic>? worker,
+  String key, {
+  bool fallback = false,
+}) {
+  final permissions = worker?['permissions'];
+  final raw = worker?[key] ?? (permissions is Map ? permissions[key] : null);
+  if (raw is bool) return raw;
+  if (raw is num) return raw != 0;
+  if (raw is String) return raw.toLowerCase() == 'true';
+  return fallback;
+}
+
+UserRole _roleFromString(String role) {
+  return UserRole.values.firstWhere(
+    (value) => value.name == role,
+    orElse: () => UserRole.worker,
+  );
 }
