@@ -11,7 +11,7 @@ String userFriendlyErrorMessage(Object error) {
   if (text.contains('socketexception') ||
       text.contains('clientexception') ||
       text.contains('network error') ||
-      text.contains('failed host lookup') ||``
+      text.contains('failed host lookup') ||
       text.contains('connection refused') ||
       text.contains('connection timed out') ||
       text.contains('supabase') ||
