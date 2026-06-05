@@ -108,7 +108,7 @@ class TransactionActivityCard extends StatelessWidget {
               ),
               Padding(
                 // Main card padding. Increase these values if the card feels clustered.
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -154,7 +154,7 @@ class TransactionActivityCard extends StatelessWidget {
                           Padding(
                             // Keeps the text from sitting under the bottom-right edit menu.
                             padding: EdgeInsets.only(
-                              right: actionMenu == null ? 0 : 28,
+                              right: actionMenu == null ? 0 : 15,
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,

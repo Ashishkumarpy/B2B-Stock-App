@@ -6,7 +6,6 @@ import '../../../core/constants/app_constants.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/server_base_url_provider.dart';
 
-
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -63,7 +62,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           .verifyWorkerOtp(
               _phoneController.text.trim(), _otpController.text.trim());
       if (success && mounted) {
-        context.go('/');
+        context.go(_postLoginPath());
       } else {
         _showErrorIfAny();
       }
@@ -75,10 +74,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         .login(_emailController.text.trim(), _passwordController.text);
 
     if (success && mounted) {
-      context.go('/');
+      context.go(_postLoginPath());
     } else {
       _showErrorIfAny();
     }
+  }
+
+  String _postLoginPath() {
+    final from = GoRouterState.of(context).uri.queryParameters['from'];
+    if (from == null || from.isEmpty) return '/';
+    if (!from.startsWith('/') || from.startsWith('//')) return '/';
+    if (from == '/login' || from.startsWith('/login?')) return '/';
+    return from;
   }
 
   void _showErrorIfAny() {
@@ -185,8 +192,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   ? 'No Server Configured'
                                   : 'Server: ${serverUrl.replaceAll('https://', '').replaceAll('http://', '')}',
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    color: serverUrl.isEmpty ? AppTheme.danger : AppTheme.primary,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: serverUrl.isEmpty
+                                        ? AppTheme.danger
+                                        : AppTheme.primary,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.2,
                                   ),
@@ -197,28 +209,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                         if (ref.watch(serverBaseUrlProvider).isEmpty)
                           Padding(
-                            padding: const EdgeInsets.only(bottom: AppTheme.sp24),
+                            padding:
+                                const EdgeInsets.only(bottom: AppTheme.sp24),
                             child: InkWell(
                               onTap: () => context.push('/server'),
-                              borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusMD),
                               child: Container(
                                 padding: const EdgeInsets.all(AppTheme.sp12),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.danger.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                                  border: Border.all(color: AppTheme.danger.withOpacity(0.2)),
+                                  color:
+                                      AppTheme.danger.withValues(alpha: 0.08),
+                                  borderRadius:
+                                      BorderRadius.circular(AppTheme.radiusMD),
+                                  border: Border.all(
+                                      color: AppTheme.danger
+                                          .withValues(alpha: 0.2)),
                                 ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.error_outline, color: AppTheme.danger, size: 20),
+                                    const Icon(Icons.error_outline,
+                                        color: AppTheme.danger, size: 20),
                                     const SizedBox(width: AppTheme.sp12),
                                     Expanded(
                                       child: Text(
                                         'Server not configured. Tap here to set up.',
-                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                          color: AppTheme.danger,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: AppTheme.danger,
+                                              fontWeight: FontWeight.w600,
+                                            ),
                                       ),
                                     ),
                                   ],

@@ -134,6 +134,8 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         final isPcsPerCartonInferred =
             (product.pcsPerCarton == null || product.pcsPerCarton! <= 1) &&
                 inferredPcsPerCarton != null;
+        final priceLabel =
+            '₹${product.price % 1 == 0 ? product.price.toInt() : product.price}';
 
         return Scaffold(
           backgroundColor: AppTheme.backgroundColor(context),
@@ -427,6 +429,38 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                       ),
                                     ],
                                   ),
+                                ),
+                                const SizedBox(width: 12),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    const Text(
+                                      'Price',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    ConstrainedBox(
+                                      constraints:
+                                          const BoxConstraints(maxWidth: 120),
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          priceLabel,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w900,
+                                            height: 1,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

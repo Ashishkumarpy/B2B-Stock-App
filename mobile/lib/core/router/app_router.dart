@@ -45,6 +45,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final authState = ref.read(authStateProvider);
       final serverBaseUrl = ref.read(serverBaseUrlProvider);
       final path = state.uri.path;
+      final location = state.uri.toString();
       final isOnServerConfig = path == '/server';
       final isOnLogs = path == '/debug-logs';
       final isOnLogin = path == '/login';
@@ -66,10 +67,17 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isStockActivityRoute = path == '/stock-activity';
       final isStockEntryRoute = path == '/stock-entry';
 
+      if (!authState.isInitialized &&
+          !isOnLogin &&
+          !isOnServerConfig &&
+          !isOnLogs) {
+        return null;
+      }
+
       // Allow accessing Server config and Login without an active session.
       if (!isLoggedIn && !isOnLogin && !isOnServerConfig && !isOnLogs) {
         AppLog.d('redirect → /login (from $path)');
-        return '/login';
+        return '/login?from=${Uri.encodeComponent(location)}';
       }
       if (isLoggedIn &&
           role != null &&
@@ -113,7 +121,12 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           !role.canRecordStock) {
         return '/';
       }
-      if (isLoggedIn && isOnLogin) return '/';
+      if (isLoggedIn && isOnLogin) {
+        return _safeInternalRedirectTarget(
+              state.uri.queryParameters['from'],
+            ) ??
+            '/';
+      }
       return null;
     },
     routes: [
@@ -316,6 +329,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ),
   );
 });
+
+String? _safeInternalRedirectTarget(String? value) {
+  if (value == null || value.isEmpty) return null;
+  if (!value.startsWith('/') || value.startsWith('//')) return null;
+  if (value == '/login' || value.startsWith('/login?')) return null;
+  return value;
+}
 
 CustomTransitionPage<void> _buildPage(GoRouterState state, Widget child) {
   return CustomTransitionPage<void>(
