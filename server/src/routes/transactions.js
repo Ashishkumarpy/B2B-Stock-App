@@ -382,6 +382,148 @@ transactionsRouter.post(
   }
 );
 
+transactionsRouter.post(
+  '/shift',
+  authRequired,
+  requirePermission('perm_inventory'),
+  async (req, res) => {
+    const payload = req.body || {};
+    const productId = String(payload.product_id || '').trim();
+    const fromWarehouseId = String(payload.from_warehouse_id || '').trim();
+    const toWarehouseId = String(payload.to_warehouse_id || '').trim();
+    const quantity = Number(payload.quantity);
+    const requestedColorName = String(payload.color_name || 'Default').trim() || 'Default';
+    const notes =
+      typeof payload.notes === 'string' && payload.notes.trim().length > 0
+        ? payload.notes.trim()
+        : null;
+
+    if (!productId) {
+      return res.status(400).json({ error: 'product_id is required' });
+    }
+    if (!fromWarehouseId) {
+      return res.status(400).json({ error: 'from_warehouse_id is required' });
+    }
+    if (!toWarehouseId) {
+      return res.status(400).json({ error: 'to_warehouse_id is required' });
+    }
+    if (fromWarehouseId === toWarehouseId) {
+      return res.status(400).json({ error: 'Source and destination warehouses must be different.' });
+    }
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      return res.status(400).json({ error: 'quantity must be a positive integer' });
+    }
+
+    const [productRes, warehousesRes, stockRowsRes] = await Promise.all([
+      supabaseAdmin
+        .from('products')
+        .select('id,name,code')
+        .eq('id', productId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from('warehouses')
+        .select('id,name,is_active')
+        .in('id', [fromWarehouseId, toWarehouseId]),
+      supabaseAdmin
+        .from('warehouse_product_stocks')
+        .select('warehouse_id,product_id,color_name,quantity')
+        .eq('product_id', productId)
+        .in('warehouse_id', [fromWarehouseId, toWarehouseId])
+        .limit(100),
+    ]);
+
+    if (productRes.error) return res.status(400).json({ error: productRes.error.message });
+    if (warehousesRes.error) return res.status(400).json({ error: warehousesRes.error.message });
+    if (stockRowsRes.error) return res.status(400).json({ error: stockRowsRes.error.message });
+    if (!productRes.data) return res.status(400).json({ error: 'Invalid product_id' });
+
+    const warehouseById = new Map(
+      (warehousesRes.data || []).map((warehouse) => [String(warehouse.id), warehouse]),
+    );
+    const fromWarehouse = warehouseById.get(fromWarehouseId);
+    const toWarehouse = warehouseById.get(toWarehouseId);
+    if (!fromWarehouse || fromWarehouse.is_active !== true) {
+      return res.status(400).json({ error: 'Source warehouse is invalid or inactive.' });
+    }
+    if (!toWarehouse || toWarehouse.is_active !== true) {
+      return res.status(400).json({ error: 'Destination warehouse is invalid or inactive.' });
+    }
+
+    const colorLc = requestedColorName.toLowerCase();
+    const stockRows = stockRowsRes.data || [];
+    const sourceRow = stockRows.find((row) =>
+      String(row.warehouse_id) === fromWarehouseId &&
+      String(row.color_name || 'Default').trim().toLowerCase() === colorLc,
+    );
+    const available = Number(sourceRow?.quantity ?? 0);
+    if (!sourceRow || !Number.isFinite(available) || available < quantity) {
+      return res.status(400).json({
+        error: `Insufficient stock in ${fromWarehouse.name} for ${requestedColorName}. Available: ${Math.max(0, Math.trunc(available || 0))}`,
+      });
+    }
+
+    const canonicalColorName = String(sourceRow.color_name || requestedColorName).trim() || requestedColorName;
+    const targetRow = stockRows.find((row) =>
+      String(row.warehouse_id) === toWarehouseId &&
+      String(row.color_name || 'Default').trim().toLowerCase() === canonicalColorName.toLowerCase(),
+    );
+    const targetColorName = String(targetRow?.color_name || canonicalColorName).trim() || canonicalColorName;
+    const nextSourceQty = Math.trunc(available) - quantity;
+    const targetQty = Number(targetRow?.quantity ?? 0);
+    const nextTargetQty = (Number.isFinite(targetQty) ? Math.max(0, Math.trunc(targetQty)) : 0) + quantity;
+    const nowIso = new Date().toISOString();
+
+    const sourceUpdate = await supabaseAdmin
+      .from('warehouse_product_stocks')
+      .update({ quantity: nextSourceQty, updated_at: nowIso })
+      .eq('warehouse_id', fromWarehouseId)
+      .eq('product_id', productId)
+      .eq('color_name', canonicalColorName);
+    if (sourceUpdate.error) return res.status(400).json({ error: sourceUpdate.error.message });
+
+    const targetUpsert = await supabaseAdmin
+      .from('warehouse_product_stocks')
+      .upsert(
+        [{
+          warehouse_id: toWarehouseId,
+          product_id: productId,
+          color_name: targetColorName,
+          quantity: nextTargetQty,
+          updated_at: nowIso,
+        }],
+        { onConflict: 'warehouse_id,product_id,color_name' },
+      );
+    if (targetUpsert.error) return res.status(400).json({ error: targetUpsert.error.message });
+
+    const session = req.session || {};
+    const actorName = String(session.name || payload.worker_name || 'Stock User').trim();
+    const result = {
+      product_id: productId,
+      product_name: String(productRes.data.name || 'Product'),
+      product_code: String(productRes.data.code || ''),
+      color_name: canonicalColorName,
+      quantity,
+      from_warehouse_id: fromWarehouseId,
+      from_warehouse_name: String(fromWarehouse.name || 'Warehouse'),
+      to_warehouse_id: toWarehouseId,
+      to_warehouse_name: String(toWarehouse.name || 'Warehouse'),
+      notes,
+      shifted_by: actorName,
+      created_at: nowIso,
+    };
+
+    await logActivity({
+      actorId: session.sub,
+      actorName,
+      actionType: 'stock_shift',
+      description: `Shifted ${quantity} units of ${result.product_name} (${canonicalColorName}) from ${result.from_warehouse_name} to ${result.to_warehouse_name}`,
+      metadata: result,
+    });
+
+    return res.json({ data: result });
+  },
+);
+
 transactionsRouter.patch(
   '/:id',
   authRequired,

@@ -383,8 +383,9 @@ export default function ProductDetailAdminPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <button type="button" onClick={() => router.push(`/stock?productId=${encodeURIComponent(product.id)}&type=stock_in`)} className="rounded-xl bg-emerald-600/20 py-3 text-sm font-bold text-emerald-300 hover:bg-emerald-600/30">+ Stock In</button>
+                <button type="button" onClick={() => router.push(`/stock?action=shift&productId=${encodeURIComponent(product.id)}`)} className="rounded-xl bg-indigo-600/20 py-3 text-sm font-bold text-indigo-300 hover:bg-indigo-600/30">Shift</button>
                 <button type="button" onClick={() => router.push(`/stock?productId=${encodeURIComponent(product.id)}&type=stock_out`)} className="rounded-xl bg-rose-600/20 py-3 text-sm font-bold text-rose-300 hover:bg-rose-600/30">- Stock Out</button>
               </div>
             </div>

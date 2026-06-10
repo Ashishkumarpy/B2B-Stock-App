@@ -5,6 +5,114 @@ import { logActivity } from '../activity_logger.js';
 
 export const productsRouter = express.Router();
 
+function normalizeColorName(value, fallback = 'Default') {
+  const normalized = String(value || '').trim();
+  return normalized || fallback;
+}
+
+function colorNamesFromStocks(colorStocks) {
+  return Array.isArray(colorStocks)
+    ? colorStocks
+        .map((entry) => normalizeColorName(entry?.color, ''))
+        .filter(Boolean)
+    : [];
+}
+
+function buildColorRenameMap(previousColorStocks, nextColorStocks) {
+  const previousColors = colorNamesFromStocks(previousColorStocks);
+  const nextColors = colorNamesFromStocks(nextColorStocks);
+  const nextByLower = new Map(nextColors.map((name) => [name.toLowerCase(), name]));
+  const renameMap = new Map();
+
+  for (const previousColor of previousColors) {
+    const previousKey = previousColor.toLowerCase();
+    const exactNext = nextByLower.get(previousKey);
+    if (exactNext && exactNext !== previousColor) {
+      renameMap.set(previousKey, exactNext);
+    }
+  }
+
+  const commonLength = Math.min(previousColors.length, nextColors.length);
+  for (let idx = 0; idx < commonLength; idx += 1) {
+    const previousColor = previousColors[idx];
+    const nextColor = nextColors[idx];
+    if (
+      previousColor &&
+      nextColor &&
+      previousColor.toLowerCase() !== nextColor.toLowerCase()
+    ) {
+      renameMap.set(previousColor.toLowerCase(), nextColor);
+    }
+  }
+
+  const removedColors = previousColors.filter(
+    (color) => !nextByLower.has(color.toLowerCase()),
+  );
+  const previousByLower = new Map(
+    previousColors.map((name) => [name.toLowerCase(), name]),
+  );
+  const addedColors = nextColors.filter(
+    (color) => !previousByLower.has(color.toLowerCase()),
+  );
+  if (removedColors.length === 1 && addedColors.length === 1) {
+    renameMap.set(removedColors[0].toLowerCase(), addedColors[0]);
+  }
+
+  return renameMap;
+}
+
+function makeColorResolver(previousColorStocks, nextColorStocks) {
+  const nextColors = colorNamesFromStocks(nextColorStocks);
+  const nextByLower = new Map(nextColors.map((name) => [name.toLowerCase(), name]));
+  const renameMap = buildColorRenameMap(previousColorStocks, nextColorStocks);
+
+  return (rawColor) => {
+    const current = normalizeColorName(rawColor);
+    const currentLc = current.toLowerCase();
+    if (renameMap.has(currentLc)) {
+      return renameMap.get(currentLc);
+    }
+    if (nextByLower.has(currentLc)) {
+      return nextByLower.get(currentLc);
+    }
+    if (nextColors.length === 1) {
+      return nextColors[0];
+    }
+    if (current.length === 1) {
+      const matches = nextColors.filter((color) =>
+        color.toLowerCase().startsWith(currentLc),
+      );
+      if (matches.length === 1) {
+        return matches[0];
+      }
+    }
+    return current;
+  };
+}
+
+function aggregateWarehouseStockRows(rows, resolveColor) {
+  const aggregated = new Map();
+  for (const row of rows) {
+    const warehouseId = String(row?.warehouse_id || '').trim();
+    const productId = String(row?.product_id || '').trim();
+    if (!warehouseId || !productId) continue;
+
+    const colorName = resolveColor(row?.color_name);
+    const key = `${warehouseId}::${productId}::${colorName.toLowerCase()}`;
+    const qty = Number(row?.quantity ?? 0);
+    const safeQty = Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0;
+    const existing = aggregated.get(key);
+    aggregated.set(key, {
+      warehouse_id: warehouseId,
+      product_id: productId,
+      color_name: existing?.color_name || colorName,
+      quantity: (existing?.quantity || 0) + safeQty,
+      updated_at: new Date().toISOString(),
+    });
+  }
+  return [...aggregated.values()];
+}
+
 productsRouter.get('/', authRequired, async (req, res) => {
   const limit = parseInt(req.query.limit) || 1000;
   const page = parseInt(req.query.page) || 1;
@@ -87,6 +195,19 @@ productsRouter.put('/:id', authRequired, requirePermission('perm_products'), asy
   const id = req.params.id;
   const payload = req.body || {};
   const hasColorStocksUpdate = Object.prototype.hasOwnProperty.call(payload, 'color_stocks');
+
+  let existingProduct = null;
+  if (hasColorStocksUpdate) {
+    const existingRes = await supabaseAdmin
+      .from('products')
+      .select('id,color_stocks')
+      .eq('id', id)
+      .maybeSingle();
+    if (existingRes.error) return res.status(400).json({ error: existingRes.error.message });
+    if (!existingRes.data) return res.status(404).json({ error: 'Product not found' });
+    existingProduct = existingRes.data;
+  }
+
   const { data, error } = await supabaseAdmin
     .from('products')
     .update(payload)
@@ -106,95 +227,67 @@ productsRouter.put('/:id', authRequired, requirePermission('perm_products'), asy
 
   // Auto-sync renamed colors across warehouse rows + transactions.
   if (hasColorStocksUpdate) {
-    const canonicalColors = Array.isArray(data?.color_stocks)
-      ? data.color_stocks
-          .map((entry) => String(entry?.color || '').trim())
-          .filter(Boolean)
-      : [];
-    const canonicalByLower = new Map(
-      canonicalColors.map((name) => [name.toLowerCase(), name]),
+    const resolveCanonicalColor = makeColorResolver(
+      existingProduct?.color_stocks,
+      data?.color_stocks,
     );
-
-    const resolveCanonicalColor = (rawColor) => {
-      const current = String(rawColor || '').trim() || 'Default';
-      const currentLc = current.toLowerCase();
-      if (canonicalByLower.has(currentLc)) {
-        return canonicalByLower.get(currentLc);
-      }
-      if (canonicalColors.length === 1) {
-        return canonicalColors[0];
-      }
-      if (current.length === 1) {
-        const shortLc = currentLc;
-        const matches = canonicalColors.filter(
-          (c) => c.toLowerCase().startsWith(shortLc),
-        );
-        if (matches.length === 1) {
-          return matches[0];
-        }
-      }
-      return current;
-    };
 
     const existingWarehouseRows = await supabaseAdmin
       .from('warehouse_product_stocks')
       .select('id,warehouse_id,product_id,color_name,quantity')
       .eq('product_id', id)
       .limit(10000);
-    if (!existingWarehouseRows.error && Array.isArray(existingWarehouseRows.data)) {
-      const aggregated = new Map();
-      for (const row of existingWarehouseRows.data) {
-        const warehouseId = String(row?.warehouse_id || '').trim();
-        const productId = String(row?.product_id || '').trim();
-        if (!warehouseId || !productId) continue;
-        const canonicalColor = resolveCanonicalColor(row?.color_name);
-        const key = `${warehouseId}::${productId}::${canonicalColor}`;
-        const qty = Number(row?.quantity ?? 0);
-        const safeQty = Number.isFinite(qty) ? Math.max(0, Math.trunc(qty)) : 0;
-        aggregated.set(key, (aggregated.get(key) || 0) + safeQty);
-      }
+    if (existingWarehouseRows.error) {
+      return res.status(400).json({ error: existingWarehouseRows.error.message });
+    }
 
-      // Replace per-product warehouse rows with canonical merged rows.
-      await supabaseAdmin
+    if (Array.isArray(existingWarehouseRows.data)) {
+      const upsertRows = aggregateWarehouseStockRows(
+        existingWarehouseRows.data,
+        resolveCanonicalColor,
+      );
+
+      const deleteRes = await supabaseAdmin
         .from('warehouse_product_stocks')
         .delete()
         .eq('product_id', id);
-
-      const upsertRows = [...aggregated.entries()].map(([key, quantity]) => {
-        const [warehouse_id, product_id, color_name] = key.split('::');
-        return {
-          warehouse_id,
-          product_id,
-          color_name,
-          quantity,
-          updated_at: new Date().toISOString(),
-        };
-      });
+      if (deleteRes.error) return res.status(400).json({ error: deleteRes.error.message });
 
       if (upsertRows.length > 0) {
-        await supabaseAdmin
+        const upsertRes = await supabaseAdmin
           .from('warehouse_product_stocks')
           .upsert(upsertRows, { onConflict: 'warehouse_id,product_id,color_name' });
+        if (upsertRes.error) return res.status(400).json({ error: upsertRes.error.message });
       }
     }
 
-    // Best-effort color canonicalization for product transaction history.
+    // Keep product transaction history labels aligned with renamed colors.
     const txRes = await supabaseAdmin
       .from('transactions')
       .select('id,color_name')
       .eq('product_id', id)
       .limit(10000);
-    if (!txRes.error && Array.isArray(txRes.data) && txRes.data.length > 0) {
-      const updates = txRes.data
+    if (txRes.error) return res.status(400).json({ error: txRes.error.message });
+
+    if (Array.isArray(txRes.data) && txRes.data.length > 0) {
+      const txUpdates = txRes.data
         .map((tx) => {
           const nextColor = resolveCanonicalColor(tx?.color_name);
-          const currentColor = String(tx?.color_name || '').trim() || 'Default';
-          if (nextColor === currentColor) return null;
+          const currentColor = normalizeColorName(tx?.color_name);
+          if (nextColor === currentColor) {
+            return null;
+          }
           return { id: tx.id, color_name: nextColor };
         })
         .filter(Boolean);
-      if (updates.length > 0) {
-        await supabaseAdmin.from('transactions').upsert(updates, { onConflict: 'id' });
+      for (const txUpdate of txUpdates) {
+        const updateTxRes = await supabaseAdmin
+          .from('transactions')
+          .update({ color_name: txUpdate.color_name })
+          .eq('id', txUpdate.id);
+        if (updateTxRes.error) {
+          return res.status(400).json({ error: updateTxRes.error.message });
+        }
       }
     }
   }

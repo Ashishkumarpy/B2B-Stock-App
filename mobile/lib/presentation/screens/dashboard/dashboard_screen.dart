@@ -467,6 +467,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           color: AppTheme.danger,
           onTap: () => context.push('/stock-entry?type=out'),
         ),
+      if (user?.canRecordStock == true)
+        _QuickActionBtn(
+          label: 'Shift',
+          icon: Icons.swap_horiz_rounded,
+          color: AppTheme.primary,
+          onTap: () => context.push('/stock-shift'),
+        ),
       _QuickActionBtn(
         label: 'Products',
         icon: Icons.inventory_2_rounded,

@@ -507,6 +507,24 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () => context.push(
+                                    '/stock-shift?productId=${product.id}'),
+                                icon:
+                                    Icon(Icons.swap_horiz_rounded, size: 18),
+                                label: Text('SHIFT'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppTheme.primary,
+                                  foregroundColor: Colors.white,
+                                  minimumSize: const Size.fromHeight(48),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                          AppTheme.radiusMD)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => context.push(
                                     '/stock-entry?productId=${product.id}&type=in'),
                                 icon: Icon(Icons.add_circle_rounded, size: 18),
                                 label: Text('STOCK IN'),
@@ -781,6 +799,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                     label: Text('STOCK OUT'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.danger,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      context.push('/stock-shift?productId=${product.id}');
+                    },
+                    icon: Icon(Icons.swap_horiz_rounded, size: 18),
+                    label: Text('SHIFT'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
                       minimumSize: const Size.fromHeight(48),
                     ),

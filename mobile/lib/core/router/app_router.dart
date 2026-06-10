@@ -11,6 +11,7 @@ import '../../presentation/screens/products/add_product_screen.dart';
 import '../../presentation/screens/products/bulk_import_products_screen.dart';
 import '../../domain/entities/product.dart';
 import '../../presentation/screens/stock/stock_entry_screen.dart';
+import '../../presentation/screens/stock/stock_shift_screen.dart';
 import '../../presentation/screens/analytics/analytics_screen.dart';
 import '../../presentation/screens/dashboard/worker_activity_screen.dart';
 import '../../presentation/screens/dashboard/worker_detail_screen.dart';
@@ -65,7 +66,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final isWorkerActivityRoute =
           path == '/worker-activity' || path.startsWith('/worker-detail/');
       final isStockActivityRoute = path == '/stock-activity';
-      final isStockEntryRoute = path == '/stock-entry';
+      final isStockEntryRoute = path == '/stock-entry' || path == '/stock-shift';
 
       if (!authState.isInitialized &&
           !isOnLogin &&
@@ -246,6 +247,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
                   createdAt: createdAt,
                   workerId: workerId,
                 ),
+              );
+            },
+          ),
+          GoRoute(
+            path: '/stock-shift',
+            pageBuilder: (context, state) {
+              final productId = state.uri.queryParameters['productId'];
+              return _buildPage(
+                state,
+                StockShiftScreen(productId: productId),
               );
             },
           ),

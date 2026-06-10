@@ -123,6 +123,15 @@ const EMPTY_FORM = {
   customer_name: '',
 };
 
+const EMPTY_SHIFT_FORM = {
+  product_id: '',
+  color_name: 'Default',
+  from_warehouse_id: '',
+  to_warehouse_id: '',
+  quantity: 0,
+  notes: '',
+};
+
 const STOCK_PREFS_STORAGE_KEY = 'stock_entry_prefs_v1';
 const CUSTOM_STOCK_IN_COLOR_VALUE = '__custom_stock_in_color__';
 const STOCK_TRANSACTIONS_PAGE_SIZE = 25;
@@ -159,6 +168,10 @@ export default function StockPage() {
   }, [editingTransaction]);
 
   const [form, setForm] = useState(EMPTY_FORM);
+  const [showShiftModal, setShowShiftModal] = useState(false);
+  const [shiftForm, setShiftForm] = useState(EMPTY_SHIFT_FORM);
+  const [shiftError, setShiftError] = useState('');
+  const [shiftSaving, setShiftSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showProductPicker, setShowProductPicker] = useState(false);
@@ -529,6 +542,38 @@ export default function StockPage() {
     clearStockQuery();
   }, [clearStockQuery, warehouses]);
 
+  const closeShiftModal = useCallback(() => {
+    setShowShiftModal(false);
+    setShiftError('');
+    setShiftForm({
+      ...EMPTY_SHIFT_FORM,
+      to_warehouse_id: warehouses[0]?.id ?? '',
+    });
+    clearStockQuery();
+  }, [clearStockQuery, warehouses]);
+
+  const openShiftModal = useCallback((productId = '') => {
+    const product = productId ? products.find((p) => p.id === productId) : undefined;
+    const firstColor = product?.color_stocks?.[0]?.color || 'Default';
+    const firstWarehouse = warehouses[0]?.id ?? '';
+    const secondWarehouse = warehouses.find((w) => w.id !== firstWarehouse)?.id ?? '';
+    setEditingTransactionId(null);
+    setShowModal(false);
+    setShiftError('');
+    setShiftForm({
+      ...EMPTY_SHIFT_FORM,
+      product_id: productId,
+      color_name: firstColor,
+      from_warehouse_id: '',
+      to_warehouse_id: secondWarehouse || firstWarehouse,
+    });
+    setShowShiftModal(true);
+    setProductStockDistribution([]);
+    if (productId) {
+      fetchStockDistribution(productId, true);
+    }
+  }, [fetchStockDistribution, products, warehouses]);
+
   useEffect(() => {
     fetchTransactions();
     fetchFormData();
@@ -666,7 +711,7 @@ export default function StockPage() {
     const customerParam = (searchParams.get('customer') ?? '').trim();
     const transactionIdParam = (searchParams.get('transactionId') ?? '').trim();
     const queryKey = `${actionParam}|${productId}|${typeParam}|${colorParam}|${warehouseIdParam}|${searchParams.get('quantity') ?? ''}|${notesParam}|${workerIdParam}|${workerNameParam}|${searchParams.get('cartons') ?? ''}|${searchParams.get('pcsPerCarton') ?? ''}|${customerParam}|${transactionIdParam}`;
-    if (!productId && actionParam !== 'record') {
+    if (!productId && actionParam !== 'record' && actionParam !== 'shift') {
       prefetchedQueryRef.current = null;
       return;
     }
@@ -674,6 +719,13 @@ export default function StockPage() {
     if (productId && products.length === 0) return;
     const exists = productId ? products.some((p) => p.id === productId) : false;
     if (productId && !exists) return;
+    if (actionParam === 'shift') {
+      const timer = window.setTimeout(() => {
+        openShiftModal(productId);
+        prefetchedQueryRef.current = queryKey;
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
     const safeType: TransactionType =
       typeParam === 'stock_out' ? 'stock_out' : 'stock_in';
     const defaultWarehouse = warehouses[0]?.id ?? '';
@@ -706,7 +758,7 @@ export default function StockPage() {
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [products, searchParams, warehouses, fetchStockDistribution]);
+  }, [products, searchParams, warehouses, fetchStockDistribution, openShiftModal]);
 
   const selectedProduct = form.product_id ? productById.get(form.product_id) : undefined;
   const editingOriginalProduct = editingTransaction ? productById.get(editingTransaction.product_id) : undefined;
@@ -852,6 +904,173 @@ export default function StockPage() {
       return { ...prev, color_name: colorName, warehouse_id: newWarehouseId };
     });
   };
+
+  const shiftSelectedProduct = shiftForm.product_id ? productById.get(shiftForm.product_id) : undefined;
+
+  const shiftColorRows = useMemo(() => {
+    if (!shiftForm.product_id) return [];
+    const byColor = new Map<string, { color_name: string; available_quantity: number }>();
+    for (const row of productStockDistribution) {
+      const colorName = (row.color_name?.toString() ?? '').trim();
+      if (!colorName) continue;
+      const qty = parseInt(row.quantity?.toString() ?? '0', 10);
+      if (qty <= 0) continue;
+      const key = colorName.toLowerCase();
+      const current = byColor.get(key);
+      if (current) current.available_quantity += qty;
+      else byColor.set(key, { color_name: colorName, available_quantity: qty });
+    }
+    return Array.from(byColor.values()).sort((a, b) =>
+      a.color_name.toLowerCase().localeCompare(b.color_name.toLowerCase()),
+    );
+  }, [productStockDistribution, shiftForm.product_id]);
+
+  const shiftSourceWarehouseOptions = useMemo(() => {
+    if (!shiftForm.product_id) return [];
+    const colorLc = shiftForm.color_name.trim().toLowerCase();
+    const stockedWarehouseIds = new Set(
+      productStockDistribution
+        .filter((row) =>
+          (row.color_name?.toString() ?? '').trim().toLowerCase() === colorLc &&
+          parseInt(row.quantity?.toString() ?? '0', 10) > 0,
+        )
+        .map((row) => row.warehouse_id?.toString() ?? '')
+        .filter(Boolean),
+    );
+    return warehouses.filter((warehouse) => stockedWarehouseIds.has(warehouse.id));
+  }, [productStockDistribution, shiftForm.color_name, shiftForm.product_id, warehouses]);
+
+  const shiftAvailableQty = useMemo(() => {
+    const colorLc = shiftForm.color_name.trim().toLowerCase();
+    const match = productStockDistribution.find((row) =>
+      row.warehouse_id?.toString() === shiftForm.from_warehouse_id &&
+      (row.color_name?.toString() ?? '').trim().toLowerCase() === colorLc,
+    );
+    return match ? parseInt(match.quantity?.toString() ?? '0', 10) : 0;
+  }, [productStockDistribution, shiftForm.color_name, shiftForm.from_warehouse_id]);
+
+  const shiftDestinationWarehouseOptions = useMemo(
+    () => warehouses.filter((warehouse) => warehouse.id !== shiftForm.from_warehouse_id),
+    [shiftForm.from_warehouse_id, warehouses],
+  );
+
+  const handleShiftProductChange = (productId: string) => {
+    const product = productById.get(productId);
+    const firstProductColor = product?.color_stocks?.[0]?.color || 'Default';
+    setShiftForm((prev) => ({
+      ...prev,
+      product_id: productId,
+      color_name: firstProductColor,
+      from_warehouse_id: '',
+      to_warehouse_id: prev.to_warehouse_id || warehouses[0]?.id || '',
+      quantity: 0,
+    }));
+    setProductStockDistribution([]);
+    fetchStockDistribution(productId, true);
+  };
+
+  const handleShiftColorChange = (colorName: string) => {
+    const colorLc = colorName.trim().toLowerCase();
+    const firstSource = productStockDistribution.find((row) =>
+      (row.color_name?.toString() ?? '').trim().toLowerCase() === colorLc &&
+      parseInt(row.quantity?.toString() ?? '0', 10) > 0,
+    );
+    setShiftForm((prev) => {
+      const nextFrom = firstSource?.warehouse_id?.toString() || '';
+      const nextTo =
+        prev.to_warehouse_id && prev.to_warehouse_id !== nextFrom
+          ? prev.to_warehouse_id
+          : warehouses.find((w) => w.id !== nextFrom)?.id || '';
+      return {
+        ...prev,
+        color_name: colorName,
+        from_warehouse_id: nextFrom,
+        to_warehouse_id: nextTo,
+        quantity: 0,
+      };
+    });
+  };
+
+  const handleShiftFromWarehouseChange = (warehouseId: string) => {
+    setShiftForm((prev) => ({
+      ...prev,
+      from_warehouse_id: warehouseId,
+      to_warehouse_id:
+        prev.to_warehouse_id && prev.to_warehouse_id !== warehouseId
+          ? prev.to_warehouse_id
+          : warehouses.find((w) => w.id !== warehouseId)?.id || '',
+    }));
+  };
+
+  const handleShiftSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setShiftError('');
+    if (!shiftForm.product_id) { setShiftError('Please select a product.'); return; }
+    if (!shiftForm.color_name.trim()) { setShiftError('Please select a color.'); return; }
+    if (!shiftForm.from_warehouse_id) { setShiftError('Please select the source warehouse.'); return; }
+    if (!shiftForm.to_warehouse_id) { setShiftError('Please select the destination warehouse.'); return; }
+    if (shiftForm.from_warehouse_id === shiftForm.to_warehouse_id) {
+      setShiftError('Source and destination warehouses must be different.');
+      return;
+    }
+    if (shiftForm.quantity <= 0) { setShiftError('Quantity must be greater than 0.'); return; }
+    if (shiftForm.quantity > shiftAvailableQty) {
+      setShiftError(`Only ${shiftAvailableQty} units are available in the source warehouse.`);
+      return;
+    }
+
+    setShiftSaving(true);
+    try {
+      await serverPost('/transactions/shift', {
+        product_id: shiftForm.product_id,
+        color_name: shiftForm.color_name.trim(),
+        from_warehouse_id: shiftForm.from_warehouse_id,
+        to_warehouse_id: shiftForm.to_warehouse_id,
+        quantity: shiftForm.quantity,
+        notes: shiftForm.notes.trim() || null,
+      });
+      await Promise.all([fetchTransactions(), fetchFormData()]);
+      closeShiftModal();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Please try again.';
+      setShiftError(`Failed to shift stock. ${message}`);
+    } finally {
+      setShiftSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showShiftModal || !shiftForm.product_id || productStockDistribution.length === 0) return;
+    const colorLc = shiftForm.color_name.trim().toLowerCase();
+    const currentSourceStillValid = productStockDistribution.some((row) =>
+      row.warehouse_id?.toString() === shiftForm.from_warehouse_id &&
+      (row.color_name?.toString() ?? '').trim().toLowerCase() === colorLc &&
+      parseInt(row.quantity?.toString() ?? '0', 10) > 0,
+    );
+    if (currentSourceStillValid) return;
+
+    const firstStockRow = productStockDistribution.find((row) =>
+      parseInt(row.quantity?.toString() ?? '0', 10) > 0,
+    );
+    if (!firstStockRow) return;
+    const nextFrom = firstStockRow.warehouse_id?.toString() || '';
+    setShiftForm((prev) => ({
+      ...prev,
+      color_name: firstStockRow.color_name?.toString() || prev.color_name || 'Default',
+      from_warehouse_id: nextFrom,
+      to_warehouse_id:
+        prev.to_warehouse_id && prev.to_warehouse_id !== nextFrom
+          ? prev.to_warehouse_id
+          : warehouses.find((w) => w.id !== nextFrom)?.id || '',
+    }));
+  }, [
+    productStockDistribution,
+    shiftForm.color_name,
+    shiftForm.from_warehouse_id,
+    shiftForm.product_id,
+    showShiftModal,
+    warehouses,
+  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1038,6 +1257,15 @@ export default function StockPage() {
             className="stock-soft-control flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition active:scale-95"
           >
             <span>📥</span> Export to Excel
+          </button>
+          <button
+            onClick={() => {
+              clearStockQuery();
+              openShiftModal();
+            }}
+            className="stock-soft-control flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition active:scale-95"
+          >
+            <span>⇄</span> Shift Stock
           </button>
           <button
             onClick={() => {
@@ -1272,6 +1500,173 @@ export default function StockPage() {
           </>
         )}
       </div>
+
+      {/* Shift Stock Modal */}
+      {showShiftModal && (
+        <div className="stock-modal-overlay fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="stock-modal-surface rounded-2xl border p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold">Shift Stock</h2>
+                <p className="stock-muted mt-1 text-xs">Move stock between active warehouses without changing total product stock.</p>
+              </div>
+              <button onClick={closeShiftModal} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">×</button>
+            </div>
+
+            <form onSubmit={handleShiftSubmit} className="space-y-5">
+              <div>
+                <label htmlFor="shift-product" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Product *</label>
+                <select
+                  id="shift-product"
+                  name="shift-product"
+                  required
+                  value={shiftForm.product_id}
+                  onChange={(e) => handleShiftProductChange(e.target.value)}
+                  className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="" className="bg-white dark:bg-[#0f1117]">Select product...</option>
+                  {[...products]
+                    .sort((a, b) => a.code.localeCompare(b.code))
+                    .map((product) => (
+                      <option key={product.id} value={product.id} className="bg-white dark:bg-[#0f1117]">
+                        {product.code} - {product.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {shiftSelectedProduct && (
+                <div className="stock-soft-control rounded-xl border px-3 py-2 text-xs">
+                  <span className="font-semibold">{shiftSelectedProduct.code}</span>
+                  <span className="stock-muted ml-2">{shiftSelectedProduct.quantity} total pcs across all warehouses</span>
+                </div>
+              )}
+
+              <div>
+                <label htmlFor="shift-color" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Color *</label>
+                <select
+                  id="shift-color"
+                  name="shift-color"
+                  required
+                  value={shiftForm.color_name}
+                  onChange={(e) => handleShiftColorChange(e.target.value)}
+                  className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
+                >
+                  {shiftColorRows.length === 0 ? (
+                    <option value="" className="bg-white dark:bg-[#0f1117]">No stocked colors</option>
+                  ) : (
+                    shiftColorRows.map((row) => (
+                      <option key={row.color_name} value={row.color_name} className="bg-white dark:bg-[#0f1117]">
+                        {row.color_name} ({row.available_quantity} pcs)
+                      </option>
+                    ))
+                  )}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="shift-from" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">From *</label>
+                  <select
+                    id="shift-from"
+                    name="shift-from"
+                    required
+                    value={shiftForm.from_warehouse_id}
+                    onChange={(e) => handleShiftFromWarehouseChange(e.target.value)}
+                    className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
+                  >
+                    {shiftSourceWarehouseOptions.length === 0 ? (
+                      <option value="" className="bg-white dark:bg-[#0f1117]">No source stock</option>
+                    ) : (
+                      shiftSourceWarehouseOptions.map((warehouse) => (
+                        <option key={warehouse.id} value={warehouse.id} className="bg-white dark:bg-[#0f1117]">
+                          {warehouse.location ? `${warehouse.name} - ${warehouse.location}` : warehouse.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="shift-to" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">To *</label>
+                  <select
+                    id="shift-to"
+                    name="shift-to"
+                    required
+                    value={shiftForm.to_warehouse_id}
+                    onChange={(e) => setShiftForm((prev) => ({ ...prev, to_warehouse_id: e.target.value }))}
+                    className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
+                  >
+                    {shiftDestinationWarehouseOptions.length === 0 ? (
+                      <option value="" className="bg-white dark:bg-[#0f1117]">No destination warehouse</option>
+                    ) : (
+                      shiftDestinationWarehouseOptions.map((warehouse) => (
+                        <option key={warehouse.id} value={warehouse.id} className="bg-white dark:bg-[#0f1117]">
+                          {warehouse.location ? `${warehouse.name} - ${warehouse.location}` : warehouse.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="shift-quantity" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Quantity *</label>
+                <div className="relative">
+                  <input
+                    id="shift-quantity"
+                    name="shift-quantity"
+                    type="number"
+                    required
+                    min="1"
+                    max={shiftAvailableQty || undefined}
+                    value={shiftForm.quantity || ''}
+                    onChange={(e) => setShiftForm((prev) => ({ ...prev, quantity: Number(e.target.value) }))}
+                    className="stock-field w-full rounded-lg border px-3 py-2.5 pr-28 text-sm focus:outline-none focus:border-indigo-500"
+                    placeholder="e.g. 25"
+                  />
+                  <span className="stock-quantity-pill pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded px-2 py-0.5 text-[10px] font-bold">
+                    Source: {shiftAvailableQty}
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="shift-notes" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Notes (optional)</label>
+                <input
+                  id="shift-notes"
+                  name="shift-notes"
+                  type="text"
+                  value={shiftForm.notes}
+                  onChange={(e) => setShiftForm((prev) => ({ ...prev, notes: e.target.value }))}
+                  className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
+                  placeholder="Reason, vehicle, shelf, etc."
+                />
+              </div>
+
+              {shiftError && (
+                <p className="stock-danger-soft rounded-lg px-3 py-2 text-sm">{shiftError}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={shiftSaving}
+                  className="flex-1 rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                >
+                  {shiftSaving ? 'Shifting...' : 'Shift Stock'}
+                </button>
+                <button
+                  type="button"
+                  onClick={closeShiftModal}
+                  className="stock-soft-control rounded-xl border px-6 py-3 text-sm transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Record Stock Modal */}
       {showModal && (
