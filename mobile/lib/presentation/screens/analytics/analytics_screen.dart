@@ -21,6 +21,7 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
 class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   DateTime? _selectedDate;
   int? _selectedYear;
+  bool _showFinancialValues = false;
 
   String _formatDate(DateTime d) {
     final months = [
@@ -727,7 +728,25 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionTitle('Value & Revenue Analytics'),
+        Row(
+          children: [
+            Expanded(child: _buildSectionTitle('Value & Revenue Analytics')),
+            IconButton(
+              tooltip: _showFinancialValues
+                  ? 'Hide value analytics'
+                  : 'Show value analytics',
+              onPressed: () =>
+                  setState(() => _showFinancialValues = !_showFinancialValues),
+              icon: Icon(
+                _showFinancialValues
+                    ? Icons.visibility_rounded
+                    : Icons.visibility_off_rounded,
+                color: AppTheme.textSecondary,
+                size: 20,
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2,
@@ -739,21 +758,27 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           children: [
             _buildFinancialCard(
               label: 'Total Price Value',
-              value: AppFormatters.formatCurrency(totalPriceValue),
+              value: _showFinancialValues
+                  ? AppFormatters.formatCurrency(totalPriceValue)
+                  : 'Hidden',
               sub: 'Current inventory price value',
               icon: Icons.account_balance_wallet_rounded,
               color: AppTheme.primary,
             ),
             _buildFinancialCard(
               label: 'Estimated Revenue',
-              value: AppFormatters.formatCurrency(estimatedRevenue),
+              value: _showFinancialValues
+                  ? AppFormatters.formatCurrency(estimatedRevenue)
+                  : 'Hidden',
               sub: 'Stock dispatch revenue',
               icon: Icons.trending_up_rounded,
               color: AppTheme.warning,
             ),
             _buildFinancialCard(
               label: 'In Stock Value',
-              value: AppFormatters.formatCurrency(inStockValue),
+              value: _showFinancialValues
+                  ? AppFormatters.formatCurrency(inStockValue)
+                  : 'Hidden',
               sub: 'Value of items stocked in',
               icon: Icons.check_circle_outline_rounded,
               color: AppTheme.success,
@@ -761,7 +786,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ),
             _buildFinancialCard(
               label: 'Out of Stock Value',
-              value: AppFormatters.formatCurrency(outStockValue),
+              value: _showFinancialValues
+                  ? AppFormatters.formatCurrency(outStockValue)
+                  : 'Hidden',
               sub: 'Replenishment value',
               icon: Icons.remove_circle_outline_rounded,
               color: AppTheme.danger,

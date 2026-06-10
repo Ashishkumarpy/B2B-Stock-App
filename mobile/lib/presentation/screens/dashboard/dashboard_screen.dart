@@ -472,7 +472,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           label: 'Shift',
           icon: Icons.swap_horiz_rounded,
           color: AppTheme.primary,
-          onTap: () => context.push('/stock-shift'),
+          onTap: () => context.push('/stock-entry?type=shift'),
         ),
       _QuickActionBtn(
         label: 'Products',

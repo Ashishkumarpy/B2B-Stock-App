@@ -27,12 +27,37 @@ class TransactionActivityCard extends StatelessWidget {
     return match?.group(1)?.trim() ?? '';
   }
 
+  static ({int cartons, int pcsPerCarton})? parseCartonFromNotes(
+      String? notes) {
+    if (notes == null || notes.trim().isEmpty) return null;
+    final match = RegExp(
+      r'(\d+)\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*(\d+)',
+      caseSensitive: false,
+    ).firstMatch(notes);
+    if (match == null) return null;
+    final cartons = int.tryParse(match.group(1) ?? '');
+    final pcsPerCarton = int.tryParse(match.group(2) ?? '');
+    if (cartons == null || pcsPerCarton == null || pcsPerCarton <= 0) {
+      return null;
+    }
+    return (cartons: cartons, pcsPerCarton: pcsPerCarton);
+  }
+
   static String cleanNotes(String? notes) {
     if (notes == null) return '';
     var clean = notes.trim();
     clean = clean
         .replaceFirst(
           RegExp(r'^Customer:\s*[^|]+(\|)?', caseSensitive: false),
+          '',
+        )
+        .trim();
+    clean = clean
+        .replaceFirst(
+          RegExp(
+            r'^\d+\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*\d+\s*(?:pcs)?\s*(\|)?',
+            caseSensitive: false,
+          ),
           '',
         )
         .trim();
@@ -60,8 +85,9 @@ class TransactionActivityCard extends StatelessWidget {
         ? 'Warehouse'
         : transaction.warehouseName!.trim();
     final colorName = transaction.colorName?.trim() ?? '';
-    final cartons = transaction.cartons;
-    final pcsPerCarton = transaction.pcsPerCarton;
+    final parsedCarton = parseCartonFromNotes(transaction.notes);
+    final cartons = transaction.cartons ?? parsedCarton?.cartons;
+    final pcsPerCarton = transaction.pcsPerCarton ?? parsedCarton?.pcsPerCarton;
     final showCartons = cartons != null && cartons > 0;
     // Carton text shown on the lower line, for example: "3 ctn (150 pcs)".
     final cartonLabel =

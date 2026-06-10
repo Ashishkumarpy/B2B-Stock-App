@@ -246,7 +246,8 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
             ? _mainImageUrl
             : (finalImages.isNotEmpty ? finalImages.first['url'] : null),
         'description': _descriptionController.text.trim(),
-        'pcs_per_carton': int.tryParse(_pcsPerCartonController.text.trim()) ?? 1,
+        'pcs_per_carton':
+            int.tryParse(_pcsPerCartonController.text.trim()) ?? 1,
         'unit': _unitController.text.trim().isEmpty
             ? 'Units'
             : _unitController.text.trim(),
@@ -349,6 +350,27 @@ class _AddProductScreenState extends ConsumerState<AddProductScreen> {
           widget.productToEdit != null ? 'Edit Product' : 'Add New Product',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: TextButton(
+              onPressed: _isSubmitting ? null : _submit,
+              child: _isSubmitting
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(
+                      widget.productToEdit != null ? 'Update' : 'Save',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(AppTheme.sp16),

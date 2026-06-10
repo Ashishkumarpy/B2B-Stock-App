@@ -6,6 +6,19 @@ import { logActivity } from '../activity_logger.js';
 
 export const transactionsRouter = express.Router();
 
+function parseOptionalIntegerField(value, fieldName, { min = 0 } = {}) {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < min) {
+    const minText = min > 0 ? `a positive integer` : `a non-negative integer`;
+    const err = new Error(`${fieldName} must be ${minText}`);
+    err.status = 400;
+    throw err;
+  }
+  return Math.trunc(parsed);
+}
+
 transactionsRouter.get('/', authRequired, requirePermission('perm_inventory'), async (req, res) => {
   const limit = parseInt(req.query.limit) || 1000;
   const page = parseInt(req.query.page) || 1;
@@ -540,6 +553,15 @@ transactionsRouter.patch(
         ? payload.notes.trim()
         : null;
     const workerName = String(payload.worker_name || '').trim();
+    let requestedCartons;
+    let requestedPcsPerCarton;
+
+    try {
+      requestedCartons = parseOptionalIntegerField(payload.cartons, 'cartons', { min: 0 });
+      requestedPcsPerCarton = parseOptionalIntegerField(payload.pcs_per_carton, 'pcs_per_carton', { min: 1 });
+    } catch (err) {
+      return res.status(err.status || 400).json({ error: err.message || 'Invalid carton fields' });
+    }
 
     if (!['stock_in', 'stock_out'].includes(type)) {
       return res.status(400).json({ error: 'type must be stock_in or stock_out' });
@@ -569,11 +591,10 @@ transactionsRouter.patch(
 
     if (isOlderThan12Hours) {
       // Validate that locked fields have not changed.
-      const payloadCartons = payload.cartons !== undefined && payload.cartons !== null ? (payload.cartons === '' ? null : Number(payload.cartons)) : null;
       const oldCartons = oldTx.cartons ?? null;
-
-      const payloadPcs = payload.pcs_per_carton !== undefined && payload.pcs_per_carton !== null ? (payload.pcs_per_carton === '' ? null : Number(payload.pcs_per_carton)) : null;
       const oldPcs = oldTx.pcs_per_carton ?? null;
+      const payloadCartons = requestedCartons === undefined ? oldCartons : requestedCartons;
+      const payloadPcs = requestedPcsPerCarton === undefined ? oldPcs : requestedPcsPerCarton;
       const oldProductId = String(oldTx.product_id || '').trim();
       const oldWarehouseId = String(oldTx.warehouse_id || '').trim();
       const oldColorName = String(oldTx.color_name || 'Default').trim() || 'Default';
@@ -808,8 +829,8 @@ transactionsRouter.patch(
         quantity,
         notes,
         worker_name: workerName,
-        cartons: payload.cartons ? Number(payload.cartons) : null,
-        pcs_per_carton: payload.pcs_per_carton ? Number(payload.pcs_per_carton) : oldTx.pcs_per_carton ?? null,
+        cartons: requestedCartons === undefined ? (oldTx.cartons ?? null) : requestedCartons,
+        pcs_per_carton: requestedPcsPerCarton === undefined ? (oldTx.pcs_per_carton ?? null) : requestedPcsPerCarton,
       })
       .eq('id', txId)
       .select('*')

@@ -31,6 +31,7 @@ export default function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'custom'>('all');
   const [customDate, setCustomDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showFinancialValues, setShowFinancialValues] = useState(false);
 
   const fetchAnalytics = async () => {
     try {
@@ -199,6 +200,18 @@ export default function AnalyticsPage() {
       ) : (
         <>
           {/* Financial & Inventory Value Cards */}
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold text-slate-600 dark:text-gray-300">Value & Revenue Analytics</h2>
+            <button
+              type="button"
+              onClick={() => setShowFinancialValues((prev) => !prev)}
+              className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-indigo-500/40 hover:text-indigo-500 dark:border-white/10 dark:bg-white/5 dark:text-gray-300"
+              aria-label={showFinancialValues ? 'Hide value analytics' : 'Show value analytics'}
+              title={showFinancialValues ? 'Hide value analytics' : 'Show value analytics'}
+            >
+              {showFinancialValues ? 'Hide' : 'Show'}
+            </button>
+          </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: 'Total Price Value', value: `₹${totalPriceValue.toLocaleString('en-IN')}`, sub: 'Current retail inventory value', icon: '💰', border: 'stat-indigo' },
@@ -214,7 +227,7 @@ export default function AnalyticsPage() {
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-[10px] uppercase tracking-widest text-slate-400 dark:text-gray-500 font-semibold">{s.label}</p>
-                    <p className="text-xl font-bold text-white mt-1">{s.value}</p>
+                    <p className="text-xl font-bold text-white mt-1">{showFinancialValues ? s.value : 'Hidden'}</p>
                     <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-2">{s.sub}</p>
                   </div>
                   <span className="text-2xl p-2 bg-slate-100 dark:bg-white/5 rounded-xl">{s.icon}</span>

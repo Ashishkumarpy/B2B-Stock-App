@@ -6,7 +6,7 @@ import { serverGet, serverPost, serverPatch, ServerApiError } from '../../lib/se
 import { useRequireAuth } from '../../lib/use_require_auth';
 import { supabase } from '../../lib/supabase';
 
-type TransactionType = 'stock_in' | 'stock_out';
+type TransactionType = 'stock_in' | 'stock_out' | 'shift';
 
 interface Transaction {
   id: string;
@@ -48,7 +48,7 @@ export function getCleanNotes(notes?: string | null): string {
   const customerRegex = /^Customer:\s*[^|]+(\|)?/i;
   clean = clean.replace(customerRegex, '').trim();
 
-  // 2. Strip cartons prefix: "\d+ ctn × \d+ pcs" or similar, case insensitively
+  // 2. Strip cartons prefix: "\d+ ctn Ã— \d+ pcs" or similar, case insensitively
   const cartonRegex = /^\d+\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*\d+\s*(?:pcs)?\s*(\|)?/i;
   clean = clean.replace(cartonRegex, '').trim();
 
@@ -117,19 +117,11 @@ const EMPTY_FORM = {
   quantity: 0,
   color_name: 'Default',
   warehouse_id: '',
+  to_warehouse_id: '',
   worker_id: '',
   worker_name: '',
   notes: '',
   customer_name: '',
-};
-
-const EMPTY_SHIFT_FORM = {
-  product_id: '',
-  color_name: 'Default',
-  from_warehouse_id: '',
-  to_warehouse_id: '',
-  quantity: 0,
-  notes: '',
 };
 
 const STOCK_PREFS_STORAGE_KEY = 'stock_entry_prefs_v1';
@@ -168,10 +160,6 @@ export default function StockPage() {
   }, [editingTransaction]);
 
   const [form, setForm] = useState(EMPTY_FORM);
-  const [showShiftModal, setShowShiftModal] = useState(false);
-  const [shiftForm, setShiftForm] = useState(EMPTY_SHIFT_FORM);
-  const [shiftError, setShiftError] = useState('');
-  const [shiftSaving, setShiftSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showProductPicker, setShowProductPicker] = useState(false);
@@ -306,9 +294,9 @@ export default function StockPage() {
             name: p.name,
             category: p.category || 'Uncategorized',
             qty: totalQty,
-            colors: colors || '—',
-            workers: workers || '—',
-            notes: notes || '—'
+            colors: colors || 'â€”',
+            workers: workers || 'â€”',
+            notes: notes || 'â€”'
           };
         })
         .filter(row => row.qty > 0) // Only show products with actual stock-in movements
@@ -337,9 +325,9 @@ export default function StockPage() {
             name: p.name,
             category: p.category || 'Uncategorized',
             qty: totalQty,
-            colors: colors || '—',
-            workers: workers || '—',
-            notes: notes || '—'
+            colors: colors || 'â€”',
+            workers: workers || 'â€”',
+            notes: notes || 'â€”'
           };
         })
         .filter(row => row.qty > 0) // Only show products with actual stock-out movements
@@ -491,7 +479,7 @@ export default function StockPage() {
                 (r.color_name?.toString() ?? '').trim().toLowerCase() === prev.color_name.trim().toLowerCase()
             );
             if (
-              prev.type !== 'stock_out' ||
+              (prev.type !== 'stock_out' && prev.type !== 'shift') ||
               prev.product_id !== productId ||
               (!autoRoute && currentColorIsAvailable)
             ) {
@@ -499,14 +487,19 @@ export default function StockPage() {
             }
 
             const nextColor = firstStockRow.color_name || 'Default';
+            const nextWarehouseId = getBestWarehouseForColor(
+              rows,
+              nextColor,
+              prev.warehouse_id || firstStockRow.warehouse_id?.toString() || warehouses[0]?.id || ''
+            );
             return {
               ...prev,
               color_name: nextColor,
-              warehouse_id: getBestWarehouseForColor(
-                rows,
-                nextColor,
-                prev.warehouse_id || firstStockRow.warehouse_id?.toString() || warehouses[0]?.id || ''
-              ),
+              warehouse_id: nextWarehouseId,
+              to_warehouse_id:
+                prev.type === 'shift' && prev.to_warehouse_id === nextWarehouseId
+                  ? warehouses.find((w) => w.id !== nextWarehouseId)?.id || ''
+                  : prev.to_warehouse_id,
             };
           });
         }
@@ -542,38 +535,6 @@ export default function StockPage() {
     clearStockQuery();
   }, [clearStockQuery, warehouses]);
 
-  const closeShiftModal = useCallback(() => {
-    setShowShiftModal(false);
-    setShiftError('');
-    setShiftForm({
-      ...EMPTY_SHIFT_FORM,
-      to_warehouse_id: warehouses[0]?.id ?? '',
-    });
-    clearStockQuery();
-  }, [clearStockQuery, warehouses]);
-
-  const openShiftModal = useCallback((productId = '') => {
-    const product = productId ? products.find((p) => p.id === productId) : undefined;
-    const firstColor = product?.color_stocks?.[0]?.color || 'Default';
-    const firstWarehouse = warehouses[0]?.id ?? '';
-    const secondWarehouse = warehouses.find((w) => w.id !== firstWarehouse)?.id ?? '';
-    setEditingTransactionId(null);
-    setShowModal(false);
-    setShiftError('');
-    setShiftForm({
-      ...EMPTY_SHIFT_FORM,
-      product_id: productId,
-      color_name: firstColor,
-      from_warehouse_id: '',
-      to_warehouse_id: secondWarehouse || firstWarehouse,
-    });
-    setShowShiftModal(true);
-    setProductStockDistribution([]);
-    if (productId) {
-      fetchStockDistribution(productId, true);
-    }
-  }, [fetchStockDistribution, products, warehouses]);
-
   useEffect(() => {
     fetchTransactions();
     fetchFormData();
@@ -606,7 +567,7 @@ export default function StockPage() {
   }, [fetchTransactions, fetchFormData]);
 
   useEffect(() => {
-    if (!form.product_id || form.type !== 'stock_out') {
+    if (!form.product_id || (form.type !== 'stock_out' && form.type !== 'shift')) {
       setProductStockDistribution([]);
       return;
     }
@@ -666,7 +627,7 @@ export default function StockPage() {
     if (!product) return;
     const productPcs = Number(product.pcs_per_carton);
  
-    if (form.type === 'stock_out') {
+    if (form.type === 'stock_out' || form.type === 'shift') {
       setForm((prev) => ({
         ...prev,
         pcsPerCarton: Number.isFinite(productPcs) && productPcs > 0 ? productPcs : 1
@@ -719,21 +680,19 @@ export default function StockPage() {
     if (productId && products.length === 0) return;
     const exists = productId ? products.some((p) => p.id === productId) : false;
     if (productId && !exists) return;
-    if (actionParam === 'shift') {
-      const timer = window.setTimeout(() => {
-        openShiftModal(productId);
-        prefetchedQueryRef.current = queryKey;
-      }, 0);
-      return () => window.clearTimeout(timer);
-    }
     const safeType: TransactionType =
-      typeParam === 'stock_out' ? 'stock_out' : 'stock_in';
+      actionParam === 'shift' || typeParam === 'shift'
+        ? 'shift'
+        : typeParam === 'stock_out'
+          ? 'stock_out'
+          : 'stock_in';
     const defaultWarehouse = warehouses[0]?.id ?? '';
     const nextProduct = productId ? products.find((p) => p.id === productId) : null;
     const firstColor = nextProduct?.color_stocks?.[0]?.color || 'Default';
     const safeQuantity = Number.isFinite(quantityParam) && quantityParam > 0 ? quantityParam : 0;
-    const safeCartons = Number.isFinite(cartonsParam) && cartonsParam > 0 ? cartonsParam : '';
-    const safePcs = Number.isFinite(pcsPerCartonParam) && pcsPerCartonParam > 0 ? pcsPerCartonParam : '';
+    const parsedCartons = parseCartonFromNotes(notesParam);
+    const safeCartons = Number.isFinite(cartonsParam) && cartonsParam > 0 ? cartonsParam : parsedCartons?.cartons ?? '';
+    const safePcs = Number.isFinite(pcsPerCartonParam) && pcsPerCartonParam > 0 ? pcsPerCartonParam : parsedCartons?.pcsPerCarton ?? '';
     const resolvedCustomer = customerParam || parseCustomerFromNotes(notesParam);
     const timer = window.setTimeout(() => {
       setForm((prev) => ({
@@ -742,6 +701,12 @@ export default function StockPage() {
         type: safeType,
         color_name: colorParam || (productId ? firstColor : 'Default'),
         warehouse_id: warehouseIdParam || prev.warehouse_id || defaultWarehouse,
+        to_warehouse_id:
+          safeType === 'shift'
+            ? (prev.to_warehouse_id && prev.to_warehouse_id !== (warehouseIdParam || prev.warehouse_id || defaultWarehouse)
+              ? prev.to_warehouse_id
+              : warehouses.find((w) => w.id !== (warehouseIdParam || prev.warehouse_id || defaultWarehouse))?.id || '')
+            : prev.to_warehouse_id,
         quantity: safeQuantity,
         notes: getCleanNotes(notesParam),
         worker_id: workerIdParam || prev.worker_id,
@@ -753,12 +718,12 @@ export default function StockPage() {
       setEditingTransactionId(transactionIdParam || null);
       setShowModal(true);
       prefetchedQueryRef.current = queryKey;
-      if (productId && safeType === 'stock_out') {
+      if (productId && (safeType === 'stock_out' || safeType === 'shift')) {
         fetchStockDistribution(productId, !colorParam && !warehouseIdParam);
       }
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [products, searchParams, warehouses, fetchStockDistribution, openShiftModal]);
+  }, [products, searchParams, warehouses, fetchStockDistribution]);
 
   const selectedProduct = form.product_id ? productById.get(form.product_id) : undefined;
   const editingOriginalProduct = editingTransaction ? productById.get(editingTransaction.product_id) : undefined;
@@ -768,6 +733,7 @@ export default function StockPage() {
     return products.filter((p) => (p.category || 'Uncategorized').toLowerCase() === originalCategory);
   }, [editingOriginalProduct, editingTransactionId, products]);
   const availableColors = selectedProduct?.color_stocks ?? [];
+  const isSourceStockMode = form.type === 'stock_out' || form.type === 'shift';
 
   const handleProductPicked = useCallback((product: Product) => {
     const productPcs = Number(product.pcs_per_carton);
@@ -778,11 +744,11 @@ export default function StockPage() {
       pcsPerCarton: editingTransactionId ? prev.pcsPerCarton : nextPcsPerCarton,
       cartons: editingTransactionId ? prev.cartons : '',
       quantity: editingTransactionId ? prev.quantity : 0,
-      ...(prev.type !== 'stock_out' ? {
+      ...(prev.type !== 'stock_out' && prev.type !== 'shift' ? {
         color_name: product.color_stocks?.[0]?.color || 'Default',
       } : {}),
     }));
-    if (form.type === 'stock_out') {
+    if (form.type === 'stock_out' || form.type === 'shift') {
       fetchStockDistribution(product.id, true);
     }
     setShowProductPicker(false);
@@ -792,16 +758,16 @@ export default function StockPage() {
   }, [editingTransactionId, fetchStockDistribution, form.type]);
 
   const allWarehouseIdsWithStock = useMemo(() => {
-    if (form.type !== 'stock_out' || !form.product_id) return new Set<string>();
+    if (!isSourceStockMode || !form.product_id) return new Set<string>();
     return new Set(
       productStockDistribution
         .map((r) => r.warehouse_id?.toString() ?? '')
         .filter(Boolean)
     );
-  }, [productStockDistribution, form.type, form.product_id]);
+  }, [productStockDistribution, isSourceStockMode, form.product_id]);
 
   const colorRows = useMemo(() => {
-    if (form.type !== 'stock_out' || !form.product_id) return [];
+    if (!isSourceStockMode || !form.product_id) return [];
     const colorQtyMap = new Map<string, { color_name: string; available_quantity: number }>();
     for (const row of productStockDistribution) {
       const colorName = (row.color_name?.toString() ?? '').trim();
@@ -820,10 +786,10 @@ export default function StockPage() {
     return Array.from(colorQtyMap.values()).sort((a, b) =>
       a.color_name.toLowerCase().localeCompare(b.color_name.toLowerCase())
     );
-  }, [productStockDistribution, form.type, form.product_id]);
+  }, [productStockDistribution, isSourceStockMode, form.product_id]);
 
   const colorSuggestions = useMemo(() => {
-    if (form.type === 'stock_out' && form.product_id) {
+    if (isSourceStockMode && form.product_id) {
       return colorRows.map((r) => r.color_name);
     }
     const fromProduct = (selectedProduct?.color_stocks ?? [])
@@ -832,7 +798,7 @@ export default function StockPage() {
     const prefColor = form.product_id ? stockPrefs[form.product_id]?.color_name?.trim() : '';
     const all = prefColor ? [prefColor, ...fromProduct] : fromProduct;
     return [...new Set(all)];
-  }, [form.product_id, form.type, colorRows, selectedProduct?.color_stocks, stockPrefs]);
+  }, [form.product_id, isSourceStockMode, colorRows, selectedProduct?.color_stocks, stockPrefs]);
 
   const stockInColorOptions = useMemo(() => {
     if (form.type !== 'stock_in') return [];
@@ -850,7 +816,7 @@ export default function StockPage() {
   const selectedColorQty = useMemo(() => {
     if (!selectedProduct) return 0;
     const normalizedColor = form.color_name.trim().toLowerCase();
-    if (form.type === 'stock_out' && form.warehouse_id) {
+    if (isSourceStockMode && form.warehouse_id) {
       const match = productStockDistribution.find(
         (r) =>
           r.warehouse_id?.toString() === form.warehouse_id?.toString() &&
@@ -863,19 +829,24 @@ export default function StockPage() {
       (c) => c.color.trim().toLowerCase() === normalizedColor
     );
     return colorRow?.quantity ?? 0;
-  }, [selectedProduct, form.color_name, form.type, form.warehouse_id, productStockDistribution]);
+  }, [selectedProduct, form.color_name, isSourceStockMode, form.warehouse_id, productStockDistribution]);
 
   const filteredWarehouseOptions = useMemo(() => {
-    if (form.type !== 'stock_out' || !form.product_id || isLoadingStockDistribution) {
+    if (!isSourceStockMode || !form.product_id || isLoadingStockDistribution) {
       return warehouses;
     }
     return warehouses.filter((w) => allWarehouseIdsWithStock.has(w.id));
-  }, [warehouses, allWarehouseIdsWithStock, form.type, form.product_id, isLoadingStockDistribution]);
+  }, [warehouses, allWarehouseIdsWithStock, isSourceStockMode, form.product_id, isLoadingStockDistribution]);
+
+  const destinationWarehouseOptions = useMemo(
+    () => warehouses.filter((warehouse) => warehouse.id !== form.warehouse_id),
+    [form.warehouse_id, warehouses],
+  );
 
   const handleWarehouseChange = (warehouseId: string) => {
     setForm((prev) => {
       let newColor = prev.color_name;
-      if (prev.type === 'stock_out' && productStockDistribution.length > 0) {
+      if ((prev.type === 'stock_out' || prev.type === 'shift') && productStockDistribution.length > 0) {
         const colorsInSelectedWarehouse = new Set(
           productStockDistribution
             .filter((r) => r.warehouse_id?.toString() === warehouseId && parseInt(r.quantity?.toString() ?? '0', 10) > 0)
@@ -891,186 +862,35 @@ export default function StockPage() {
           }
         }
       }
-      return { ...prev, warehouse_id: warehouseId, color_name: newColor };
+      return {
+        ...prev,
+        warehouse_id: warehouseId,
+        color_name: newColor,
+        to_warehouse_id:
+          prev.type === 'shift' && prev.to_warehouse_id === warehouseId
+            ? warehouses.find((w) => w.id !== warehouseId)?.id || ''
+            : prev.to_warehouse_id,
+      };
     });
   };
 
   const handleColorChange = (colorName: string) => {
     setForm((prev) => {
       let newWarehouseId = prev.warehouse_id;
-      if (prev.type === 'stock_out' && productStockDistribution.length > 0) {
+      if ((prev.type === 'stock_out' || prev.type === 'shift') && productStockDistribution.length > 0) {
         newWarehouseId = getBestWarehouseForColor(productStockDistribution, colorName, prev.warehouse_id);
       }
-      return { ...prev, color_name: colorName, warehouse_id: newWarehouseId };
-    });
-  };
-
-  const shiftSelectedProduct = shiftForm.product_id ? productById.get(shiftForm.product_id) : undefined;
-
-  const shiftColorRows = useMemo(() => {
-    if (!shiftForm.product_id) return [];
-    const byColor = new Map<string, { color_name: string; available_quantity: number }>();
-    for (const row of productStockDistribution) {
-      const colorName = (row.color_name?.toString() ?? '').trim();
-      if (!colorName) continue;
-      const qty = parseInt(row.quantity?.toString() ?? '0', 10);
-      if (qty <= 0) continue;
-      const key = colorName.toLowerCase();
-      const current = byColor.get(key);
-      if (current) current.available_quantity += qty;
-      else byColor.set(key, { color_name: colorName, available_quantity: qty });
-    }
-    return Array.from(byColor.values()).sort((a, b) =>
-      a.color_name.toLowerCase().localeCompare(b.color_name.toLowerCase()),
-    );
-  }, [productStockDistribution, shiftForm.product_id]);
-
-  const shiftSourceWarehouseOptions = useMemo(() => {
-    if (!shiftForm.product_id) return [];
-    const colorLc = shiftForm.color_name.trim().toLowerCase();
-    const stockedWarehouseIds = new Set(
-      productStockDistribution
-        .filter((row) =>
-          (row.color_name?.toString() ?? '').trim().toLowerCase() === colorLc &&
-          parseInt(row.quantity?.toString() ?? '0', 10) > 0,
-        )
-        .map((row) => row.warehouse_id?.toString() ?? '')
-        .filter(Boolean),
-    );
-    return warehouses.filter((warehouse) => stockedWarehouseIds.has(warehouse.id));
-  }, [productStockDistribution, shiftForm.color_name, shiftForm.product_id, warehouses]);
-
-  const shiftAvailableQty = useMemo(() => {
-    const colorLc = shiftForm.color_name.trim().toLowerCase();
-    const match = productStockDistribution.find((row) =>
-      row.warehouse_id?.toString() === shiftForm.from_warehouse_id &&
-      (row.color_name?.toString() ?? '').trim().toLowerCase() === colorLc,
-    );
-    return match ? parseInt(match.quantity?.toString() ?? '0', 10) : 0;
-  }, [productStockDistribution, shiftForm.color_name, shiftForm.from_warehouse_id]);
-
-  const shiftDestinationWarehouseOptions = useMemo(
-    () => warehouses.filter((warehouse) => warehouse.id !== shiftForm.from_warehouse_id),
-    [shiftForm.from_warehouse_id, warehouses],
-  );
-
-  const handleShiftProductChange = (productId: string) => {
-    const product = productById.get(productId);
-    const firstProductColor = product?.color_stocks?.[0]?.color || 'Default';
-    setShiftForm((prev) => ({
-      ...prev,
-      product_id: productId,
-      color_name: firstProductColor,
-      from_warehouse_id: '',
-      to_warehouse_id: prev.to_warehouse_id || warehouses[0]?.id || '',
-      quantity: 0,
-    }));
-    setProductStockDistribution([]);
-    fetchStockDistribution(productId, true);
-  };
-
-  const handleShiftColorChange = (colorName: string) => {
-    const colorLc = colorName.trim().toLowerCase();
-    const firstSource = productStockDistribution.find((row) =>
-      (row.color_name?.toString() ?? '').trim().toLowerCase() === colorLc &&
-      parseInt(row.quantity?.toString() ?? '0', 10) > 0,
-    );
-    setShiftForm((prev) => {
-      const nextFrom = firstSource?.warehouse_id?.toString() || '';
-      const nextTo =
-        prev.to_warehouse_id && prev.to_warehouse_id !== nextFrom
-          ? prev.to_warehouse_id
-          : warehouses.find((w) => w.id !== nextFrom)?.id || '';
       return {
         ...prev,
         color_name: colorName,
-        from_warehouse_id: nextFrom,
-        to_warehouse_id: nextTo,
-        quantity: 0,
+        warehouse_id: newWarehouseId,
+        to_warehouse_id:
+          prev.type === 'shift' && prev.to_warehouse_id === newWarehouseId
+            ? warehouses.find((w) => w.id !== newWarehouseId)?.id || ''
+            : prev.to_warehouse_id,
       };
     });
   };
-
-  const handleShiftFromWarehouseChange = (warehouseId: string) => {
-    setShiftForm((prev) => ({
-      ...prev,
-      from_warehouse_id: warehouseId,
-      to_warehouse_id:
-        prev.to_warehouse_id && prev.to_warehouse_id !== warehouseId
-          ? prev.to_warehouse_id
-          : warehouses.find((w) => w.id !== warehouseId)?.id || '',
-    }));
-  };
-
-  const handleShiftSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setShiftError('');
-    if (!shiftForm.product_id) { setShiftError('Please select a product.'); return; }
-    if (!shiftForm.color_name.trim()) { setShiftError('Please select a color.'); return; }
-    if (!shiftForm.from_warehouse_id) { setShiftError('Please select the source warehouse.'); return; }
-    if (!shiftForm.to_warehouse_id) { setShiftError('Please select the destination warehouse.'); return; }
-    if (shiftForm.from_warehouse_id === shiftForm.to_warehouse_id) {
-      setShiftError('Source and destination warehouses must be different.');
-      return;
-    }
-    if (shiftForm.quantity <= 0) { setShiftError('Quantity must be greater than 0.'); return; }
-    if (shiftForm.quantity > shiftAvailableQty) {
-      setShiftError(`Only ${shiftAvailableQty} units are available in the source warehouse.`);
-      return;
-    }
-
-    setShiftSaving(true);
-    try {
-      await serverPost('/transactions/shift', {
-        product_id: shiftForm.product_id,
-        color_name: shiftForm.color_name.trim(),
-        from_warehouse_id: shiftForm.from_warehouse_id,
-        to_warehouse_id: shiftForm.to_warehouse_id,
-        quantity: shiftForm.quantity,
-        notes: shiftForm.notes.trim() || null,
-      });
-      await Promise.all([fetchTransactions(), fetchFormData()]);
-      closeShiftModal();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Please try again.';
-      setShiftError(`Failed to shift stock. ${message}`);
-    } finally {
-      setShiftSaving(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!showShiftModal || !shiftForm.product_id || productStockDistribution.length === 0) return;
-    const colorLc = shiftForm.color_name.trim().toLowerCase();
-    const currentSourceStillValid = productStockDistribution.some((row) =>
-      row.warehouse_id?.toString() === shiftForm.from_warehouse_id &&
-      (row.color_name?.toString() ?? '').trim().toLowerCase() === colorLc &&
-      parseInt(row.quantity?.toString() ?? '0', 10) > 0,
-    );
-    if (currentSourceStillValid) return;
-
-    const firstStockRow = productStockDistribution.find((row) =>
-      parseInt(row.quantity?.toString() ?? '0', 10) > 0,
-    );
-    if (!firstStockRow) return;
-    const nextFrom = firstStockRow.warehouse_id?.toString() || '';
-    setShiftForm((prev) => ({
-      ...prev,
-      color_name: firstStockRow.color_name?.toString() || prev.color_name || 'Default',
-      from_warehouse_id: nextFrom,
-      to_warehouse_id:
-        prev.to_warehouse_id && prev.to_warehouse_id !== nextFrom
-          ? prev.to_warehouse_id
-          : warehouses.find((w) => w.id !== nextFrom)?.id || '',
-    }));
-  }, [
-    productStockDistribution,
-    shiftForm.color_name,
-    shiftForm.from_warehouse_id,
-    shiftForm.product_id,
-    showShiftModal,
-    warehouses,
-  ]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1079,6 +899,11 @@ export default function StockPage() {
     if (form.quantity <= 0) { setError('Quantity must be greater than 0.'); return; }
     if (!form.color_name.trim()) { setError('Color is required.'); return; }
     if (warehouses.length > 0 && !form.warehouse_id) { setError('Please select a warehouse.'); return; }
+    if (form.type === 'shift' && !form.to_warehouse_id) { setError('Please select a destination warehouse.'); return; }
+    if (form.type === 'shift' && form.warehouse_id === form.to_warehouse_id) {
+      setError('Source and destination warehouses must be different.');
+      return;
+    }
     if (!form.worker_name.trim()) { setError('Worker name is required.'); return; }
 
     setSaving(true);
@@ -1108,7 +933,7 @@ export default function StockPage() {
           }
         }
 
-        if (form.type === 'stock_out' && form.quantity > virtualColorQty) {
+        if ((form.type === 'stock_out' || form.type === 'shift') && form.quantity > virtualColorQty) {
           setError(`Only ${virtualColorQty} units available for color "${form.color_name}" in the selected warehouse.`);
           setSaving(false);
           return;
@@ -1117,7 +942,7 @@ export default function StockPage() {
 
       let finalNotes = form.notes.trim();
       if (form.cartons && form.pcsPerCarton) {
-        const cartonNote = `${form.cartons} ctn × ${form.pcsPerCarton} pcs`;
+        const cartonNote = `${form.cartons} ctn Ã— ${form.pcsPerCarton} pcs`;
         finalNotes = finalNotes ? `${cartonNote} | ${finalNotes}` : cartonNote;
       }
       if (form.type === 'stock_out' && form.customer_name.trim()) {
@@ -1144,20 +969,32 @@ export default function StockPage() {
           );
         }
       } else {
-        // Write transaction
-        await serverPost('/transactions', {
-          product_id: product.id,
-          product_name: product.name,
-          color_name: form.color_name.trim(),
-          warehouse_id: form.warehouse_id || undefined,
-          type: form.type,
-          quantity: form.quantity,
-          cartons: form.cartons ? Number(form.cartons) : null,
-          pcs_per_carton: form.pcsPerCarton ? Number(form.pcsPerCarton) : null,
-          worker_id: form.worker_id || undefined,
-          worker_name: form.worker_name.trim(),
-          notes: finalNotes || null,
-        });
+        if (form.type === 'shift') {
+          await serverPost('/transactions/shift', {
+            product_id: product.id,
+            color_name: form.color_name.trim(),
+            from_warehouse_id: form.warehouse_id,
+            to_warehouse_id: form.to_warehouse_id,
+            quantity: form.quantity,
+            worker_name: form.worker_name.trim(),
+            notes: finalNotes || null,
+          });
+        } else {
+          // Write transaction
+          await serverPost('/transactions', {
+            product_id: product.id,
+            product_name: product.name,
+            color_name: form.color_name.trim(),
+            warehouse_id: form.warehouse_id || undefined,
+            type: form.type,
+            quantity: form.quantity,
+            cartons: form.cartons ? Number(form.cartons) : null,
+            pcs_per_carton: form.pcsPerCarton ? Number(form.pcsPerCarton) : null,
+            worker_id: form.worker_id || undefined,
+            worker_name: form.worker_name.trim(),
+            notes: finalNotes || null,
+          });
+        }
 
         if (form.type === 'stock_in' && form.product_id) {
           const nextPrefs = {
@@ -1219,6 +1056,7 @@ export default function StockPage() {
       quantity: transaction.quantity,
       color_name: transaction.color_name || 'Default',
       warehouse_id: warehouseId || warehouses[0]?.id || '',
+      to_warehouse_id: '',
       worker_id: workerId,
       worker_name: transaction.worker_name || '',
       notes: getCleanNotes(transaction.notes),
@@ -1256,16 +1094,25 @@ export default function StockPage() {
             onClick={() => setShowExportModal(true)}
             className="stock-soft-control flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition active:scale-95"
           >
-            <span>📥</span> Export to Excel
+            <span>ðŸ“¥</span> Export to Excel
           </button>
           <button
             onClick={() => {
               clearStockQuery();
-              openShiftModal();
+              setEditingTransactionId(null);
+              const sourceWarehouse = warehouses[0]?.id ?? '';
+              setForm({
+                ...EMPTY_FORM,
+                type: 'shift',
+                warehouse_id: sourceWarehouse,
+                to_warehouse_id: warehouses.find((w) => w.id !== sourceWarehouse)?.id ?? '',
+              });
+              setError('');
+              setShowModal(true);
             }}
             className="stock-soft-control flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition active:scale-95"
           >
-            <span>⇄</span> Shift Stock
+            <span>â‡„</span> Shift Stock
           </button>
           <button
             onClick={() => {
@@ -1288,7 +1135,7 @@ export default function StockPage() {
       {/* Table */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="stock-secondary p-12 text-center text-sm">Loading transactions…</div>
+          <div className="stock-secondary p-12 text-center text-sm">Loading transactionsâ€¦</div>
         ) : transactions.length === 0 ? (
           <div className="stock-secondary p-12 text-center text-sm">No stock entries yet. Click "+ Record Stock" to log the first transaction.</div>
         ) : (
@@ -1441,7 +1288,7 @@ export default function StockPage() {
                             if (t.cartons && t.pcs_per_carton) {
                               return (
                                 <span className="stock-muted mt-0.5 whitespace-nowrap text-[10px] leading-tight">
-                                  {t.cartons} ctn × {t.pcs_per_carton}
+                                  {t.cartons} ctn Ã— {t.pcs_per_carton}
                                 </span>
                               );
                             }
@@ -1449,7 +1296,7 @@ export default function StockPage() {
                             if (parsed) {
                               return (
                                 <span className="stock-muted mt-0.5 whitespace-nowrap text-[10px] leading-tight">
-                                  {parsed.cartons} ctn × {parsed.pcsPerCarton}
+                                  {parsed.cartons} ctn Ã— {parsed.pcsPerCarton}
                                 </span>
                               );
                             }
@@ -1457,7 +1304,7 @@ export default function StockPage() {
                           })()}
                         </div>
                       </td>
-                      <td className="stock-muted max-w-[140px] truncate text-xs">{t.notes || '—'}</td>
+                      <td className="stock-muted max-w-[140px] truncate text-xs">{t.notes || 'â€”'}</td>
                       <td className="stock-muted text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                       <td>
                         <button
@@ -1501,186 +1348,19 @@ export default function StockPage() {
         )}
       </div>
 
-      {/* Shift Stock Modal */}
-      {showShiftModal && (
-        <div className="stock-modal-overlay fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="stock-modal-surface rounded-2xl border p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold">Shift Stock</h2>
-                <p className="stock-muted mt-1 text-xs">Move stock between active warehouses without changing total product stock.</p>
-              </div>
-              <button onClick={closeShiftModal} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">×</button>
-            </div>
-
-            <form onSubmit={handleShiftSubmit} className="space-y-5">
-              <div>
-                <label htmlFor="shift-product" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Product *</label>
-                <select
-                  id="shift-product"
-                  name="shift-product"
-                  required
-                  value={shiftForm.product_id}
-                  onChange={(e) => handleShiftProductChange(e.target.value)}
-                  className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
-                >
-                  <option value="" className="bg-white dark:bg-[#0f1117]">Select product...</option>
-                  {[...products]
-                    .sort((a, b) => a.code.localeCompare(b.code))
-                    .map((product) => (
-                      <option key={product.id} value={product.id} className="bg-white dark:bg-[#0f1117]">
-                        {product.code} - {product.name}
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              {shiftSelectedProduct && (
-                <div className="stock-soft-control rounded-xl border px-3 py-2 text-xs">
-                  <span className="font-semibold">{shiftSelectedProduct.code}</span>
-                  <span className="stock-muted ml-2">{shiftSelectedProduct.quantity} total pcs across all warehouses</span>
-                </div>
-              )}
-
-              <div>
-                <label htmlFor="shift-color" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Color *</label>
-                <select
-                  id="shift-color"
-                  name="shift-color"
-                  required
-                  value={shiftForm.color_name}
-                  onChange={(e) => handleShiftColorChange(e.target.value)}
-                  className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
-                >
-                  {shiftColorRows.length === 0 ? (
-                    <option value="" className="bg-white dark:bg-[#0f1117]">No stocked colors</option>
-                  ) : (
-                    shiftColorRows.map((row) => (
-                      <option key={row.color_name} value={row.color_name} className="bg-white dark:bg-[#0f1117]">
-                        {row.color_name} ({row.available_quantity} pcs)
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <label htmlFor="shift-from" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">From *</label>
-                  <select
-                    id="shift-from"
-                    name="shift-from"
-                    required
-                    value={shiftForm.from_warehouse_id}
-                    onChange={(e) => handleShiftFromWarehouseChange(e.target.value)}
-                    className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
-                  >
-                    {shiftSourceWarehouseOptions.length === 0 ? (
-                      <option value="" className="bg-white dark:bg-[#0f1117]">No source stock</option>
-                    ) : (
-                      shiftSourceWarehouseOptions.map((warehouse) => (
-                        <option key={warehouse.id} value={warehouse.id} className="bg-white dark:bg-[#0f1117]">
-                          {warehouse.location ? `${warehouse.name} - ${warehouse.location}` : warehouse.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="shift-to" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">To *</label>
-                  <select
-                    id="shift-to"
-                    name="shift-to"
-                    required
-                    value={shiftForm.to_warehouse_id}
-                    onChange={(e) => setShiftForm((prev) => ({ ...prev, to_warehouse_id: e.target.value }))}
-                    className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
-                  >
-                    {shiftDestinationWarehouseOptions.length === 0 ? (
-                      <option value="" className="bg-white dark:bg-[#0f1117]">No destination warehouse</option>
-                    ) : (
-                      shiftDestinationWarehouseOptions.map((warehouse) => (
-                        <option key={warehouse.id} value={warehouse.id} className="bg-white dark:bg-[#0f1117]">
-                          {warehouse.location ? `${warehouse.name} - ${warehouse.location}` : warehouse.name}
-                        </option>
-                      ))
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="shift-quantity" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Quantity *</label>
-                <div className="relative">
-                  <input
-                    id="shift-quantity"
-                    name="shift-quantity"
-                    type="number"
-                    required
-                    min="1"
-                    max={shiftAvailableQty || undefined}
-                    value={shiftForm.quantity || ''}
-                    onChange={(e) => setShiftForm((prev) => ({ ...prev, quantity: Number(e.target.value) }))}
-                    className="stock-field w-full rounded-lg border px-3 py-2.5 pr-28 text-sm focus:outline-none focus:border-indigo-500"
-                    placeholder="e.g. 25"
-                  />
-                  <span className="stock-quantity-pill pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded px-2 py-0.5 text-[10px] font-bold">
-                    Source: {shiftAvailableQty}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="shift-notes" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Notes (optional)</label>
-                <input
-                  id="shift-notes"
-                  name="shift-notes"
-                  type="text"
-                  value={shiftForm.notes}
-                  onChange={(e) => setShiftForm((prev) => ({ ...prev, notes: e.target.value }))}
-                  className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500"
-                  placeholder="Reason, vehicle, shelf, etc."
-                />
-              </div>
-
-              {shiftError && (
-                <p className="stock-danger-soft rounded-lg px-3 py-2 text-sm">{shiftError}</p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="submit"
-                  disabled={shiftSaving}
-                  className="flex-1 rounded-xl bg-indigo-600 py-3 font-semibold text-white transition hover:bg-indigo-500 disabled:opacity-50"
-                >
-                  {shiftSaving ? 'Shifting...' : 'Shift Stock'}
-                </button>
-                <button
-                  type="button"
-                  onClick={closeShiftModal}
-                  className="stock-soft-control rounded-xl border px-6 py-3 text-sm transition"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Record Stock Modal */}
       {showModal && (
         <div className="stock-modal-overlay fixed inset-0 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
           <div className="stock-modal-surface rounded-2xl border p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
-              <button onClick={closeStockModal} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">×</button>
+              <button onClick={closeStockModal} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">Ã—</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {isEditingOlderThan12Hours && (
                 <div className="stock-warning-soft flex items-start gap-2.5 rounded-xl border border-amber-500/20 p-3 text-xs leading-normal">
-                  <span className="text-sm">ℹ️</span>
+                  <span className="text-sm">â„¹ï¸</span>
                   <p>This transaction was recorded more than 12 hours ago. Only the customer name and notes can be edited.</p>
                 </div>
               )}
@@ -1689,25 +1369,36 @@ export default function StockPage() {
               <div>
                 <div className="stock-muted mb-2 text-xs uppercase tracking-wider">Movement Type</div>
                 <div className="flex gap-3">
-                  {(['stock_in', 'stock_out'] as TransactionType[]).map((t) => (
+                  {((editingTransactionId ? ['stock_in', 'stock_out'] : ['stock_in', 'stock_out', 'shift']) as TransactionType[]).map((t) => (
                     <button
                       key={t}
                       type="button"
                       disabled={isEditingOlderThan12Hours}
                       onClick={() => {
-                        setForm((prev) => ({ ...prev, type: t }));
-                        if (t === 'stock_out' && form.product_id) {
+                        setForm((prev) => ({
+                          ...prev,
+                          type: t,
+                          to_warehouse_id:
+                            t === 'shift'
+                              ? (prev.to_warehouse_id && prev.to_warehouse_id !== prev.warehouse_id
+                                ? prev.to_warehouse_id
+                                : warehouses.find((w) => w.id !== prev.warehouse_id)?.id || '')
+                              : prev.to_warehouse_id,
+                        }));
+                        if ((t === 'stock_out' || t === 'shift') && form.product_id) {
                           fetchStockDistribution(form.product_id, true);
                         }
                       }}
                       className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border transition ${form.type === t
                           ? t === 'stock_in'
                             ? 'stock-success-soft border-emerald-500/30'
-                            : 'stock-danger-soft border-red-500/30'
+                            : t === 'stock_out'
+                              ? 'stock-danger-soft border-red-500/30'
+                              : 'stock-primary-badge border-indigo-500/30'
                           : 'stock-soft-control'
                         } ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {t === 'stock_in' ? '↑ Stock In' : '↓ Stock Out'}
+                      {t === 'stock_in' ? '? Stock In' : t === 'stock_out' ? '? Stock Out' : '? Shift'}
                     </button>
                   ))}
                 </div>
@@ -1741,14 +1432,14 @@ export default function StockPage() {
                         Available: {selectedProduct.quantity}
                       </span>
                     )}
-                    <span className="stock-muted text-xs">▼</span>
+                    <span className="stock-muted text-xs">â–¼</span>
                   </div>
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="stock-warehouse" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Warehouse</label>
+                  <label htmlFor="stock-warehouse" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">{form.type === 'shift' ? 'From Warehouse' : 'Warehouse'}</label>
                   <select
                     id="stock-warehouse"
                     name="stock-warehouse"
@@ -1762,15 +1453,38 @@ export default function StockPage() {
                     ) : (
                       filteredWarehouseOptions.map((w) => (
                         <option key={w.id} value={w.id} className="bg-white dark:bg-[#0f1117]">
-                          {w.location ? `${w.name} — ${w.location}` : w.name}
+                          {w.location ? `${w.name} â€” ${w.location}` : w.name}
                         </option>
                       ))
                     )}
                   </select>
                 </div>
+                {form.type === 'shift' && (
+                  <div>
+                    <label htmlFor="stock-to-warehouse" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">To Warehouse</label>
+                    <select
+                      id="stock-to-warehouse"
+                      name="stock-to-warehouse"
+                      value={form.to_warehouse_id}
+                      disabled={isEditingOlderThan12Hours}
+                      onChange={(e) => setForm((prev) => ({ ...prev, to_warehouse_id: e.target.value }))}
+                      className="stock-field w-full rounded-lg border px-3 py-2.5 text-sm focus:outline-none focus:border-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {destinationWarehouseOptions.length === 0 ? (
+                        <option value="" className="bg-white dark:bg-[#0f1117]">No destination warehouse</option>
+                      ) : (
+                        destinationWarehouseOptions.map((w) => (
+                          <option key={w.id} value={w.id} className="bg-white dark:bg-[#0f1117]">
+                            {w.location ? `${w.name} - ${w.location}` : w.name}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label htmlFor="stock-color" className="stock-muted mb-1.5 block text-xs uppercase tracking-wider">Color *</label>
-                  {form.type === 'stock_out' ? (
+                  {isSourceStockMode ? (
                     <div className="relative">
                       <select
                         id="stock-color"
@@ -1966,10 +1680,10 @@ export default function StockPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className={`flex-1 font-semibold py-3 rounded-xl transition text-white disabled:opacity-50 ${form.type === 'stock_in' ? 'bg-emerald-600 hover:bg-emerald-500' : 'bg-red-600 hover:bg-red-500'
+                  className={`flex-1 font-semibold py-3 rounded-xl transition text-white disabled:opacity-50 ${form.type === 'stock_in' ? 'bg-emerald-600 hover:bg-emerald-500' : form.type === 'stock_out' ? 'bg-red-600 hover:bg-red-500' : 'bg-indigo-600 hover:bg-indigo-500'
                     }`}
                 >
-                  {saving ? 'Saving…' : editingTransactionId ? 'Save Changes' : form.type === 'stock_in' ? '↑ Record Stock In' : '↓ Record Stock Out'}
+                  {saving ? 'Saving...' : editingTransactionId ? 'Save Changes' : form.type === 'stock_in' ? '? Record Stock In' : form.type === 'stock_out' ? '? Record Stock Out' : '? Shift Stock'}
                 </button>
                 <button
                   type="button"
@@ -2000,7 +1714,7 @@ export default function StockPage() {
               }}
               className="stock-soft-control flex min-w-[40px] items-center justify-center rounded-lg border p-2"
             >
-              ←
+              â†
             </button>
             <input
               id="stock-product-search"
@@ -2127,7 +1841,7 @@ export default function StockPage() {
                     className="stock-modal-panel group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border p-4 transition hover:border-indigo-500/40 hover:bg-indigo-500/5"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition" />
-                    <span className="text-4xl mb-2 opacity-80">📁</span>
+                    <span className="text-4xl mb-2 opacity-80">ðŸ“</span>
                     <p className="line-clamp-2 text-center text-sm font-semibold">{name}</p>
                     <span className="stock-soft-control mt-2 rounded-full border-0 px-2 py-0.5 text-[10px] uppercase tracking-wider">{count} items</span>
                   </button>
@@ -2146,7 +1860,7 @@ export default function StockPage() {
             <div className="stock-modal-header px-8 py-6 border-b flex items-center justify-between">
               <div>
                 <h2 className="flex items-center gap-2 text-xl font-bold">
-                  <span>📥</span> Export Stock Report
+                  <span>ðŸ“¥</span> Export Stock Report
                 </h2>
                 <p className="stock-muted mt-1 text-xs">
                   {exportRangeType === 'all'
@@ -2158,7 +1872,7 @@ export default function StockPage() {
                 onClick={() => setShowExportModal(false)} 
                 className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none transition-all"
               >
-                ×
+                Ã—
               </button>
             </div>
 
@@ -2275,7 +1989,7 @@ export default function StockPage() {
 
                 {exportStats.totalCount === 0 && (
                   <div className="stock-warning-soft flex animate-pulse items-start gap-2.5 rounded-xl border border-amber-500/20 p-3 text-xs leading-normal">
-                    <span className="text-sm">⚠️</span>
+                    <span className="text-sm">âš ï¸</span>
                     <p>
                       {exportRangeType === 'all'
                         ? 'No transactions found. The report will generate empty tables for all products.'
@@ -2291,7 +2005,7 @@ export default function StockPage() {
                   onClick={handleExportExcel}
                   className="flex-1 font-semibold py-3 rounded-xl transition text-white bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 duration-150"
                 >
-                  📥 Download Excel Report
+                  ðŸ“¥ Download Excel Report
                 </button>
                 <button
                   type="button"

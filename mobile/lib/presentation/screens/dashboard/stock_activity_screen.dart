@@ -580,6 +580,8 @@ class _StockActivityTile extends ConsumerWidget {
           if (value == 'edit') {
             final customerName =
                 TransactionActivityCard.extractCustomerName(txn.notes);
+            final parsedCarton =
+                TransactionActivityCard.parseCartonFromNotes(txn.notes);
             final query = <String, String>{
               'transactionId': txn.id,
               'createdAt': txn.createdAt.toIso8601String(),
@@ -598,11 +600,13 @@ class _StockActivityTile extends ConsumerWidget {
             if (txn.warehouseId?.trim().isNotEmpty == true) {
               query['warehouseId'] = txn.warehouseId!.trim();
             }
-            if (txn.cartons != null && txn.cartons! > 0) {
-              query['cartons'] = txn.cartons.toString();
+            final cartons = txn.cartons ?? parsedCarton?.cartons;
+            final pcsPerCarton = txn.pcsPerCarton ?? parsedCarton?.pcsPerCarton;
+            if (cartons != null && cartons > 0) {
+              query['cartons'] = cartons.toString();
             }
-            if (txn.pcsPerCarton != null && txn.pcsPerCarton! > 0) {
-              query['pcsPerCarton'] = txn.pcsPerCarton.toString();
+            if (pcsPerCarton != null && pcsPerCarton > 0) {
+              query['pcsPerCarton'] = pcsPerCarton.toString();
             }
             if (customerName.isNotEmpty) {
               query['customerName'] = customerName;

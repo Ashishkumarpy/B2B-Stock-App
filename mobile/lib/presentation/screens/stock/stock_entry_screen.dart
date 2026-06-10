@@ -9,6 +9,7 @@ import '../../providers/api_client_provider.dart';
 import '../../providers/warehouses_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/transactions_provider.dart';
+import '../../providers/warehouse_stock_summary_provider.dart';
 import '../../../domain/entities/product.dart';
 
 class StockEntryScreen extends ConsumerStatefulWidget {
@@ -25,6 +26,7 @@ class StockEntryScreen extends ConsumerStatefulWidget {
   final String? transactionId;
   final String? createdAt;
   final String? workerId;
+  final bool initialShift;
 
   const StockEntryScreen({
     super.key,
@@ -41,6 +43,7 @@ class StockEntryScreen extends ConsumerStatefulWidget {
     this.transactionId,
     this.createdAt,
     this.workerId,
+    this.initialShift = false,
   });
 
   @override
@@ -87,6 +90,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   String _selectedColor = 'Default';
   TransactionType _type = TransactionType.stockIn;
   String? _selectedWarehouseId;
+  String? _toWarehouseId;
+  bool _isShift = false;
   Set<String> _stockOutWarehouseIdsWithStock = <String>{};
   List<Map<String, dynamic>> _stockOutWarehouseStockRows = const [];
   List<Map<String, dynamic>> _stockOutColorRows = const [];
@@ -99,10 +104,16 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   List<Map<String, dynamic>> _productStockDistribution = const [];
   String? _lastLoadedProductId;
 
+  bool get _usesSourceStock => _type == TransactionType.stockOut || _isShift;
+
   @override
   void initState() {
     super.initState();
     if (widget.initialType != null) _type = widget.initialType!;
+    if (widget.initialShift) {
+      _isShift = true;
+      _type = TransactionType.stockOut;
+    }
     _loadStockEntryPrefs();
 
     // Auto-select product if ID is provided
@@ -287,7 +298,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           .toList();
     }
 
-    if (_type == TransactionType.stockOut) {
+    if (_usesSourceStock) {
       return products.where((p) => p.quantity > 0).toList();
     }
 
@@ -338,7 +349,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       });
 
       // For stock-out, automatically select the first color that has stock
-      if (_type == TransactionType.stockOut && rows.isNotEmpty) {
+      if (_usesSourceStock && rows.isNotEmpty) {
         final currentColor = _selectedColor.trim().toLowerCase();
         final currentHasStock = rows.any((r) =>
             (r['color_name']?.toString() ?? '').trim().toLowerCase() ==
@@ -385,7 +396,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     bool autoRouteWarehouse = false,
     bool autoRouteColor = false,
   }) {
-    if (_type != TransactionType.stockOut || _selectedProduct == null) {
+    if (!_usesSourceStock || _selectedProduct == null) {
       setState(() {
         _stockOutWarehouseIdsWithStock = <String>{};
         _stockOutWarehouseStockRows = const [];
@@ -543,7 +554,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     bool autoRouteWarehouse = false,
     bool autoRouteColor = false,
   }) async {
-    if (_type != TransactionType.stockOut || _selectedProduct == null) {
+    if (!_usesSourceStock || _selectedProduct == null) {
       setState(() {
         _stockOutWarehouseIdsWithStock = <String>{};
         _stockOutWarehouseStockRows = const [];
@@ -571,7 +582,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     bool autoRouteWarehouse = false,
     bool autoRouteColor = false,
   }) async {
-    if (_type != TransactionType.stockOut || _selectedProduct == null) {
+    if (!_usesSourceStock || _selectedProduct == null) {
       setState(() {
         _stockOutColorRows = const [];
       });
@@ -601,6 +612,26 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     _recordedByController.dispose();
     _customerController.dispose();
     super.dispose();
+  }
+
+  int get _selectedSourceAvailableQty {
+    if (!_usesSourceStock ||
+        _selectedWarehouseId == null ||
+        _selectedWarehouseId!.trim().isEmpty) {
+      return 0;
+    }
+
+    final targetColor = _selectedColor.trim().toLowerCase();
+    var total = 0;
+    for (final row in _productStockDistribution) {
+      final warehouseId = row['warehouse_id']?.toString() ?? '';
+      final colorName =
+          (row['color_name']?.toString() ?? '').trim().toLowerCase();
+      if (warehouseId == _selectedWarehouseId && colorName == targetColor) {
+        total += int.tryParse(row['quantity']?.toString() ?? '0') ?? 0;
+      }
+    }
+    return total;
   }
 
   Future<void> _submit() async {
@@ -645,7 +676,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       );
       if (!selectedWarehouseExists) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content:
                 Text('Please select an active warehouse from the server list.'),
             backgroundColor: AppTheme.danger,
@@ -653,28 +684,58 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         );
         return;
       }
+      if (_isShift) {
+        final destinationWarehouseExists = activeWarehouses.any(
+          (w) => w['id']?.toString() == _toWarehouseId,
+        );
+        if (_toWarehouseId == null || _toWarehouseId!.trim().isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Please select a destination warehouse.'),
+              backgroundColor: AppTheme.danger,
+            ),
+          );
+          return;
+        }
+        if (_selectedWarehouseId == _toWarehouseId) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content:
+                  Text('Source and destination warehouses must be different.'),
+              backgroundColor: AppTheme.danger,
+            ),
+          );
+          return;
+        }
+        if (!destinationWarehouseExists) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'Please select an active destination warehouse from the server list.'),
+              backgroundColor: AppTheme.danger,
+            ),
+          );
+          return;
+        }
+      }
     }
 
-    // Validation for Stock Out
-    if (_type == TransactionType.stockOut && !_isEditingOlderThan12Hours) {
+    // Validation for movements that remove stock from a source warehouse.
+    if (_usesSourceStock && !_isEditingOlderThan12Hours) {
       if (_selectedWarehouseId == null ||
           _selectedWarehouseId!.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Please select a warehouse for Stock Out.'),
+          SnackBar(
+            content: Text(_isShift
+                ? 'Please select a source warehouse for Shift.'
+                : 'Please select a warehouse for Stock Out.'),
             backgroundColor: AppTheme.danger,
           ),
         );
         return;
       }
 
-      int availableQty = _selectedProduct!.colorStocks.isNotEmpty
-          ? (_selectedProduct!.colorStocks
-                  .where((c) => c.color == _selectedColor)
-                  .firstOrNull
-                  ?.quantity ??
-              0)
-          : _selectedProduct!.quantity;
+      int availableQty = _selectedSourceAvailableQty;
 
       // Adjust for virtual quantity during editing
       if (_isEditing && widget.productId == _selectedProduct!.id) {
@@ -747,6 +808,16 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           'cartons': cartonsText.isNotEmpty ? int.tryParse(cartonsText) : null,
           'pcs_per_carton': resolvedPcsPerCarton,
         });
+      } else if (_isShift) {
+        await client.post('/transactions/shift', {
+          'product_id': _selectedProduct!.id,
+          'quantity': qty,
+          'color_name': _selectedColor,
+          'from_warehouse_id': _selectedWarehouseId,
+          'to_warehouse_id': _toWarehouseId,
+          'notes': finalNotes.isEmpty ? null : finalNotes,
+          'worker_name': workerName,
+        });
       } else {
         await client.post('/transactions', {
           'product_id': _selectedProduct!.id,
@@ -770,6 +841,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           ref.read(productsProvider.notifier).fetchProducts(),
           ref.read(transactionsProvider.notifier).fetchTransactions(),
         ]);
+        ref.invalidate(activeWarehousesProvider);
+        ref.invalidate(warehouseStockSummaryProvider);
         if (_isEditing) {
           final originalProductId = widget.productId;
           if (originalProductId != null && originalProductId.isNotEmpty) {
@@ -783,8 +856,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Transaction saved successfully'),
+          SnackBar(
+            content: Text(_isShift
+                ? 'Stock shifted successfully'
+                : 'Transaction saved successfully'),
             backgroundColor: AppTheme.success,
           ),
         );
@@ -864,6 +939,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           if (active.isNotEmpty) {
             setState(() {
               _selectedWarehouseId = active.first['id']?.toString();
+              _toWarehouseId ??= active
+                  .firstWhere(
+                    (w) => w['id']?.toString() != _selectedWarehouseId,
+                    orElse: () => const <String, dynamic>{},
+                  )['id']
+                  ?.toString();
             });
           }
         }
@@ -876,7 +957,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     });
     final warehousesAsync = ref.watch(activeWarehousesProvider);
     final warehouses = warehousesAsync.value ?? [];
-    final warehouseOptionsRaw = (_type == TransactionType.stockOut &&
+    final warehouseOptionsRaw = (_usesSourceStock &&
             _selectedProduct != null &&
             !_isLoadingStockOutWarehouses)
         ? warehouses
@@ -898,6 +979,17 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     final selectedWarehouseValue = (_selectedWarehouseId != null &&
             warehouseOptionIds.contains(_selectedWarehouseId))
         ? _selectedWarehouseId
+        : null;
+    final destinationWarehouseOptions = warehouses
+        .where((w) => (w['id']?.toString() ?? '') != _selectedWarehouseId)
+        .toList();
+    final destinationWarehouseIds = destinationWarehouseOptions
+        .map((w) => w['id']?.toString() ?? '')
+        .where((id) => id.isNotEmpty)
+        .toSet();
+    final selectedDestinationValue = (_toWarehouseId != null &&
+            destinationWarehouseIds.contains(_toWarehouseId))
+        ? _toWarehouseId
         : null;
     final stockOutColorRowsDeduped = (() {
       final byLower = <String, Map<String, dynamic>>{};
@@ -928,7 +1020,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
         .where((x) => x.isNotEmpty)
         .toSet();
     final selectedColorValue = (() {
-      if (_type == TransactionType.stockOut) {
+      if (_usesSourceStock) {
         if (stockOutColorNames.contains(_selectedColor)) return _selectedColor;
         if (stockOutColorRowsDeduped.isNotEmpty) {
           return stockOutColorRowsDeduped.first['color_name']?.toString() ??
@@ -1027,7 +1119,10 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                       onTap: _isEditingOlderThan12Hours
                           ? null
                           : () {
-                              setState(() => _type = TransactionType.stockIn);
+                              setState(() {
+                                _type = TransactionType.stockIn;
+                                _isShift = false;
+                              });
                               _refreshStockOutWarehouses(
                                   autoRouteWarehouse: true,
                                   autoRouteColor: true);
@@ -1090,6 +1185,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           : () {
                               setState(() {
                                 _type = TransactionType.stockOut;
+                                _isShift = false;
                                 if (!_isEditing &&
                                     _selectedProduct != null &&
                                     _selectedProduct!.quantity <= 0) {
@@ -1106,22 +1202,27 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                             },
                       child: Opacity(
                         opacity: _isEditingOlderThan12Hours &&
-                                _type != TransactionType.stockOut
+                                (!_usesSourceStock || _isShift)
                             ? 0.4
                             : 1.0,
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
-                            color: _type == TransactionType.stockOut
-                                ? const Color(0xFFFEF2F2)
-                                : Colors.white,
+                            color:
+                                _type == TransactionType.stockOut && !_isShift
+                                    ? const Color(0xFFFEF2F2)
+                                    : Colors.white,
                             borderRadius:
                                 BorderRadius.circular(AppTheme.radiusLG),
                             border: Border.all(
-                              color: _type == TransactionType.stockOut
-                                  ? AppTheme.danger
-                                  : const Color(0xFFE2E8F0),
-                              width: _type == TransactionType.stockOut ? 2 : 1,
+                              color:
+                                  _type == TransactionType.stockOut && !_isShift
+                                      ? AppTheme.danger
+                                      : const Color(0xFFE2E8F0),
+                              width:
+                                  _type == TransactionType.stockOut && !_isShift
+                                      ? 2
+                                      : 1,
                             ),
                           ),
                           child: Row(
@@ -1130,7 +1231,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                               Icon(
                                 Icons.arrow_downward_rounded,
                                 size: 16,
-                                color: _type == TransactionType.stockOut
+                                color: _type == TransactionType.stockOut &&
+                                        !_isShift
                                     ? AppTheme.danger
                                     : AppTheme.textMuted,
                               ),
@@ -1140,7 +1242,8 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.bold,
-                                  color: _type == TransactionType.stockOut
+                                  color: _type == TransactionType.stockOut &&
+                                          !_isShift
                                       ? AppTheme.danger
                                       : AppTheme.textSecondary,
                                 ),
@@ -1151,6 +1254,90 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                       ),
                     ),
                   ),
+                  if (!_isEditing) ...[
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _isEditingOlderThan12Hours
+                            ? null
+                            : () {
+                                setState(() {
+                                  _type = TransactionType.stockOut;
+                                  _isShift = true;
+                                  if ((_toWarehouseId == null ||
+                                          _toWarehouseId ==
+                                              _selectedWarehouseId) &&
+                                      warehouses.isNotEmpty) {
+                                    _toWarehouseId = warehouses
+                                        .firstWhere(
+                                          (w) =>
+                                              w['id']?.toString() !=
+                                              _selectedWarehouseId,
+                                          orElse: () =>
+                                              const <String, dynamic>{},
+                                        )['id']
+                                        ?.toString();
+                                  }
+                                  if (_selectedProduct != null &&
+                                      _selectedProduct!.quantity <= 0) {
+                                    _selectedProduct = null;
+                                    _selectedColor = 'Default';
+                                  }
+                                });
+                                _refreshStockOutWarehouses(
+                                    autoRouteWarehouse: true,
+                                    autoRouteColor: true);
+                                _refreshStockOutColors(
+                                    autoRouteWarehouse: true,
+                                    autoRouteColor: true);
+                              },
+                        child: Opacity(
+                          opacity: _isEditingOlderThan12Hours && !_isShift
+                              ? 0.4
+                              : 1.0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: _isShift
+                                  ? const Color(0xFFEFF6FF)
+                                  : Colors.white,
+                              borderRadius:
+                                  BorderRadius.circular(AppTheme.radiusLG),
+                              border: Border.all(
+                                color: _isShift
+                                    ? AppTheme.primary
+                                    : const Color(0xFFE2E8F0),
+                                width: _isShift ? 2 : 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.swap_horiz_rounded,
+                                  size: 16,
+                                  color: _isShift
+                                      ? AppTheme.primary
+                                      : AppTheme.textMuted,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Shift',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: _isShift
+                                        ? AppTheme.primary
+                                        : AppTheme.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 24),
@@ -1292,7 +1479,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'WAREHOUSE',
+                          _isShift ? 'FROM WAREHOUSE' : 'WAREHOUSE',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
@@ -1328,7 +1515,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   ),
                                   icon: Icon(Icons.keyboard_arrow_down_rounded,
                                       color: AppTheme.mutedTextColor(context)),
-                                  items: (_type == TransactionType.stockOut &&
+                                  items: (_usesSourceStock &&
                                           _selectedProduct != null &&
                                           !_isLoadingStockOutWarehouses &&
                                           warehouseOptions.isEmpty)
@@ -1397,6 +1584,21 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                           }
                                           setState(() {
                                             _selectedWarehouseId = val;
+                                            if (_isShift &&
+                                                _toWarehouseId == val) {
+                                              _toWarehouseId =
+                                                  destinationWarehouseOptions
+                                                      .firstWhere(
+                                                        (w) =>
+                                                            w['id']
+                                                                ?.toString() !=
+                                                            val,
+                                                        orElse: () =>
+                                                            const <String,
+                                                                dynamic>{},
+                                                      )['id']
+                                                      ?.toString();
+                                            }
                                           });
                                           _refreshStockOutColors(
                                               autoRouteColor: true,
@@ -1407,12 +1609,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                             ),
                           ),
                         ),
-                        if (_type == TransactionType.stockOut) ...[
+                        if (_usesSourceStock) ...[
                           const SizedBox(height: 6),
                           Text(
                             _isLoadingStockOutWarehouses
                                 ? 'Checking stock availability...'
-                                : 'Only warehouses with available stock are shown.',
+                                : 'Only warehouses with available source stock are shown.',
                             style: TextStyle(
                               fontSize: 11,
                               color: AppTheme.mutedTextColor(context),
@@ -1556,12 +1758,12 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   icon: Icon(Icons.keyboard_arrow_down_rounded,
                                       color: AppTheme.mutedTextColor(context)),
                                   items: _selectedProduct != null &&
-                                          (_type != TransactionType.stockOut
+                                          (!_usesSourceStock
                                               ? _selectedProduct!
                                                   .colorStocks.isNotEmpty
                                               : stockOutColorRowsDeduped
                                                   .isNotEmpty)
-                                      ? (_type == TransactionType.stockOut
+                                      ? (_usesSourceStock
                                           ? stockOutColorRowsDeduped.map((c) {
                                               final cName =
                                                   c['color_name']?.toString() ??
@@ -1634,6 +1836,89 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 ],
               ),
               const SizedBox(height: 20),
+
+              if (_isShift) ...[
+                Text(
+                  'TO WAREHOUSE *',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                    color: AppTheme.mutedTextColor(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                IgnorePointer(
+                  ignoring: _isEditingOlderThan12Hours,
+                  child: Opacity(
+                    opacity: _isEditingOlderThan12Hours ? 0.6 : 1.0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceColor(context),
+                        borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+                        border:
+                            Border.all(color: AppTheme.borderColor(context)),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: selectedDestinationValue,
+                          isExpanded: true,
+                          hint: Text(
+                            'Select destination warehouse',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: AppTheme.mutedTextColor(context),
+                            ),
+                          ),
+                          icon: Icon(Icons.keyboard_arrow_down_rounded,
+                              color: AppTheme.mutedTextColor(context)),
+                          items: destinationWarehouseOptions.isEmpty
+                              ? [
+                                  DropdownMenuItem(
+                                    value: '__none__',
+                                    child: Text(
+                                      'No destination warehouse',
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppTheme.primaryTextColor(
+                                              context)),
+                                    ),
+                                  ),
+                                ]
+                              : destinationWarehouseOptions.map((w) {
+                                  final name =
+                                      w['name']?.toString() ?? 'Warehouse';
+                                  final loc = w['location']?.toString() ?? '';
+                                  final display =
+                                      loc.isNotEmpty ? '$name - $loc' : name;
+                                  return DropdownMenuItem(
+                                    value: w['id']?.toString(),
+                                    child: Text(
+                                      display,
+                                      style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppTheme.primaryTextColor(
+                                              context)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }).toList(),
+                          onChanged: _isEditingOlderThan12Hours
+                              ? null
+                              : (val) {
+                                  if (val == null || val.startsWith('__')) {
+                                    return;
+                                  }
+                                  setState(() => _toWarehouseId = val);
+                                },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
 
               // CARTONS, PCS & TOTAL QUANTITY
               Row(
@@ -1974,7 +2259,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _type == TransactionType.stockIn
                       ? AppTheme.success
-                      : AppTheme.danger,
+                      : _isShift
+                          ? AppTheme.primary
+                          : AppTheme.danger,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -1996,18 +2283,22 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                           Icon(
                             _isEditing
                                 ? Icons.save_rounded
-                                : (_type == TransactionType.stockIn
-                                    ? Icons.arrow_upward_rounded
-                                    : Icons.arrow_downward_rounded),
+                                : (_isShift
+                                    ? Icons.swap_horiz_rounded
+                                    : _type == TransactionType.stockIn
+                                        ? Icons.arrow_upward_rounded
+                                        : Icons.arrow_downward_rounded),
                             size: 18,
                           ),
                           const SizedBox(width: 8),
                           Text(
                             _isEditing
                                 ? 'Save Changes'
-                                : (_type == TransactionType.stockIn
-                                    ? 'Record Stock In'
-                                    : 'Record Stock Out'),
+                                : (_isShift
+                                    ? 'Shift Stock'
+                                    : _type == TransactionType.stockIn
+                                        ? 'Record Stock In'
+                                        : 'Record Stock Out'),
                             style: const TextStyle(
                                 fontSize: 15, fontWeight: FontWeight.w800),
                           ),

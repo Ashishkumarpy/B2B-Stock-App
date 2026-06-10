@@ -491,11 +491,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                                 onPressed: () => context.push(
                                     '/stock-entry?productId=${product.id}&type=out'),
                                 icon:
-                                    Icon(Icons.remove_circle_rounded, size: 18),
-                                label: Text('STOCK OUT'),
+                                    Icon(Icons.remove_circle_rounded, size: 16),
+                                label: Text(
+                                  'STOCK OUT',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.danger,
                                   foregroundColor: Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 6),
                                   minimumSize: const Size.fromHeight(48),
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(
@@ -507,13 +518,23 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             Expanded(
                               child: ElevatedButton.icon(
                                 onPressed: () => context.push(
-                                    '/stock-shift?productId=${product.id}'),
-                                icon:
-                                    Icon(Icons.swap_horiz_rounded, size: 18),
-                                label: Text('SHIFT'),
+                                    '/stock-entry?type=shift&productId=${product.id}'),
+                                icon: Icon(Icons.swap_horiz_rounded, size: 16),
+                                label: Text(
+                                  'SHIFT',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.primary,
                                   foregroundColor: Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 6),
                                   minimumSize: const Size.fromHeight(48),
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(
@@ -526,11 +547,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                               child: ElevatedButton.icon(
                                 onPressed: () => context.push(
                                     '/stock-entry?productId=${product.id}&type=in'),
-                                icon: Icon(Icons.add_circle_rounded, size: 18),
-                                label: Text('STOCK IN'),
+                                icon: Icon(Icons.add_circle_rounded, size: 16),
+                                label: Text(
+                                  'STOCK IN',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  softWrap: false,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: AppTheme.success,
                                   foregroundColor: Colors.white,
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 6),
                                   minimumSize: const Size.fromHeight(48),
                                   shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(
@@ -795,11 +827,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       context.push(
                           '/stock-entry?productId=${product.id}&type=out');
                     },
-                    icon: Icon(Icons.remove_rounded, size: 18),
-                    label: Text('STOCK OUT'),
+                    icon: Icon(Icons.remove_rounded, size: 16),
+                    label: Text(
+                      'STOCK OUT',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style:
+                          TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.danger,
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
                       minimumSize: const Size.fromHeight(48),
                     ),
                   ),
@@ -809,13 +849,22 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
-                      context.push('/stock-shift?productId=${product.id}');
+                      context.push(
+                          '/stock-entry?type=shift&productId=${product.id}');
                     },
-                    icon: Icon(Icons.swap_horiz_rounded, size: 18),
-                    label: Text('SHIFT'),
+                    icon: Icon(Icons.swap_horiz_rounded, size: 16),
+                    label: Text(
+                      'SHIFT',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style:
+                          TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.primary,
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
                       minimumSize: const Size.fromHeight(48),
                     ),
                   ),
@@ -828,11 +877,19 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                       context
                           .push('/stock-entry?productId=${product.id}&type=in');
                     },
-                    icon: Icon(Icons.add_rounded, size: 18),
-                    label: Text('STOCK IN'),
+                    icon: Icon(Icons.add_rounded, size: 16),
+                    label: Text(
+                      'STOCK IN',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style:
+                          TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.success,
                       foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
                       minimumSize: const Size.fromHeight(48),
                     ),
                   ),
