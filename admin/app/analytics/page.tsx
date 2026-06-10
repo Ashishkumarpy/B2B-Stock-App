@@ -196,7 +196,7 @@ export default function AnalyticsPage() {
       </div>
 
       {loading ? (
-        <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">Loading analytics…</div>
+        <div className="p-12 text-center text-slate-400 dark:text-gray-500 text-sm">Loading analytics...</div>
       ) : (
         <>
           {/* Financial & Inventory Value Cards */}
@@ -214,10 +214,10 @@ export default function AnalyticsPage() {
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: 'Total Price Value', value: `₹${totalPriceValue.toLocaleString('en-IN')}`, sub: 'Current retail inventory value', icon: '💰', border: 'stat-indigo' },
-              { label: 'Estimated Revenue', value: `₹${estimatedRevenue.toLocaleString('en-IN')}`, sub: 'Revenue from stock dispatches', icon: '📈', border: 'stat-violet' },
-              { label: 'In Stock Value', value: `₹${inStockValue.toLocaleString('en-IN')}`, sub: 'Value of items stocked in', icon: '🟢', border: 'stat-emerald', onClick: () => router.push('/products?view=in_stock') },
-              { label: 'Out of Stock Value', value: `₹${outStockValue.toLocaleString('en-IN')}`, sub: 'Replenishment value (to threshold)', icon: '🔴', border: 'stat-sky', onClick: () => router.push('/products?view=out_of_stock') },
+              { label: 'Total Price Value', value: `Rs ${totalPriceValue.toLocaleString('en-IN')}`, sub: 'Current retail inventory value', icon: 'Rs', border: 'stat-indigo' },
+              { label: 'Estimated Revenue', value: `Rs ${estimatedRevenue.toLocaleString('en-IN')}`, sub: 'Revenue from stock dispatches', icon: 'Rev', border: 'stat-violet' },
+              { label: 'In Stock Value', value: `Rs ${inStockValue.toLocaleString('en-IN')}`, sub: 'Value of items stocked in', icon: 'In', border: 'stat-emerald', onClick: () => router.push('/products?view=in_stock') },
+              { label: 'Out of Stock Value', value: `Rs ${outStockValue.toLocaleString('en-IN')}`, sub: 'Replenishment value (to threshold)', icon: 'Out', border: 'stat-sky', onClick: () => router.push('/products?view=out_of_stock') },
             ].map((s) => (
               <div
                 key={s.label}
@@ -292,9 +292,9 @@ export default function AnalyticsPage() {
           {/* Summary metrics */}
           <div className="grid sm:grid-cols-3 gap-4">
             {[
-              { label: `Total Stock In (${currentMonth.month})`, value: `${currentMonth.in.toLocaleString()} units`, icon: '📈' },
-              { label: `Total Stock Out (${currentMonth.month})`, value: `${currentMonth.out.toLocaleString()} units`, icon: '📉' },
-              { label: 'Net Flow (Monthly)', value: `${(currentMonth.in - currentMonth.out) >= 0 ? '+' : ''}${(currentMonth.in - currentMonth.out).toLocaleString()} units`, icon: '🔄' },
+              { label: `Total Stock In (${currentMonth.month})`, value: `${currentMonth.in.toLocaleString()} units`, icon: 'In' },
+              { label: `Total Stock Out (${currentMonth.month})`, value: `${currentMonth.out.toLocaleString()} units`, icon: 'Out' },
+              { label: 'Net Flow (Monthly)', value: `${(currentMonth.in - currentMonth.out) >= 0 ? '+' : ''}${(currentMonth.in - currentMonth.out).toLocaleString()} units`, icon: 'Net' },
             ].map((s) => (
               <div key={s.label} className="card p-5 text-center">
                 <p className="text-3xl mb-2">{s.icon}</p>

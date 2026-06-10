@@ -48,7 +48,7 @@ export function getCleanNotes(notes?: string | null): string {
   const customerRegex = /^Customer:\s*[^|]+(\|)?/i;
   clean = clean.replace(customerRegex, '').trim();
 
-  // 2. Strip cartons prefix: "\d+ ctn Ã— \d+ pcs" or similar, case insensitively
+  // 2. Strip cartons prefix: "\\d+ ctn x \\d+ pcs" or similar, case insensitively
   const cartonRegex = /^\d+\s*(?:ctn|carton|cartons)\s*(?:[x*]|\(|pcs\/ctn|pcs)?\s*\d+\s*(?:pcs)?\s*(\|)?/i;
   clean = clean.replace(cartonRegex, '').trim();
 
@@ -294,9 +294,9 @@ export default function StockPage() {
             name: p.name,
             category: p.category || 'Uncategorized',
             qty: totalQty,
-            colors: colors || 'â€”',
-            workers: workers || 'â€”',
-            notes: notes || 'â€”'
+            colors: colors || '-',
+            workers: workers || '-',
+            notes: notes || '-'
           };
         })
         .filter(row => row.qty > 0) // Only show products with actual stock-in movements
@@ -325,9 +325,9 @@ export default function StockPage() {
             name: p.name,
             category: p.category || 'Uncategorized',
             qty: totalQty,
-            colors: colors || 'â€”',
-            workers: workers || 'â€”',
-            notes: notes || 'â€”'
+            colors: colors || '-',
+            workers: workers || '-',
+            notes: notes || '-'
           };
         })
         .filter(row => row.qty > 0) // Only show products with actual stock-out movements
@@ -942,7 +942,7 @@ export default function StockPage() {
 
       let finalNotes = form.notes.trim();
       if (form.cartons && form.pcsPerCarton) {
-        const cartonNote = `${form.cartons} ctn Ã— ${form.pcsPerCarton} pcs`;
+        const cartonNote = `${form.cartons} ctn x ${form.pcsPerCarton} pcs`;
         finalNotes = finalNotes ? `${cartonNote} | ${finalNotes}` : cartonNote;
       }
       if (form.type === 'stock_out' && form.customer_name.trim()) {
@@ -1094,7 +1094,7 @@ export default function StockPage() {
             onClick={() => setShowExportModal(true)}
             className="stock-soft-control flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition active:scale-95"
           >
-            <span>ðŸ“¥</span> Export to Excel
+            Export to Excel
           </button>
           <button
             onClick={() => {
@@ -1112,7 +1112,7 @@ export default function StockPage() {
             }}
             className="stock-soft-control flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-semibold transition active:scale-95"
           >
-            <span>â‡„</span> Shift Stock
+            Shift Stock
           </button>
           <button
             onClick={() => {
@@ -1135,7 +1135,7 @@ export default function StockPage() {
       {/* Table */}
       <div className="card overflow-hidden">
         {loading ? (
-          <div className="stock-secondary p-12 text-center text-sm">Loading transactionsâ€¦</div>
+          <div className="stock-secondary p-12 text-center text-sm">Loading transactions...</div>
         ) : transactions.length === 0 ? (
           <div className="stock-secondary p-12 text-center text-sm">No stock entries yet. Click "+ Record Stock" to log the first transaction.</div>
         ) : (
@@ -1288,7 +1288,7 @@ export default function StockPage() {
                             if (t.cartons && t.pcs_per_carton) {
                               return (
                                 <span className="stock-muted mt-0.5 whitespace-nowrap text-[10px] leading-tight">
-                                  {t.cartons} ctn Ã— {t.pcs_per_carton}
+                                  {t.cartons} ctn x {t.pcs_per_carton}
                                 </span>
                               );
                             }
@@ -1296,7 +1296,7 @@ export default function StockPage() {
                             if (parsed) {
                               return (
                                 <span className="stock-muted mt-0.5 whitespace-nowrap text-[10px] leading-tight">
-                                  {parsed.cartons} ctn Ã— {parsed.pcsPerCarton}
+                                  {parsed.cartons} ctn x {parsed.pcsPerCarton}
                                 </span>
                               );
                             }
@@ -1304,7 +1304,7 @@ export default function StockPage() {
                           })()}
                         </div>
                       </td>
-                      <td className="stock-muted max-w-[140px] truncate text-xs">{t.notes || 'â€”'}</td>
+                      <td className="stock-muted max-w-[140px] truncate text-xs">{t.notes || '-'}</td>
                       <td className="stock-muted text-xs">{new Date(t.created_at).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
                       <td>
                         <button
@@ -1354,13 +1354,13 @@ export default function StockPage() {
           <div className="stock-modal-surface rounded-2xl border p-8 w-full max-w-lg my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">{editingTransactionId ? 'Edit Stock Transaction' : 'Record Stock Movement'}</h2>
-              <button onClick={closeStockModal} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">Ã—</button>
+              <button onClick={closeStockModal} className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none">x</button>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">
               {isEditingOlderThan12Hours && (
                 <div className="stock-warning-soft flex items-start gap-2.5 rounded-xl border border-amber-500/20 p-3 text-xs leading-normal">
-                  <span className="text-sm">â„¹ï¸</span>
+                  <span className="text-sm">Info</span>
                   <p>This transaction was recorded more than 12 hours ago. Only the customer name and notes can be edited.</p>
                 </div>
               )}
@@ -1398,7 +1398,7 @@ export default function StockPage() {
                           : 'stock-soft-control'
                         } ${isEditingOlderThan12Hours ? 'opacity-50 cursor-not-allowed' : ''}`}
                     >
-                      {t === 'stock_in' ? '? Stock In' : t === 'stock_out' ? '? Stock Out' : '? Shift'}
+                      {t === 'stock_in' ? 'Stock In' : t === 'stock_out' ? 'Stock Out' : 'Shift'}
                     </button>
                   ))}
                 </div>
@@ -1432,7 +1432,7 @@ export default function StockPage() {
                         Available: {selectedProduct.quantity}
                       </span>
                     )}
-                    <span className="stock-muted text-xs">â–¼</span>
+                    <span className="stock-muted text-xs">v</span>
                   </div>
                 </button>
               </div>
@@ -1453,7 +1453,7 @@ export default function StockPage() {
                     ) : (
                       filteredWarehouseOptions.map((w) => (
                         <option key={w.id} value={w.id} className="bg-white dark:bg-[#0f1117]">
-                          {w.location ? `${w.name} â€” ${w.location}` : w.name}
+                          {w.location ? `${w.name} - ${w.location}` : w.name}
                         </option>
                       ))
                     )}
@@ -1683,7 +1683,7 @@ export default function StockPage() {
                   className={`flex-1 font-semibold py-3 rounded-xl transition text-white disabled:opacity-50 ${form.type === 'stock_in' ? 'bg-emerald-600 hover:bg-emerald-500' : form.type === 'stock_out' ? 'bg-red-600 hover:bg-red-500' : 'bg-indigo-600 hover:bg-indigo-500'
                     }`}
                 >
-                  {saving ? 'Saving...' : editingTransactionId ? 'Save Changes' : form.type === 'stock_in' ? '? Record Stock In' : form.type === 'stock_out' ? '? Record Stock Out' : '? Shift Stock'}
+                  {saving ? 'Saving...' : editingTransactionId ? 'Save Changes' : form.type === 'stock_in' ? 'Record Stock In' : form.type === 'stock_out' ? 'Record Stock Out' : 'Shift Stock'}
                 </button>
                 <button
                   type="button"
@@ -1714,7 +1714,7 @@ export default function StockPage() {
               }}
               className="stock-soft-control flex min-w-[40px] items-center justify-center rounded-lg border p-2"
             >
-              â†
+              Back
             </button>
             <input
               id="stock-product-search"
@@ -1841,7 +1841,7 @@ export default function StockPage() {
                     className="stock-modal-panel group relative flex aspect-square flex-col items-center justify-center overflow-hidden rounded-2xl border p-4 transition hover:border-indigo-500/40 hover:bg-indigo-500/5"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 to-transparent opacity-0 group-hover:opacity-100 transition" />
-                    <span className="text-4xl mb-2 opacity-80">ðŸ“</span>
+                    <span className="text-2xl mb-2 opacity-80">Folder</span>
                     <p className="line-clamp-2 text-center text-sm font-semibold">{name}</p>
                     <span className="stock-soft-control mt-2 rounded-full border-0 px-2 py-0.5 text-[10px] uppercase tracking-wider">{count} items</span>
                   </button>
@@ -1860,7 +1860,7 @@ export default function StockPage() {
             <div className="stock-modal-header px-8 py-6 border-b flex items-center justify-between">
               <div>
                 <h2 className="flex items-center gap-2 text-xl font-bold">
-                  <span>ðŸ“¥</span> Export Stock Report
+                  Export Stock Report
                 </h2>
                 <p className="stock-muted mt-1 text-xs">
                   {exportRangeType === 'all'
@@ -1872,7 +1872,7 @@ export default function StockPage() {
                 onClick={() => setShowExportModal(false)} 
                 className="stock-icon-control flex h-8 w-8 items-center justify-center rounded-full text-2xl leading-none transition-all"
               >
-                Ã—
+                x
               </button>
             </div>
 
@@ -1989,7 +1989,7 @@ export default function StockPage() {
 
                 {exportStats.totalCount === 0 && (
                   <div className="stock-warning-soft flex animate-pulse items-start gap-2.5 rounded-xl border border-amber-500/20 p-3 text-xs leading-normal">
-                    <span className="text-sm">âš ï¸</span>
+                    <span className="text-sm">Warning</span>
                     <p>
                       {exportRangeType === 'all'
                         ? 'No transactions found. The report will generate empty tables for all products.'
@@ -2005,7 +2005,7 @@ export default function StockPage() {
                   onClick={handleExportExcel}
                   className="flex-1 font-semibold py-3 rounded-xl transition text-white bg-indigo-600 hover:bg-indigo-500 flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 active:scale-95 duration-150"
                 >
-                  ðŸ“¥ Download Excel Report
+                  Download Excel Report
                 </button>
                 <button
                   type="button"

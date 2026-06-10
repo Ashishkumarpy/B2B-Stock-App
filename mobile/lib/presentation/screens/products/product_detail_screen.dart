@@ -89,7 +89,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
         int? inferredPcsPerCarton;
         final inferredFrequency = <int, int>{};
         final cartonNotesPattern = RegExp(
-            r'(\d+)\s*cartons?\s*[xX×]\s*(\d+)\s*pcs',
+            r'(\d+)\s*cartons?\s*[xX]\s*(\d+)\s*pcs',
             caseSensitive: false);
         for (final tx in productTransactions) {
           final pcs = tx.pcsPerCarton;
@@ -135,13 +135,13 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
             (product.pcsPerCarton == null || product.pcsPerCarton! <= 1) &&
                 inferredPcsPerCarton != null;
         final priceLabel =
-            '₹${product.price % 1 == 0 ? product.price.toInt() : product.price}';
+            'Rs ${product.price % 1 == 0 ? product.price.toInt() : product.price}';
 
         return Scaffold(
           backgroundColor: AppTheme.backgroundColor(context),
           body: CustomScrollView(
             slivers: [
-              // Ã¢â€â‚¬Ã¢â€â‚¬ Simple Elegant App Bar with Edit Feature Ã¢â€â‚¬Ã¢â€â‚¬
+              // Simple elegant app bar with edit feature
               SliverAppBar(
                 pinned: true,
                 backgroundColor: AppTheme.surfaceColor(context),
@@ -168,14 +168,14 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                 ],
               ),
 
-              // Ã¢â€â‚¬Ã¢â€â‚¬ Content Ã¢â€â‚¬Ã¢â€â‚¬
+              // Content
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Ã¢â€â‚¬Ã¢â€â‚¬ TAPPABLE IMAGE HERO SECTION Ã¢â€â‚¬Ã¢â€â‚¬
+                      // Tappable image hero section
                       if (allImages.isNotEmpty) ...[
                         GestureDetector(
                           onTap: () => _openFullScreenViewer(
@@ -259,7 +259,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
                             ),
                           ),
                         ),
-                        // Ã¢â€â‚¬Ã¢â€â‚¬ Image Thumbnails Row (Tied to Hero) Ã¢â€â‚¬Ã¢â€â‚¬
+                        // Image thumbnails row tied to hero
                         if (allImages.length > 1) ...[
                           const SizedBox(height: 8),
                           SizedBox(
@@ -367,7 +367,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Ã¢â€â‚¬Ã¢â€â‚¬ Stock Card Ã¢â€â‚¬Ã¢â€â‚¬
+                      // Stock card
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -482,7 +482,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 16),
 
-                      // Ã¢â€â‚¬Ã¢â€â‚¬ Stock Action Buttons Ã¢â€â‚¬Ã¢â€â‚¬
+                      // Stock action buttons
                       if (user?.canRecordStock == true) ...[
                         Row(
                           children: [
@@ -576,7 +576,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Ã¢â€â‚¬Ã¢â€â‚¬ Color Stock Section (Color Stock matching Admin) Ã¢â€â‚¬Ã¢â€â‚¬
+                      // Color stock section
                       Text(
                         'Color Stock',
                         style: TextStyle(
@@ -733,7 +733,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
               ),
             ],
           ),
-          // Ã¢â€â‚¬Ã¢â€â‚¬ FAB: Quick Stock Entry Ã¢â€â‚¬Ã¢â€â‚¬
+          // FAB: Quick stock entry
           floatingActionButton: user?.canRecordStock == true
               ? FloatingActionButton.extended(
                   onPressed: () => _showStockEntrySheet(context, product),
@@ -903,7 +903,7 @@ class _ProductDetailScreenState extends ConsumerState<ProductDetailScreen> {
   }
 }
 
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ Full Screen Image Viewer with Zoom, Download & Share Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// Full screen image viewer with zoom, download, and share
 class FullScreenImageViewer extends StatefulWidget {
   final List<String> images;
   final int initialIndex;
