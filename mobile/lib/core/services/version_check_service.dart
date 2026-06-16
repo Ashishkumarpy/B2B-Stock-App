@@ -165,36 +165,42 @@ class VersionCheckService {
             const Text('Update Available'),
           ],
         ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'A new version ($version) is available.',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'A new version ($version) is available.',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(AppTheme.sp12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMD),
+                    border:
+                        Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('What\'s New:',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey)),
+                      const SizedBox(height: 4),
+                      Text(notes, style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(AppTheme.sp12),
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.05),
-                borderRadius: BorderRadius.circular(AppTheme.radiusMD),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('What\'s New:',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey)),
-                  const SizedBox(height: 4),
-                  Text(notes, style: const TextStyle(fontSize: 13)),
-                ],
-              ),
-            ),
-          ],
+          ),
         ),
         actions: [
           if (!isCritical)
