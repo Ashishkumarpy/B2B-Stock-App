@@ -1,0 +1,12 @@
+-- Adds a 'shift' value to the transaction_type enum so warehouse-to-warehouse
+-- shifts can be recorded as visible rows in the transactions table (Stock
+-- Activity feed).
+--
+-- Safe to run multiple times. The AFTER-INSERT stock trigger
+-- (update_product_quantity_from_transaction) only mutates stock for
+-- 'stock_in' / 'stock_out', so a 'shift' row is display-only and does NOT
+-- double-adjust stock — the /transactions/shift endpoint already moves the
+-- stock between warehouses directly.
+--
+-- Run this in the Supabase SQL editor as a standalone statement.
+ALTER TYPE transaction_type ADD VALUE IF NOT EXISTS 'shift';

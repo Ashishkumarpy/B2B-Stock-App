@@ -510,16 +510,52 @@ transactionsRouter.post(
 
     const session = req.session || {};
     const actorName = String(session.name || payload.worker_name || 'Stock User').trim();
+    const fromName = String(fromWarehouse.name || 'Warehouse');
+    const toName = String(toWarehouse.name || 'Warehouse');
+
+    // Record the shift as a visible 'shift' transaction so it appears in Stock
+    // Activity. The DB trigger only mutates stock for stock_in/stock_out, so a
+    // 'shift' row is display-only and does not double-adjust the stock we moved
+    // above. This is best-effort: if the 'shift' enum value has not been added
+    // yet (migration supabase/shift_transaction_type.sql), the shift still
+    // succeeded, so we log and continue instead of failing the request.
+    const shiftNotePieces = [`Shift: ${fromName} -> ${toName}`];
+    if (notes) shiftNotePieces.push(notes);
+    let shiftTxId = null;
+    const shiftTxInsert = await supabaseAdmin
+      .from('transactions')
+      .insert({
+        product_id: productId,
+        product_name: String(productRes.data.name || 'Product'),
+        product_code: String(productRes.data.code || ''),
+        color_name: canonicalColorName,
+        warehouse_id: toWarehouseId,
+        warehouse_name: `${fromName} → ${toName}`,
+        type: 'shift',
+        quantity,
+        worker_name: actorName,
+        notes: shiftNotePieces.join(' | '),
+        created_at: nowIso,
+      })
+      .select('id')
+      .maybeSingle();
+    if (shiftTxInsert.error) {
+      console.error('Failed to record shift transaction row:', shiftTxInsert.error.message);
+    } else {
+      shiftTxId = shiftTxInsert.data?.id || null;
+    }
+
     const result = {
+      id: shiftTxId,
       product_id: productId,
       product_name: String(productRes.data.name || 'Product'),
       product_code: String(productRes.data.code || ''),
       color_name: canonicalColorName,
       quantity,
       from_warehouse_id: fromWarehouseId,
-      from_warehouse_name: String(fromWarehouse.name || 'Warehouse'),
+      from_warehouse_name: fromName,
       to_warehouse_id: toWarehouseId,
-      to_warehouse_name: String(toWarehouse.name || 'Warehouse'),
+      to_warehouse_name: toName,
       notes,
       shifted_by: actorName,
       created_at: nowIso,

@@ -86,16 +86,19 @@ enum StockStatus {
 /// Transaction direction
 enum TransactionType {
   stockIn,
-  stockOut;
+  stockOut,
+  shift;
 
   String get label => switch (this) {
         TransactionType.stockIn => 'Stock In',
         TransactionType.stockOut => 'Stock Out',
+        TransactionType.shift => 'Shift',
       };
 
   String get firestoreValue => switch (this) {
         TransactionType.stockIn => 'IN',
         TransactionType.stockOut => 'OUT',
+        TransactionType.shift => 'SHIFT',
       };
 
   static TransactionType fromString(String value) {
@@ -110,6 +113,9 @@ enum TransactionType {
         normalized == 'stock_out' ||
         normalized == 'stockout') {
       return TransactionType.stockOut;
+    }
+    if (normalized == 'shift' || normalized == 'transfer') {
+      return TransactionType.shift;
     }
     return TransactionType.stockOut;
   }

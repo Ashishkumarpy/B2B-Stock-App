@@ -68,8 +68,13 @@ class TransactionActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isIn = transaction.isStockIn;
-    final actionColor = isIn ? AppTheme.success : const Color(0xFFFF3F8E);
-    final actionSoft = isIn ? AppTheme.successLight : const Color(0xFFFFEDF5);
+    final isShift = transaction.isShift;
+    final actionColor = isShift
+        ? const Color(0xFF2563EB)
+        : (isIn ? AppTheme.success : const Color(0xFFFF3F8E));
+    final actionSoft = isShift
+        ? const Color(0xFFEAF1FF)
+        : (isIn ? AppTheme.successLight : const Color(0xFFFFEDF5));
     final productCode = transaction.productCode.isNotEmpty
         ? transaction.productCode
         : 'No Code';
@@ -148,7 +153,11 @@ class TransactionActivityCard extends StatelessWidget {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
-                            isIn ? LucideIcons.arrowUp : LucideIcons.arrowDown,
+                            isShift
+                                ? LucideIcons.arrowLeftRight
+                                : (isIn
+                                    ? LucideIcons.arrowUp
+                                    : LucideIcons.arrowDown),
                             color: Colors.white,
                             size: 20,
                           ),
@@ -236,7 +245,7 @@ class TransactionActivityCard extends StatelessWidget {
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Text(
-                                            '${isIn ? '+' : '-'}${transaction.quantity}',
+                                            '${isShift ? '' : (isIn ? '+' : '-')}${transaction.quantity}',
                                             maxLines: 1,
                                             style: TextStyle(
                                               fontSize: 16,

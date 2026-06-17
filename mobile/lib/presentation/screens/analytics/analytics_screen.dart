@@ -340,7 +340,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
           tDate.day == filterDate.day) {
         if (t.isStockIn) {
           stockInSum += t.quantity;
-        } else {
+        } else if (t.isStockOut) {
           stockOutSum += t.quantity;
         }
       }
@@ -382,7 +382,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
         if (trend.monthIdx == tDate.month && trend.year == tDate.year) {
           if (t.isStockIn) {
             trend.stockIn += t.quantity;
-          } else {
+          } else if (t.isStockOut) {
             trend.stockOut += t.quantity;
           }
         }

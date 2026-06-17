@@ -43,6 +43,7 @@ class Transaction extends Equatable {
 
   bool get isStockIn => type == TransactionType.stockIn;
   bool get isStockOut => type == TransactionType.stockOut;
+  bool get isShift => type == TransactionType.shift;
   String get userId => workerId;
   DateTime get timestamp => createdAt;
 

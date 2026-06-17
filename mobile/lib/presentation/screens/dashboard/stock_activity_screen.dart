@@ -569,7 +569,10 @@ class _StockActivityTile extends ConsumerWidget {
     return TransactionActivityCard(
       transaction: txn,
       onTap: () => context.push('/products/${txn.productId}'),
-      actionMenu: PopupMenuButton<String>(
+      // Shift rows are display-only; edit/reverse only apply to stock in/out.
+      actionMenu: txn.isShift
+          ? null
+          : PopupMenuButton<String>(
         padding: EdgeInsets.zero,
         icon: const Icon(
           LucideIcons.moreVertical,
