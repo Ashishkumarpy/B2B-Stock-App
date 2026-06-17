@@ -59,6 +59,7 @@ dependencies:
   url_launcher: ^6.3.2
   open_filex: ^4.7.0
   lucide_icons: ^0.257.0
+  image: ^4.8.0
 
 dev_dependencies:
   flutter_test:
