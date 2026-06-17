@@ -1677,7 +1677,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                           horizontal: 10, vertical: 8),
                                       decoration: BoxDecoration(
                                         color: isSelected
-                                            ? AppTheme.primary.withOpacity(0.08)
+                                            ? AppTheme.primary.withValues(alpha: 0.08)
                                             : AppTheme.inputFillColor(context),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
@@ -1955,7 +1955,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 fontSize: 13),
                             fillColor: _isEditingOlderThan12Hours
                                 ? AppTheme.inputFillColor(context)
-                                    .withOpacity(0.5)
+                                    .withValues(alpha: 0.5)
                                 : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
@@ -1971,7 +1971,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
                                   color: AppTheme.borderColor(context)
-                                      .withOpacity(0.5)),
+                                      .withValues(alpha: 0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -2017,7 +2017,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 fontSize: 13),
                             fillColor: _isEditingOlderThan12Hours
                                 ? AppTheme.inputFillColor(context)
-                                    .withOpacity(0.5)
+                                    .withValues(alpha: 0.5)
                                 : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
@@ -2033,7 +2033,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
                                   color: AppTheme.borderColor(context)
-                                      .withOpacity(0.5)),
+                                      .withValues(alpha: 0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -2085,7 +2085,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 fontSize: 13),
                             fillColor: _isEditingOlderThan12Hours
                                 ? AppTheme.inputFillColor(context)
-                                    .withOpacity(0.5)
+                                    .withValues(alpha: 0.5)
                                 : AppTheme.inputFillColor(context),
                             filled: true,
                             contentPadding: const EdgeInsets.symmetric(
@@ -2101,7 +2101,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                   BorderRadius.circular(AppTheme.radiusLG),
                               borderSide: BorderSide(
                                   color: AppTheme.borderColor(context)
-                                      .withOpacity(0.5)),
+                                      .withValues(alpha: 0.5)),
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius:
@@ -2155,7 +2155,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                 decoration: InputDecoration(
                   hintText: 'Ashish',
                   fillColor: _isEditingOlderThan12Hours
-                      ? AppTheme.inputFillColor(context).withOpacity(0.5)
+                      ? AppTheme.inputFillColor(context).withValues(alpha: 0.5)
                       : AppTheme.inputFillColor(context),
                   filled: true,
                   contentPadding:
@@ -2168,7 +2168,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                   disabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusLG),
                     borderSide: BorderSide(
-                        color: AppTheme.borderColor(context).withOpacity(0.5)),
+                        color: AppTheme.borderColor(context).withValues(alpha: 0.5)),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(AppTheme.radiusLG),
