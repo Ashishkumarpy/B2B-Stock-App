@@ -1,0 +1,81 @@
+# Shorebird release / patch pipeline (manual trigger).
+#
+# Prerequisites (one-time):
+#   1. Run `shorebird init` locally so shorebird.yaml has a real app_id.
+#   2. Create a CI token:  shorebird login:ci
+#      Add it as a repo secret named SHOREBIRD_TOKEN
+#      (Settings -> Secrets and variables -> Actions).
+#   3. Android signing must be configured the same as your normal release build
+#      (this app already ships signed APKs to GitHub releases).
+#
+# Choose "release" for a new baseline (native/dependency/Flutter-version changes
+# or a fresh installable APK) and "patch" for Dart-only changes shipped OTA.
+name: Shorebird
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "release = new APK + GitHub release | patch = OTA Dart-only update"
+        type: choice
+        required: true
+        default: patch
+        options:
+          - patch
+          - release
+
+jobs:
+  shorebird:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Installs the Shorebird CLI and its managed Flutter. No separate
+      # flutter-action needed — Shorebird pins the engine for release/patch.
+      - uses: shorebirdtech/setup-shorebird@v1
+
+      - name: Read app version from pubspec
+        id: ver
+        working-directory: mobile
+        run: |
+          full=$(grep -E '^version:' pubspec.yaml | awk '{print $2}')
+          semver=${full%%+*}
+          echo "full=$full"   >> "$GITHUB_OUTPUT"
+          echo "semver=$semver" >> "$GITHUB_OUTPUT"
+
+      # --- OTA patch (Dart-only). No GitHub release; users get it on next launch.
+      - name: Shorebird patch (Android)
+        if: ${{ inputs.mode == 'patch' }}
+        working-directory: mobile
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird patch android --release-version "${{ steps.ver.outputs.full }}"
+
+      # --- Full release. Produces a fresh APK and publishes a GitHub release so
+      # the existing /app/version + webhook update path keeps working.
+      - name: Shorebird release (Android, APK)
+        if: ${{ inputs.mode == 'release' }}
+        working-directory: mobile
+        env:
+          SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
+        run: shorebird release android --artifact apk
+
+      - name: Publish GitHub release with APK
+        if: ${{ inputs.mode == 'release' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: mobile
+        run: |
+          # NOTE: tag is semver WITHOUT '+build' — a '+' in the tag 404s the
+          # GitHub release page (see project memory). Verify the APK path below
+          # matches your Shorebird/Flutter output before relying on this in prod.
+          apk=$(find build -name 'app-release.apk' | head -n1)
+          test -n "$apk" || { echo "APK not found"; exit 1; }
+          gh release create "v${{ steps.ver.outputs.semver }}" "$apk" \
+            --title "v${{ steps.ver.outputs.semver }}" \
+            --notes "Build ${{ steps.ver.outputs.full }}. Edit these notes — they are shown in the in-app update dialog."
