@@ -30,9 +30,10 @@ shorebird login
 cd mobile
 shorebird init
 
-# 4. (For CI) create a machine token and add it as the SHOREBIRD_TOKEN
-#    GitHub Actions secret.
-shorebird login:ci
+# 4. (For CI) generate an API key from the Shorebird console (or
+#    `shorebird account`). `shorebird login:ci` was REMOVED — use an API key.
+#    Add the key as a GitHub Actions repo secret named SHOREBIRD_TOKEN
+#    (Settings -> Secrets and variables -> Actions -> New repository secret).
 ```
 
 After `shorebird init`, confirm `mobile/shorebird.yaml` has a real `app_id`
@@ -43,9 +44,17 @@ After `shorebird init`, confirm `mobile/shorebird.yaml` has a real `app_id`
 
 ```bash
 cd mobile
-# Build/test as usual, then patch the release your users are currently on:
-shorebird patch android --release-version 1.4.0+10
+# Build/test as usual, then patch the release your users are currently on.
+# Pin the SAME Flutter version the release was built with (see note below).
+shorebird patch android --release-version 1.4.0+10 --flutter-version 3.41.9
 ```
+
+> **Flutter version pin (required).** This project must build on Flutter
+> **3.41.9** — newer stables (3.44.2+) make `IconData` a `final class`, which
+> breaks `lucide_icons` 0.257.0. Always pass `--flutter-version 3.41.9` to both
+> `release` and `patch`, and keep them identical or the patch will be rejected.
+> If you intentionally upgrade Flutter, also bump `lucide_icons` to a compatible
+> version and cut a fresh full release.
 
 - `--release-version` must match a release you previously cut with
   `shorebird release` (see below). Users on that release get the patch on next
@@ -63,8 +72,8 @@ Shorebird build.
 
 ```bash
 cd mobile
-# Bump version: in pubspec.yaml first (e.g. 1.4.1+11), then:
-shorebird release android --artifact apk
+# Bump version in pubspec.yaml first (e.g. 1.4.1+11), then (pin Flutter):
+shorebird release android --artifact apk --flutter-version 3.41.9
 ```
 
 Then publish it the way the app's updater expects:
@@ -92,8 +101,8 @@ invisible to it, and releases flow through the existing version check unchanged.
 
 `.github/workflows/shorebird.yml` runs either path on manual dispatch
 (Actions → Shorebird → Run workflow → choose `patch` or `release`). It needs the
-`SHOREBIRD_TOKEN` secret. Verify the APK output path in the "Publish GitHub
-release" step on your first run.
+`SHOREBIRD_TOKEN` secret (a Shorebird **API key** — `login:ci` is removed).
+Verify the APK output path in the "Publish GitHub release" step on your first run.
 
 ## Verifying a patch landed
 

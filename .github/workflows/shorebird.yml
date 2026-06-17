@@ -2,8 +2,9 @@
 #
 # Prerequisites (one-time):
 #   1. Run `shorebird init` locally so shorebird.yaml has a real app_id.
-#   2. Create a CI token:  shorebird login:ci
-#      Add it as a repo secret named SHOREBIRD_TOKEN
+#   2. Generate a Shorebird API key (Shorebird console or `shorebird account`).
+#      `shorebird login:ci` was removed — API keys replace it.
+#      Add the key as a repo secret named SHOREBIRD_TOKEN
 #      (Settings -> Secrets and variables -> Actions).
 #   3. Android signing must be configured the same as your normal release build
 #      (this app already ships signed APKs to GitHub releases).
@@ -54,7 +55,9 @@ jobs:
         working-directory: mobile
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-        run: shorebird patch android --release-version "${{ steps.ver.outputs.full }}"
+        # --flutter-version must match the release (3.41.9: newer stables break
+        # lucide_icons via IconData becoming a final class).
+        run: shorebird patch android --release-version "${{ steps.ver.outputs.full }}" --flutter-version 3.41.9
 
       # --- Full release. Produces a fresh APK and publishes a GitHub release so
       # the existing /app/version + webhook update path keeps working.
@@ -63,7 +66,7 @@ jobs:
         working-directory: mobile
         env:
           SHOREBIRD_TOKEN: ${{ secrets.SHOREBIRD_TOKEN }}
-        run: shorebird release android --artifact apk
+        run: shorebird release android --artifact apk --flutter-version 3.41.9
 
       - name: Publish GitHub release with APK
         if: ${{ inputs.mode == 'release' }}
