@@ -10,7 +10,7 @@ android {
     namespace = "com.example.b2b_stock_app"
     compileSdk = flutter.compileSdkVersion
     // The `jni` plugin requires this NDK version.
-    ndkVersion = "28.2.13676358"
+    ndkVersion = "30.0.14904198"
 
     // The release build's native-symbol strip step fails on this machine
     // ("failed to strip debug symbols from native libraries") — most likely the

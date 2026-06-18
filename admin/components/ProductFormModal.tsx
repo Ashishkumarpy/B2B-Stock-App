@@ -371,7 +371,7 @@ export default function ProductFormModal({
                     + Add Color
                   </button>
                 </div>
-                <div className="max-h-[200px] space-y-2 overflow-y-auto scrollbar-hide">
+                <div className="c space-y-2 overflow-y-auto scrollbar-hide">
                   {colorStocks.map((entry, idx) => (
                     <div key={entry.id} className="grid grid-cols-[1fr_80px_40px] gap-2">
                       <input

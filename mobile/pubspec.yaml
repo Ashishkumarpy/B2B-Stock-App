@@ -59,6 +59,7 @@ dependencies:
   url_launcher: ^6.3.2
   open_filex: ^4.7.0
   image: ^4.8.0
+  cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
@@ -81,3 +82,5 @@ flutter_launcher_icons:
   image_path: "assets/images/Logo_launcher.png"
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: "assets/images/Logo_launcher.png"
+
+
