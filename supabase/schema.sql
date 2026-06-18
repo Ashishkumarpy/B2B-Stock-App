@@ -130,6 +130,24 @@ CREATE INDEX IF NOT EXISTS idx_worker_login_otps_phone_created
 CREATE INDEX IF NOT EXISTS idx_worker_login_otps_worker_created
   ON worker_login_otps (worker_id, created_at DESC);
 
+-- Long-lived refresh tokens for rotating short-lived access (JWT) tokens.
+-- The stored hash is a plain SHA-256 of the random token (NOT signed with the
+-- JWT secret), so rotating SERVER_JWT_SECRET never invalidates refresh tokens.
+-- subject_id mirrors the JWT `sub` (a users.id or workers.id); no FK so it can
+-- reference either table.
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  token_hash TEXT NOT NULL UNIQUE,
+  subject_id UUID NOT NULL,
+  role TEXT,
+  expires_at TIMESTAMPTZ NOT NULL,
+  revoked_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_refresh_tokens_subject
+  ON refresh_tokens (subject_id, created_at DESC);
+
 -- Notification device tokens (FCM)
 CREATE TABLE IF NOT EXISTS notification_devices (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

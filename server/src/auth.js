@@ -4,12 +4,147 @@ import { supabaseAdmin, supabaseAuth } from './supabase.js';
 import crypto from 'crypto';
 import { sendWorkerOtpPush } from './notifications/push_service.js';
 
+// Short-lived access token. Clients transparently rotate it via the refresh
+// token, so a low value here just controls how often that happens.
+const ACCESS_TOKEN_TTL = '1d';
+// Refresh token lifetime. Rotated (and its lifetime extended) on every use.
+const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
 export function signSession(payload) {
-  return jwt.sign(payload, config.jwtSecret, { expiresIn: '30d' });
+  return jwt.sign(payload, config.jwtSecret, { expiresIn: ACCESS_TOKEN_TTL });
 }
 
 export function verifySessionToken(token) {
   return jwt.verify(token, config.jwtSecret);
+}
+
+// Permission map baked into the access token. Exported so the refresh endpoint
+// can rebuild a session identically to login.
+export function sessionPermissions(user) {
+  const isAdmin = user.role === 'admin';
+  const isManager = user.role === 'manager';
+  return {
+    perm_products: user.perm_products ?? isAdmin,
+    perm_inventory: user.perm_inventory ?? (isAdmin || isManager || user.role === 'worker'),
+    perm_orders: user.perm_orders ?? (isAdmin || isManager),
+    perm_reports: user.perm_reports ?? (isAdmin || isManager),
+    perm_users: user.perm_users ?? (isAdmin || isManager),
+    perm_settings: user.perm_settings ?? isAdmin
+  };
+}
+
+// Plain SHA-256 (no JWT secret) so refresh tokens survive secret rotation.
+function hashRefreshToken(raw) {
+  return crypto.createHash('sha256').update(String(raw)).digest('hex');
+}
+
+export async function issueRefreshToken(subjectId, role) {
+  const raw = crypto.randomBytes(48).toString('hex');
+  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+  const { error } = await supabaseAdmin.from('refresh_tokens').insert({
+    token_hash: hashRefreshToken(raw),
+    subject_id: subjectId,
+    role: role || null,
+    expires_at: expiresAt.toISOString()
+  });
+  if (error) throw error;
+  return { refreshToken: raw, expiresAt: expiresAt.toISOString() };
+}
+
+export async function revokeRefreshToken(rawToken) {
+  if (!rawToken) return;
+  await supabaseAdmin
+    .from('refresh_tokens')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('token_hash', hashRefreshToken(rawToken))
+    .is('revoked_at', null);
+}
+
+// Validate a refresh token and rotate it (revoke old, issue new). Returns the
+// subject and a brand new refresh token.
+export async function rotateRefreshToken(rawToken) {
+  if (!rawToken) {
+    const e = new Error('refresh token required');
+    e.code = 'REFRESH_REQUIRED';
+    throw e;
+  }
+  const { data: record, error } = await supabaseAdmin
+    .from('refresh_tokens')
+    .select('id, subject_id, role, expires_at, revoked_at')
+    .eq('token_hash', hashRefreshToken(rawToken))
+    .maybeSingle();
+  if (error) throw error;
+  if (!record || record.revoked_at) {
+    const e = new Error('invalid refresh token');
+    e.code = 'REFRESH_INVALID';
+    throw e;
+  }
+  if (new Date(record.expires_at).getTime() < Date.now()) {
+    const e = new Error('refresh token expired');
+    e.code = 'REFRESH_EXPIRED';
+    throw e;
+  }
+
+  await supabaseAdmin
+    .from('refresh_tokens')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('id', record.id);
+
+  const next = await issueRefreshToken(record.subject_id, record.role);
+  return { subjectId: record.subject_id, role: record.role, ...next };
+}
+
+// Rebuild the access-token session payload for a subject id (mirrors the lookup
+// order used by requirePermission: users by id, then workers by id/user_id).
+export async function buildSessionForSubject(subjectId) {
+  const { data: user, error } = await supabaseAdmin
+    .from('users')
+    .select('id,name,email,role,is_active,perm_products,perm_inventory,perm_orders,perm_reports,perm_users,perm_settings')
+    .eq('id', subjectId)
+    .maybeSingle();
+  if (error) throw error;
+
+  if (user) {
+    if (user.is_active === false) {
+      const e = new Error('account disabled');
+      e.code = 'ACCOUNT_DISABLED';
+      throw e;
+    }
+    return {
+      sub: user.id,
+      email: user.email || '',
+      name: user.name,
+      role: user.role,
+      permissions: sessionPermissions(user)
+    };
+  }
+
+  const { data: workers, error: workerErr } = await supabaseAdmin
+    .from('workers')
+    .select('id,user_id,name,email,phone,role,is_active,perm_products,perm_inventory,perm_orders,perm_reports,perm_users,perm_settings')
+    .or(`id.eq.${subjectId},user_id.eq.${subjectId}`)
+    .limit(1);
+  if (workerErr) throw workerErr;
+  const worker = workers && workers.length ? workers[0] : null;
+  if (!worker) {
+    const e = new Error('subject not found');
+    e.code = 'SUBJECT_NOT_FOUND';
+    throw e;
+  }
+  if (!worker.is_active) {
+    const e = new Error('account disabled');
+    e.code = 'ACCOUNT_DISABLED';
+    throw e;
+  }
+  const role = worker.role === 'manager' ? 'manager' : 'worker';
+  return {
+    sub: worker.user_id || worker.id,
+    email: worker.email || '',
+    name: worker.name || 'Worker',
+    phone: worker.phone || null,
+    role,
+    permissions: sessionPermissions({ role, ...worker })
+  };
 }
 
 export function getTokenFromRequest(req) {

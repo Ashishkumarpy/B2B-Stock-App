@@ -6,8 +6,10 @@ import '../../domain/entities/app_user.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
 import '../../core/services/mobile_push_notifications.dart';
+import '../../core/services/server_api_client.dart';
 import '../../core/services/version_check_service.dart';
 import 'api_client_provider.dart';
+import 'server_base_url_provider.dart';
 import 'server_session_provider.dart';
 
 class AuthState {
@@ -45,6 +47,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final Ref _ref;
   static const _authBox = 'auth_persistence';
   static const _sessionKey = 'active_session';
+
+  /// In-flight refresh, shared so concurrent 401s trigger only one refresh.
+  Future<String?>? _refreshInFlight;
 
   AuthNotifier(this._ref) : super(AuthState()) {
     _initPersistence();
@@ -86,7 +91,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final user = _mapToUser(res['user']);
       final token = res['token'];
-      final session = ServerSession(token: token, user: user);
+      final session = ServerSession(
+        token: token,
+        refreshToken: res['refreshToken']?.toString(),
+        user: user,
+      );
 
       await _saveSession(session);
       _ref.read(serverSessionProvider.notifier).state = session;
@@ -117,7 +126,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
       final user = _mapToUser(res['user']);
       final token = res['token'];
-      final session = ServerSession(token: token, user: user);
+      final session = ServerSession(
+        token: token,
+        refreshToken: res['refreshToken']?.toString(),
+        user: user,
+      );
 
       await _saveSession(session);
       _ref.read(serverSessionProvider.notifier).state = session;
@@ -170,6 +183,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    final session = _ref.read(serverSessionProvider);
+
     try {
       final client = _ref.read(apiClientProvider);
       await MobilePushNotifications.instance.unregisterFromServer(client);
@@ -177,7 +192,69 @@ class AuthNotifier extends StateNotifier<AuthState> {
       AppLog.d('Failed to unregister push token during logout: $e');
     }
 
-    // Reset version check state on logout
+    // Revoke the refresh token server-side (best-effort, bare client).
+    try {
+      final bare = ServerApiClient(baseUrl: _ref.read(serverBaseUrlProvider));
+      await bare.post('/auth/logout', {
+        if (session?.refreshToken != null) 'refreshToken': session!.refreshToken,
+      });
+    } catch (e) {
+      AppLog.d('Failed to revoke refresh token during logout: $e');
+    }
+
+    await _clearSessionLocally();
+  }
+
+  /// Exchanges the refresh token for a fresh access token. Returns the new
+  /// access token, or null if refresh is impossible (caller should log out).
+  /// Concurrent callers share a single in-flight refresh.
+  Future<String?> refreshAccessToken() {
+    return _refreshInFlight ??=
+        _performRefresh().whenComplete(() => _refreshInFlight = null);
+  }
+
+  Future<String?> _performRefresh() async {
+    final session = _ref.read(serverSessionProvider);
+    final refreshToken = session?.refreshToken;
+    if (session == null || refreshToken == null || refreshToken.isEmpty) {
+      return null;
+    }
+
+    try {
+      // Bare client: no auth header and no retry callbacks, to avoid recursion.
+      final bare = ServerApiClient(baseUrl: _ref.read(serverBaseUrlProvider));
+      final res =
+          await bare.post('/auth/refresh', {'refreshToken': refreshToken});
+
+      final newToken = res['token']?.toString();
+      if (newToken == null || newToken.isEmpty) return null;
+
+      final user = _mapToUser(res['user']);
+      final newSession = ServerSession(
+        token: newToken,
+        refreshToken: res['refreshToken']?.toString() ?? refreshToken,
+        user: user,
+      );
+      await _saveSession(newSession);
+      _ref.read(serverSessionProvider.notifier).state = newSession;
+      state = state.copyWith(user: user);
+      AppLog.d('Access token refreshed');
+      return newToken;
+    } catch (e) {
+      AppLog.d('Token refresh failed: $e');
+      return null;
+    }
+  }
+
+  /// Called when authentication is unrecoverable (refresh failed). Clears the
+  /// session locally and routes the user back to login.
+  Future<void> handleAuthFailure() async {
+    AppLog.d('Auth failure - clearing session');
+    await _clearSessionLocally();
+  }
+
+  Future<void> _clearSessionLocally() async {
+    // Reset version check state so the next session re-checks for updates.
     VersionCheckService.resetSessionCheck();
 
     final box = await Hive.openBox(_authBox);

@@ -320,6 +320,12 @@ class _FakeAuthNotifier extends StateNotifier<AuthState>
   Future<void> logout() async {}
 
   @override
+  Future<bool> handleAuthFailure() async => true;
+
+  @override
+  Future<String?> refreshAccessToken() async => null;
+
+  @override
   Future<(bool, String?)> requestWorkerOtp(String phone) async => (true, null);
 
   @override

@@ -2,8 +2,13 @@ import express from 'express';
 import { config } from '../config.js';
 import {
   authRequired,
+  buildSessionForSubject,
+  issueRefreshToken,
   loginWithEmailPassword,
   requestWorkerOtp,
+  revokeRefreshToken,
+  rotateRefreshToken,
+  sessionPermissions,
   signSession,
   verifyWorkerOtp
 } from '../auth.js';
@@ -13,17 +18,16 @@ import { logActivity } from '../activity_logger.js';
 
 export const authRouter = express.Router();
 
-function sessionPermissions(user) {
-  const isAdmin = user.role === 'admin';
-  const isManager = user.role === 'manager';
-  return {
-    perm_products: user.perm_products ?? isAdmin,
-    perm_inventory: user.perm_inventory ?? (isAdmin || isManager || user.role === 'worker'),
-    perm_orders: user.perm_orders ?? (isAdmin || isManager),
-    perm_reports: user.perm_reports ?? (isAdmin || isManager),
-    perm_users: user.perm_users ?? (isAdmin || isManager),
-    perm_settings: user.perm_settings ?? isAdmin
-  };
+const REFRESH_COOKIE = `${config.cookieName}_refresh`;
+
+function setRefreshCookie(res, refreshToken) {
+  res.cookie(REFRESH_COOKIE, refreshToken, {
+    httpOnly: true,
+    secure: config.cookieSecure,
+    sameSite: config.cookieSameSite,
+    path: '/',
+    maxAge: 90 * 24 * 60 * 60 * 1000 // 90 days
+  });
 }
 
 authRouter.post('/login', async (req, res) => {
@@ -52,6 +56,7 @@ authRouter.post('/login', async (req, res) => {
       permissions: sessionPermissions(user)
     };
     const token = signSession(session);
+    const { refreshToken } = await issueRefreshToken(session.sub, session.role);
 
     res.cookie(config.cookieName, token, {
       httpOnly: true,
@@ -60,6 +65,7 @@ authRouter.post('/login', async (req, res) => {
       path: '/',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
+    setRefreshCookie(res, refreshToken);
 
     log({
       level: 'info',
@@ -88,7 +94,7 @@ authRouter.post('/login', async (req, res) => {
       }
     });
 
-    return res.json({ token, user: session });
+    return res.json({ token, refreshToken, user: session });
   } catch (e) {
     // Log failed login
     await supabaseAdmin.from('login_history').insert({
@@ -167,6 +173,7 @@ authRouter.post('/worker/verify-otp', async (req, res) => {
       permissions: result.user.permissions
     };
     const token = signSession(session);
+    const { refreshToken } = await issueRefreshToken(session.sub, session.role);
     res.cookie(config.cookieName, token, {
       httpOnly: true,
       secure: config.cookieSecure,
@@ -174,6 +181,7 @@ authRouter.post('/worker/verify-otp', async (req, res) => {
       path: '/',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
+    setRefreshCookie(res, refreshToken);
 
     log({
       level: 'info',
@@ -206,7 +214,7 @@ authRouter.post('/worker/verify-otp', async (req, res) => {
       }
     });
 
-    return res.json({ token, user: session });
+    return res.json({ token, refreshToken, user: session });
   } catch (e) {
     // Log failed login
     await supabaseAdmin.from('login_history').insert({
@@ -238,8 +246,52 @@ authRouter.post('/worker/verify-otp', async (req, res) => {
 });
 
 
-authRouter.post('/logout', (req, res) => {
+// Exchange a valid refresh token for a fresh access token (and a rotated
+// refresh token). Accepts the refresh token from the JSON body (mobile/admin)
+// or the refresh cookie (web). Does NOT require a valid access token, by design.
+authRouter.post('/refresh', async (req, res) => {
+  const rawToken = (req.body && req.body.refreshToken) || req.cookies?.[REFRESH_COOKIE] || null;
+  try {
+    const { subjectId, refreshToken } = await rotateRefreshToken(rawToken);
+    const session = await buildSessionForSubject(subjectId);
+    const token = signSession(session);
+
+    res.cookie(config.cookieName, token, {
+      httpOnly: true,
+      secure: config.cookieSecure,
+      sameSite: config.cookieSameSite,
+      path: '/',
+      maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
+    });
+    setRefreshCookie(res, refreshToken);
+
+    log({ level: 'info', msg: 'auth_token_refreshed', id: req.id, user: { sub: session.sub, role: session.role } });
+    return res.json({ token, refreshToken, user: session });
+  } catch (e) {
+    const code = e && typeof e === 'object' ? e.code : undefined;
+    if (code === 'REFRESH_REQUIRED' || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED') {
+      return res.status(401).json({ error: 'Session expired. Please log in again.' });
+    }
+    if (code === 'ACCOUNT_DISABLED') {
+      return res.status(403).json({ error: 'Account is disabled. Please contact admin.' });
+    }
+    if (code === 'SUBJECT_NOT_FOUND') {
+      return res.status(401).json({ error: 'Session expired. Please log in again.' });
+    }
+    log({ level: 'error', msg: 'auth_refresh_failed', id: req.id, err: String(e) });
+    return res.status(500).json({ error: 'Unable to refresh session right now.' });
+  }
+});
+
+authRouter.post('/logout', async (req, res) => {
+  const rawToken = (req.body && req.body.refreshToken) || req.cookies?.[REFRESH_COOKIE] || null;
+  try {
+    await revokeRefreshToken(rawToken);
+  } catch (e) {
+    log({ level: 'warn', msg: 'auth_logout_revoke_failed', id: req.id, err: String(e) });
+  }
   res.clearCookie(config.cookieName, { path: '/' });
+  res.clearCookie(REFRESH_COOKIE, { path: '/' });
   log({ level: 'info', msg: 'auth_logout', id: req.id });
   return res.json({ ok: true });
 });

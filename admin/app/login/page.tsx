@@ -17,9 +17,12 @@ export default function LoginPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await serverPost('/auth/login', { email, password }) as { token: string };
+      const res = await serverPost('/auth/login', { email, password }) as { token: string; refreshToken?: string };
       if (res && res.token) {
         window.localStorage.setItem('b2b_stock_token', res.token);
+        if (res.refreshToken) {
+          window.localStorage.setItem('b2b_stock_refresh', res.refreshToken);
+        }
       }
       router.push('/products');
     } catch (e) {

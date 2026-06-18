@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/formatters.dart';
@@ -154,10 +153,10 @@ class TransactionActivityCard extends StatelessWidget {
                           ),
                           child: Icon(
                             isShift
-                                ? LucideIcons.arrowLeftRight
+                                ? Icons.swap_horiz_rounded
                                 : (isIn
-                                    ? LucideIcons.arrowUp
-                                    : LucideIcons.arrowDown),
+                                    ? Icons.arrow_upward_rounded
+                                    : Icons.arrow_downward_rounded),
                             color: Colors.white,
                             size: 20,
                           ),
@@ -275,7 +274,7 @@ class TransactionActivityCard extends StatelessWidget {
                                   runSpacing: 5,
                                   children: [
                                     _ActivityPill(
-                                      icon: LucideIcons.userCircle,
+                                      icon: Icons.account_circle_rounded,
                                       text: workerName,
                                       foreground: const Color(0xFF6D28D9),
                                       background: const Color(0xFFF5F0FF),
@@ -283,7 +282,7 @@ class TransactionActivityCard extends StatelessWidget {
                                     ),
                                     if (customerName.isNotEmpty)
                                       _ActivityPill(
-                                        icon: LucideIcons.userCheck,
+                                        icon: Icons.how_to_reg_rounded,
                                         text: customerName,
                                         foreground: const Color(0xFF0369A1),
                                         background: const Color(0xFFEFF8FF),
@@ -299,15 +298,15 @@ class TransactionActivityCard extends StatelessWidget {
                                   children: [
                                     if (colorName.isNotEmpty)
                                       _MutedMeta(
-                                        icon: LucideIcons.palette,
+                                        icon: Icons.palette_rounded,
                                         text: colorName,
                                       ),
                                     _MutedMeta(
-                                      icon: LucideIcons.warehouse,
+                                      icon: Icons.warehouse_rounded,
                                       text: warehouseName,
                                     ),
                                     _MutedMeta(
-                                      icon: LucideIcons.clock,
+                                      icon: Icons.schedule_rounded,
                                       text: dateLabel,
                                     ),
                                   ],

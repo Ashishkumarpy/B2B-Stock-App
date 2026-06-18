@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/transaction.dart';
@@ -575,7 +574,7 @@ class _StockActivityTile extends ConsumerWidget {
           : PopupMenuButton<String>(
         padding: EdgeInsets.zero,
         icon: const Icon(
-          LucideIcons.moreVertical,
+          Icons.more_vert,
           size: 20,
           color: AppTheme.textMuted,
         ),
@@ -668,7 +667,7 @@ class _StockActivityTile extends ConsumerWidget {
             value: 'edit',
             child: Row(
               children: [
-                Icon(LucideIcons.edit, size: 17),
+                Icon(Icons.edit_outlined, size: 17),
                 SizedBox(width: 10),
                 Text('Edit'),
               ],
@@ -678,7 +677,7 @@ class _StockActivityTile extends ConsumerWidget {
             value: 'reverse',
             child: Row(
               children: [
-                Icon(LucideIcons.rotateCcw, size: 17),
+                Icon(Icons.rotate_left, size: 17),
                 SizedBox(width: 10),
                 Text('Reverse'),
               ],

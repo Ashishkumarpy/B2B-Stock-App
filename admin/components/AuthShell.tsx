@@ -129,6 +129,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
                 } catch {}
                 if (typeof window !== 'undefined') {
                   window.localStorage.removeItem('b2b_stock_token');
+                  window.localStorage.removeItem('b2b_stock_refresh');
                 }
                 router.replace('/login');
               }}
@@ -167,6 +168,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
               } catch {}
               if (typeof window !== 'undefined') {
                 window.localStorage.removeItem('b2b_stock_token');
+                window.localStorage.removeItem('b2b_stock_refresh');
               }
               router.replace('/login');
             }}
@@ -199,6 +201,7 @@ export default function AuthShell({ children }: { children: React.ReactNode }) {
             } catch {}
             if (typeof window !== 'undefined') {
               window.localStorage.removeItem('b2b_stock_token');
+              window.localStorage.removeItem('b2b_stock_refresh');
             }
             router.replace('/login');
           }}
