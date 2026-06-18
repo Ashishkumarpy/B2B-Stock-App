@@ -9,7 +9,19 @@ plugins {
 android {
     namespace = "com.example.b2b_stock_app"
     compileSdk = flutter.compileSdkVersion
+    // The `jni` plugin requires this NDK version.
     ndkVersion = "28.2.13676358"
+
+    // The release build's native-symbol strip step fails on this machine
+    // ("failed to strip debug symbols from native libraries") — most likely the
+    // space in the project path ("B2B Stock App") breaking the NDK strip
+    // subprocess on Windows. Keeping the .so debug symbols skips that step.
+    // Trade-off: a slightly larger APK; harmless for sideloaded distribution.
+    packaging {
+        jniLibs {
+            keepDebugSymbols += "**/*.so"
+        }
+    }
 
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
