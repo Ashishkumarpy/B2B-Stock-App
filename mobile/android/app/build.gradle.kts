@@ -17,17 +17,6 @@ android {
         abortOnError = false
          }
 
-    // The release build's native-symbol strip step fails on this machine
-    // ("failed to strip debug symbols from native libraries") — most likely the
-    // space in the project path ("B2B Stock App") breaking the NDK strip
-    // subprocess on Windows. Keeping the .so debug symbols skips that step.
-    // Trade-off: a slightly larger APK; harmless for sideloaded distribution.
-    packaging {
-        jniLibs {
-            keepDebugSymbols += "**/*.so"
-        }
-    }
-
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
@@ -57,8 +46,14 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false
+            // Flutter's release build validates the AAB with `apkanalyzer` and
+            // requires that native libs were stripped and their symbol files
+            // (libflutter.so.sym / libapp.so.sym) are present in the bundle.
+            // SYMBOL_TABLE makes AGP strip the .so files and emit those symbol
+            // files; NONE/keepDebugSymbols suppress them and break that check
+            // ("Release app bundle failed to strip debug symbols...").
             ndk {
-                debugSymbolLevel = "NONE"
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
