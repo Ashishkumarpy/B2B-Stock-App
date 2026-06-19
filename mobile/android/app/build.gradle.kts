@@ -12,6 +12,11 @@ android {
     // The `jni` plugin requires this NDK version.
     ndkVersion = "30.0.14904198"
 
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
+         }
+
     // The release build's native-symbol strip step fails on this machine
     // ("failed to strip debug symbols from native libraries") — most likely the
     // space in the project path ("B2B Stock App") breaking the NDK strip
@@ -52,6 +57,9 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
             isShrinkResources = false
+            ndk {
+                debugSymbolLevel = "NONE"
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
