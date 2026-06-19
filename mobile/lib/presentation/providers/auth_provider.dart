@@ -68,6 +68,13 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = state.copyWith(user: session.user, isInitialized: true);
         AppLog.d('Persistent session restored for: ${session.user.email}');
 
+        // Pull fresh permissions/role from the server so access changes made by
+        // an admin (e.g. via Manage Workers) take effect the next time the user
+        // opens the app — without requiring a full logout/login. The refresh
+        // endpoint rebuilds the session from the database. Best-effort: on
+        // failure the restored (cached) session is kept.
+        Future.microtask(refreshAccessToken);
+
         // Register push token with server on startup (best-effort)
         Future.microtask(() {
           final client = _ref.read(apiClientProvider);

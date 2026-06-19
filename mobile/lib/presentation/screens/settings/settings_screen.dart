@@ -183,6 +183,26 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: AppTheme.sp24),
             const _SectionHeader(title: 'Account'),
             _SettingsCard(children: [
+              _ActionTile(
+                icon: Icons.verified_user_outlined,
+                label: 'Refresh Access',
+                iconColor: AppTheme.primary,
+                subtitle: 'Sync your latest permissions from the server',
+                onTap: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  final token = await ref
+                      .read(authStateProvider.notifier)
+                      .refreshAccessToken();
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(token != null
+                          ? 'Access refreshed'
+                          : 'Could not refresh access. Check your connection.'),
+                    ),
+                  );
+                },
+              ),
+              const Divider(height: 1),
               if (user?.canManageWarehouses == true) ...[
                 _ActionTile(
                   icon: Icons.warehouse_rounded,

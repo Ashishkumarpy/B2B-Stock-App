@@ -63,6 +63,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       body: RefreshIndicator(
         color: AppTheme.primary,
         onRefresh: () async {
+          // Pull fresh access/permissions too, so admin-side changes (e.g. via
+          // Manage Workers) apply without needing to log out and back in.
+          await ref.read(authStateProvider.notifier).refreshAccessToken();
           ref.invalidate(productsProvider);
           ref.invalidate(transactionsProvider);
           ref.invalidate(categoriesProvider);
