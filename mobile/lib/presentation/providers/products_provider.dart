@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../domain/entities/product.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
@@ -21,8 +22,13 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
   final ServerApiClient? _client;
   Timer? _refreshTimer;
 
+  static const _cacheKey = 'cache_products_v1';
+
   Future<void> _init() async {
-    await fetchProducts();
+    // Show last-known data instantly so the app isn't blocked on a (possibly
+    // cold-starting) server. Then revalidate in the background.
+    final hadCache = _loadFromCache();
+    await _fetchProducts(silent: hadCache);
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _fetchProducts(silent: true),
@@ -30,6 +36,36 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
   }
 
   Future<void> fetchProducts() => _fetchProducts();
+
+  /// Populates state from the on-device cache. Returns true if cached data
+  /// was found and applied.
+  bool _loadFromCache() {
+    try {
+      final box = Hive.box(AppConstants.settingsBox);
+      final cached = box.get(_cacheKey) as String?;
+      if (cached == null || cached.isEmpty) return false;
+      final decoded = jsonDecode(cached);
+      if (decoded is! List) return false;
+      final products = decoded
+          .whereType<Map>()
+          .map((row) => _mapToProduct(Map<String, dynamic>.from(row)))
+          .toList();
+      if (products.isEmpty) return false;
+      state = AsyncValue.data(products);
+      return true;
+    } catch (e) {
+      AppLog.d('Error loading cached products: $e');
+      return false;
+    }
+  }
+
+  void _saveToCache(List<dynamic> rows) {
+    try {
+      Hive.box(AppConstants.settingsBox).put(_cacheKey, jsonEncode(rows));
+    } catch (e) {
+      AppLog.d('Error caching products: $e');
+    }
+  }
 
   Future<void> _fetchProducts({bool silent = false}) async {
     try {
@@ -47,9 +83,11 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
           .map((row) => _mapToProduct(Map<String, dynamic>.from(row)))
           .toList();
       state = AsyncValue.data(products);
+      _saveToCache(rows);
     } catch (e, st) {
       AppLog.d('Error fetching products: $e');
-      if (!silent || !state.hasValue) {
+      // Keep showing cached/last-known data on a background failure.
+      if (!silent && !state.hasValue) {
         state = AsyncValue.error(e, st);
       }
     }

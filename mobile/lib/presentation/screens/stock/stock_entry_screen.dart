@@ -51,7 +51,7 @@ class StockEntryScreen extends ConsumerStatefulWidget {
 }
 
 class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
-  static const String _stockEntryPrefsKey = 'stock_entry_prefs_v1';
+  static const String _stockEntryPrefsKey = 'stock_entry_prefs_v2';
   final _formKey = GlobalKey<FormState>();
   final _qtyController = TextEditingController();
   final _cartonsController = TextEditingController();
@@ -97,7 +97,11 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
   List<Map<String, dynamic>> _stockOutColorRows = const [];
   bool _isLoadingStockOutWarehouses = false;
   bool _isSubmitting = false;
-  Map<String, dynamic> _stockEntryPrefs = <String, dynamic>{};
+  // Global "last used" warehouse preferences (not per-product). Remembers the
+  // warehouse a worker last used so repeated entries pre-select it.
+  String? _prefInWarehouseId; // last warehouse used for Stock In
+  String? _prefShiftFromId; // last source warehouse used for Shift
+  String? _prefShiftToId; // last destination warehouse used for Shift
   final Set<String> _prefetchedProductImageUrls = <String>{};
 
   // Optimization: client-side stock distribution cache
@@ -166,9 +170,6 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
             if (_pcsPerCartonController.text.trim().isEmpty) {
               _pcsPerCartonController.text = defaultPcsPerCarton.toString();
             }
-            if (_type == TransactionType.stockIn) {
-              _applyStockInPrefs(match);
-            }
           });
           _refreshStockOutWarehouses(
               autoRouteWarehouse: true, autoRouteColor: true);
@@ -180,6 +181,11 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     _pcsPerCartonController.addListener(_calculateTotal);
   }
 
+  String? _normalizePrefId(dynamic value) {
+    final id = (value?.toString() ?? '').trim();
+    return id.isEmpty ? null : id;
+  }
+
   Future<void> _loadStockEntryPrefs() async {
     try {
       final box = Hive.box(AppConstants.settingsBox);
@@ -187,7 +193,9 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
       if (raw is Map) {
         if (!mounted) return;
         setState(() {
-          _stockEntryPrefs = Map<String, dynamic>.from(raw);
+          _prefInWarehouseId = _normalizePrefId(raw['in_warehouse_id']);
+          _prefShiftFromId = _normalizePrefId(raw['shift_from_id']);
+          _prefShiftToId = _normalizePrefId(raw['shift_to_id']);
         });
       }
     } catch (_) {
@@ -195,45 +203,31 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
     }
   }
 
-  void _applyStockInPrefs(Product product) {
-    final rawPref = _stockEntryPrefs[product.id];
-    if (rawPref is! Map) return;
-    final pref = Map<String, dynamic>.from(rawPref);
+  /// Persists the warehouse(s) just used so the next entry pre-selects them.
+  /// Global (last-used), not per-product.
+  Future<void> _saveStockEntryPrefs() async {
+    if (_isEditing) return; // edits shouldn't move the "last used" default
 
-    final preferredColor = (pref['color_name']?.toString() ?? '').trim();
-    if (preferredColor.isNotEmpty) {
-      final hasPreferredColor =
-          product.colorStocks.any((c) => c.color == preferredColor);
-      if (hasPreferredColor) {
-        _selectedColor = preferredColor;
-      }
-    }
-
-    final preferredWarehouse = (pref['warehouse_id']?.toString() ?? '').trim();
-    if (preferredWarehouse.isNotEmpty) {
-      _selectedWarehouseId = preferredWarehouse;
-    }
-  }
-
-  Future<void> _saveStockInPrefs() async {
-    final product = _selectedProduct;
-    if (product == null || _type != TransactionType.stockIn) return;
-
-    final next = Map<String, dynamic>.from(_stockEntryPrefs);
-    next[product.id] = <String, dynamic>{
-      'warehouse_id': _selectedWarehouseId,
-      'color_name':
-          _selectedColor.trim().isEmpty ? 'Default' : _selectedColor.trim(),
-      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    final next = <String, dynamic>{
+      'in_warehouse_id': _prefInWarehouseId,
+      'shift_from_id': _prefShiftFromId,
+      'shift_to_id': _prefShiftToId,
     };
 
+    if (_isShift) {
+      next['shift_from_id'] = _selectedWarehouseId;
+      next['shift_to_id'] = _toWarehouseId;
+      _prefShiftFromId = _selectedWarehouseId;
+      _prefShiftToId = _toWarehouseId;
+    } else if (_type == TransactionType.stockIn) {
+      next['in_warehouse_id'] = _selectedWarehouseId;
+      _prefInWarehouseId = _selectedWarehouseId;
+    } else {
+      return; // Stock Out keeps auto-routing; nothing to remember.
+    }
+
     try {
-      final box = Hive.box(AppConstants.settingsBox);
-      await box.put(_stockEntryPrefsKey, next);
-      if (!mounted) return;
-      setState(() {
-        _stockEntryPrefs = next;
-      });
+      await Hive.box(AppConstants.settingsBox).put(_stockEntryPrefsKey, next);
     } catch (_) {
       // Transaction success should not depend on prefs persistence.
     }
@@ -835,7 +829,7 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           'pcs_per_carton': resolvedPcsPerCarton,
         });
       }
-      await _saveStockInPrefs();
+      await _saveStockEntryPrefs();
       try {
         await Future.wait([
           ref.read(productsProvider.notifier).fetchProducts(),
@@ -914,9 +908,6 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
               _selectedColor = 'Default';
             }
             _pcsPerCartonController.text = defaultPcsPerCarton.toString();
-            if (_type == TransactionType.stockIn) {
-              _applyStockInPrefs(p);
-            }
           });
           _refreshStockOutWarehouses(
               autoRouteWarehouse: true, autoRouteColor: true);
@@ -937,14 +928,32 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
           final list = next.value ?? [];
           final active = list.where((w) => w['is_active'] == true).toList();
           if (active.isNotEmpty) {
+            final activeIds =
+                active.map((w) => w['id']?.toString()).toSet();
+            // Validate a remembered id against the live active list before use.
+            String? remembered(String? id) =>
+                (id != null && activeIds.contains(id)) ? id : null;
             setState(() {
-              _selectedWarehouseId = active.first['id']?.toString();
-              _toWarehouseId ??= active
-                  .firstWhere(
-                    (w) => w['id']?.toString() != _selectedWarehouseId,
-                    orElse: () => const <String, dynamic>{},
-                  )['id']
-                  ?.toString();
+              // Pre-select the worker's last-used warehouse when valid;
+              // otherwise fall back to the first active warehouse. Stock Out
+              // keeps auto-routing, so only seed In / Shift source here.
+              _selectedWarehouseId = (_isShift
+                      ? remembered(_prefShiftFromId)
+                      : (_type == TransactionType.stockIn
+                          ? remembered(_prefInWarehouseId)
+                          : null)) ??
+                  active.first['id']?.toString();
+              final rememberedTo = remembered(_prefShiftToId);
+              _toWarehouseId ??= (_isShift &&
+                      rememberedTo != null &&
+                      rememberedTo != _selectedWarehouseId)
+                  ? rememberedTo
+                  : active
+                      .firstWhere(
+                        (w) => w['id']?.toString() != _selectedWarehouseId,
+                        orElse: () => const <String, dynamic>{},
+                      )['id']
+                      ?.toString();
             });
           }
         }
@@ -1264,19 +1273,38 @@ class _StockEntryScreenState extends ConsumerState<StockEntryScreen> {
                                 setState(() {
                                   _type = TransactionType.stockOut;
                                   _isShift = true;
+                                  // Pre-fill remembered shift warehouses
+                                  // (global last-used) when they're still
+                                  // active. Source falls back to auto-routing
+                                  // if it has no stock for the chosen color.
+                                  final activeIds = warehouses
+                                      .map((w) => w['id']?.toString())
+                                      .toSet();
+                                  if (_prefShiftFromId != null &&
+                                      activeIds.contains(_prefShiftFromId)) {
+                                    _selectedWarehouseId = _prefShiftFromId;
+                                  }
                                   if ((_toWarehouseId == null ||
                                           _toWarehouseId ==
                                               _selectedWarehouseId) &&
                                       warehouses.isNotEmpty) {
-                                    _toWarehouseId = warehouses
-                                        .firstWhere(
-                                          (w) =>
-                                              w['id']?.toString() !=
-                                              _selectedWarehouseId,
-                                          orElse: () =>
-                                              const <String, dynamic>{},
-                                        )['id']
-                                        ?.toString();
+                                    final rememberedTo = (_prefShiftToId !=
+                                                null &&
+                                            activeIds.contains(_prefShiftToId) &&
+                                            _prefShiftToId !=
+                                                _selectedWarehouseId)
+                                        ? _prefShiftToId
+                                        : null;
+                                    _toWarehouseId = rememberedTo ??
+                                        warehouses
+                                            .firstWhere(
+                                              (w) =>
+                                                  w['id']?.toString() !=
+                                                  _selectedWarehouseId,
+                                              orElse: () =>
+                                                  const <String, dynamic>{},
+                                            )['id']
+                                            ?.toString();
                                   }
                                   if (_selectedProduct != null &&
                                       _selectedProduct!.quantity <= 0) {

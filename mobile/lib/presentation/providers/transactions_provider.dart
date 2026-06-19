@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../../domain/entities/transaction.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
@@ -68,13 +70,50 @@ class TransactionsNotifier
 
   final ServerApiClient? _client;
 
+  static const _cacheKey = 'cache_transactions_v1';
+
   Future<void> _init() async {
-    await fetchTransactions();
+    // Show last-known data instantly, then revalidate in the background so a
+    // cold-starting server doesn't block the screen.
+    final hadCache = _loadFromCache();
+    await _fetchTransactions(silent: hadCache);
   }
 
-  Future<void> fetchTransactions() async {
+  Future<void> fetchTransactions() => _fetchTransactions();
+
+  /// Populates state from the on-device cache. Returns true if cached data
+  /// was found and applied.
+  bool _loadFromCache() {
     try {
-      state = const AsyncValue.loading();
+      final box = Hive.box(AppConstants.settingsBox);
+      final cached = box.get(_cacheKey) as String?;
+      if (cached == null || cached.isEmpty) return false;
+      final decoded = jsonDecode(cached);
+      if (decoded is! List) return false;
+      final transactions = decoded
+          .whereType<Map>()
+          .map((row) => _mapToTransaction(Map<String, dynamic>.from(row)))
+          .toList();
+      if (transactions.isEmpty) return false;
+      state = AsyncValue.data(transactions);
+      return true;
+    } catch (e) {
+      AppLog.d('Error loading cached transactions: $e');
+      return false;
+    }
+  }
+
+  void _saveToCache(List<dynamic> rows) {
+    try {
+      Hive.box(AppConstants.settingsBox).put(_cacheKey, jsonEncode(rows));
+    } catch (e) {
+      AppLog.d('Error caching transactions: $e');
+    }
+  }
+
+  Future<void> _fetchTransactions({bool silent = false}) async {
+    try {
+      if (!silent) state = const AsyncValue.loading();
 
       final client = _client;
       if (client == null) {
@@ -88,9 +127,13 @@ class TransactionsNotifier
           .map((row) => _mapToTransaction(Map<String, dynamic>.from(row)))
           .toList();
       state = AsyncValue.data(transactions);
+      _saveToCache(rows);
     } catch (e, st) {
       AppLog.d('Error fetching transactions: $e');
-      state = AsyncValue.error(e, st);
+      // Keep showing cached/last-known data on a background failure.
+      if (!silent && !state.hasValue) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
