@@ -208,6 +208,54 @@ export async function sendStockTransactionPush(transactionRow) {
   }
 }
 
+export async function sendStockShiftPush(shiftRow) {
+  const productCode = String(shiftRow?.product_code || 'Product');
+  const quantity = Number(shiftRow?.quantity || 0);
+  const color = String(shiftRow?.color_name || 'Default');
+  const fromName = String(shiftRow?.from_warehouse_name || 'Warehouse');
+  const toName = String(shiftRow?.to_warehouse_name || 'Warehouse');
+  const actor = String(shiftRow?.shifted_by || 'User');
+
+  const title = productCode;
+  const body = `Shift • ${quantity} (${color}) ${fromName} → ${toName} by ${actor}`;
+
+  try {
+    // Fetch product image for rich notification (parity with stock in/out push).
+    let imageUrl = '';
+    if (shiftRow?.product_id) {
+      const { data: product } = await supabaseAdmin
+        .from('products')
+        .select('image_url')
+        .eq('id', shiftRow.product_id)
+        .single();
+      if (product?.image_url) imageUrl = product.image_url;
+    }
+
+    return await sendPushNotification({
+      title,
+      body,
+      data: {
+        type: 'stock_shift',
+        productId: shiftRow?.product_id || '',
+        transactionId: shiftRow?.id || '',
+        movement: 'shift',
+        quantity,
+        fromWarehouse: fromName,
+        toWarehouse: toName,
+        imageUrl: imageUrl || ''
+      },
+      apps: ['mobile', 'admin']
+    });
+  } catch (error) {
+    log({
+      level: 'warn',
+      msg: 'push_stock_shift_failed',
+      error: String(error)
+    });
+    return { sent: 0, failed: 0, skipped: true, reason: 'send_failed' };
+  }
+}
+
 export async function sendWorkerOtpPush(workerId, otp, clientToken) {
   if (!workerId || !otp) return { skipped: true, reason: 'missing_params' };
 

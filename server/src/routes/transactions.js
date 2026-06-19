@@ -1,7 +1,7 @@
 import express from 'express';
 import { supabaseAdmin } from '../supabase.js';
 import { authRequired, requirePermission } from '../auth.js';
-import { sendStockTransactionPush } from '../notifications/push_service.js';
+import { sendStockTransactionPush, sendStockShiftPush } from '../notifications/push_service.js';
 import { logActivity } from '../activity_logger.js';
 
 export const transactionsRouter = express.Router();
@@ -560,6 +560,9 @@ transactionsRouter.post(
       shifted_by: actorName,
       created_at: nowIso,
     };
+
+    // Fire-and-forget push notification for the warehouse-to-warehouse shift.
+    sendStockShiftPush(result).catch(() => {});
 
     await logActivity({
       actorId: session.sub,
