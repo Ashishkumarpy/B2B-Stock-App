@@ -1,0 +1,31 @@
+# Keep-alive ping for the API backend.
+#
+# The API host (Render free tier) spins down after ~15 min of inactivity, which
+# makes the next request cold-start for 30-60s. This workflow pings /health on a
+# schedule so the server stays warm and the mobile app's first data load is fast.
+#
+# Notes:
+#   - GitHub's cron is best-effort; runs can be delayed by a few minutes under
+#     load, so we ping every 10 min to stay comfortably under the 15-min window.
+#   - Scheduled workflows are auto-disabled after 60 days with no repo commits;
+#     any push re-enables them.
+#   - Override the target by setting an API_URL repo variable
+#     (Settings -> Secrets and variables -> Actions -> Variables).
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping /health
+        run: |
+          URL="${{ vars.API_URL || 'https://zentory-api.onrender.com' }}/health"
+          echo "Pinging $URL"
+          code=$(curl -fsS -o /dev/null -w '%{http_code}' --max-time 90 "$URL" || true)
+          echo "HTTP $code"
+          [ "$code" = "200" ] || { echo "Unexpected status: $code"; exit 1; }
