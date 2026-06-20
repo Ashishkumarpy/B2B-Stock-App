@@ -23,6 +23,7 @@ import 'slick-carousel/slick/slick.css';
 import 'slick-carousel/slick/slick-theme.css';
 import { subscribeToProducts, type Product } from '../../lib/productService';
 import { slugifyCategoryName } from '../../lib/category';
+import { ProductCard } from '../components/ProductCard';
 
 const carouselSlides = [
   [
@@ -145,6 +146,16 @@ export default function Home() {
     return products.filter((p) => p.stockStatus !== 'out_of_stock');
   }, [products]);
 
+  // "Most Popular" = highest-priced premium picks; "Hot Deals" = a distinct featured strip.
+  // These are deterministic slices until real sales/rating data exists.
+  const mostPopular = useMemo(() => {
+    return [...inStockProducts].sort((a, b) => b.price - a.price).slice(0, 4);
+  }, [inStockProducts]);
+
+  const hotDeals = useMemo(() => {
+    return [...inStockProducts].sort((a, b) => a.price - b.price).slice(0, 4);
+  }, [inStockProducts]);
+
   const carouselSettings = {
     dots: true,
     infinite: true,
@@ -236,8 +247,9 @@ export default function Home() {
       <section id="categories" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-20">
+            <div className="text-xs uppercase tracking-[0.25em] text-brand font-medium mb-4">The Collection</div>
             <h2 className="text-5xl md:text-7xl tracking-tighter uppercase mb-4 text-slate-900">CATEGORIES</h2>
-            <p className="text-lg text-slate-600 uppercase tracking-wider">
+            <p className="text-lg text-slate-600 tracking-wide">
               Discover premium corporate gifting
             </p>
           </div>
@@ -249,18 +261,19 @@ export default function Home() {
                 to={`/category/${category.slug}`}
               >
                 <motion.div
-                  className="group relative bg-white hover:bg-slate-50 border border-slate-200 hover:border-slate-300 p-8 transition-all duration-300 overflow-hidden cursor-pointer h-full"
+                  className="group relative bg-white hover:bg-slate-50 border border-slate-200 hover:border-brand/50 p-8 transition-all duration-300 overflow-hidden cursor-pointer h-full hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)]"
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: index * 0.05 }}
                 >
+                  <span className="absolute top-0 left-0 h-[2px] w-0 bg-brand group-hover:w-full transition-all duration-300" />
                   <div className="relative z-10 flex flex-col items-center text-center gap-4 h-full justify-center">
-                    <category.icon className="w-10 h-10 text-slate-900 group-hover:scale-110 transition-transform duration-300" />
+                    <category.icon className="w-10 h-10 text-slate-900 group-hover:text-brand group-hover:scale-110 transition-all duration-300" />
                     <h3 className="text-sm uppercase tracking-wider text-slate-900">
                       {category.name}
                     </h3>
-                    <ArrowRight className="w-4 h-4 text-slate-900 opacity-0 group-hover:opacity-100 transition-opacity mt-auto" />
+                    <ArrowRight className="w-4 h-4 text-brand opacity-0 group-hover:opacity-100 transition-opacity mt-auto" />
                   </div>
                 </motion.div>
               </Link>
@@ -273,8 +286,9 @@ export default function Home() {
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-20">
+            <div className="text-xs uppercase tracking-[0.25em] text-brand font-medium mb-4">Just In</div>
             <h2 className="text-5xl md:text-7xl text-slate-900 tracking-tighter uppercase mb-4">NEW ARRIVALS</h2>
-            <p className="text-lg text-slate-600 uppercase tracking-wider">Fresh drops from the catalog</p>
+            <p className="text-lg text-slate-600 tracking-wide">Fresh drops from the catalog</p>
           </div>
 
           <div className="mb-12 flex items-end justify-between gap-6">
@@ -292,31 +306,7 @@ export default function Home() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {inStockProducts.slice(0, 8).map((product, index) => (
-                <Link key={product.id} to={`/product/${product.id}`}>
-                  <motion.div
-                    className="group cursor-pointer"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.03 }}
-                  >
-                    <div className="aspect-square overflow-hidden bg-slate-50 border border-slate-200 mb-4 relative">
-                      <img
-                        src={product.imageUrl || 'https://images.unsplash.com/photo-1561172472-4f2d94f35e87?w=600'}
-                        alt={product.name}
-                        className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {product.stockStatus === 'out_of_stock' && (
-                        <div className="absolute inset-0 bg-slate-900/40 flex items-center justify-center">
-                          <span className="text-xs uppercase tracking-widest text-white">Out of Stock</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">SKU: {product.code}</div>
-                    <h3 className="text-sm uppercase tracking-wider mb-2 text-slate-900">{product.name}</h3>
-                    <div className="text-sm tracking-wider text-slate-900">₹{product.price.toLocaleString()}</div>
-                  </motion.div>
-                </Link>
+                <ProductCard key={product.id} product={product} index={index} />
               ))}
             </div>
           )}
@@ -332,12 +322,64 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Most Popular */}
+      {mostPopular.length > 0 && (
+        <section className="py-24 bg-slate-50 border-y border-slate-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mb-16 flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <div className="text-xs uppercase tracking-[0.25em] text-brand font-medium mb-4">Customer Favourites</div>
+                <h2 className="text-5xl md:text-7xl text-slate-900 tracking-tighter uppercase">MOST POPULAR</h2>
+              </div>
+              <Link
+                to="/products"
+                className="hidden sm:inline-flex items-center gap-2 text-sm uppercase tracking-widest text-slate-700 hover:text-brand transition-colors"
+              >
+                View all <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {mostPopular.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Hot Deals */}
+      {hotDeals.length > 0 && (
+        <section className="py-24 bg-slate-900 text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="mb-16 flex flex-wrap items-end justify-between gap-6">
+              <div>
+                <div className="text-xs uppercase tracking-[0.25em] text-brand font-medium mb-4">Limited Time</div>
+                <h2 className="text-5xl md:text-7xl tracking-tighter uppercase">HOT DEALS</h2>
+                <p className="text-lg text-white/70 tracking-wide mt-4">Best value picks for bulk orders</p>
+              </div>
+              <Link
+                to="/products"
+                className="hidden sm:inline-flex items-center gap-2 text-sm uppercase tracking-widest text-white/80 hover:text-brand transition-colors"
+              >
+                View all <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {hotDeals.map((product, index) => (
+                <ProductCard key={product.id} product={product} index={index} badge="Hot" tone="dark" />
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Why Choose Us */}
       <section id="why-us" className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-20">
+            <div className="text-xs uppercase tracking-[0.25em] text-brand font-medium mb-4">Why Us</div>
             <h2 className="text-5xl md:text-7xl text-black tracking-tighter uppercase mb-4">WHY XPRESS GIFTING</h2>
-            <p className="text-lg text-gray-600 uppercase tracking-wider">
+            <p className="text-lg text-gray-600 tracking-wide">
               Your corporate gifting partner
             </p>
           </div>
@@ -365,8 +407,9 @@ export default function Home() {
       <section id="contact" className="py-24 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-16">
+            <div className="text-xs uppercase tracking-[0.25em] text-brand font-medium mb-4">Let's Talk</div>
             <h2 className="text-5xl md:text-7xl text-black tracking-tighter uppercase mb-4">GET A QUOTE</h2>
-            <p className="text-lg text-gray-600 uppercase tracking-wider">
+            <p className="text-lg text-gray-600 tracking-wide">
               We&apos;ll respond within 24 hours
             </p>
           </div>

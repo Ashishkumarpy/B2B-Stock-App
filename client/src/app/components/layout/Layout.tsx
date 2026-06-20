@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, Link, useNavigate } from 'react-router';
-import { Menu, Search, User, ShoppingCart, X, ChevronRight, Mail, Phone, Award, Download } from 'lucide-react';
+import { Menu, Search, User, ShoppingCart, X, ChevronRight, Mail, Phone, Award, Download, Smartphone } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { CartDrawer } from '../cart/CartDrawer';
 import logo from '../../../imports/LOGO.png';
@@ -20,9 +20,17 @@ const DEFAULT_CATEGORIES = [
   { name: 'Notebooks & Diaries', slug: 'notebooks', count: '130+ Products' },
 ];
 
+const MEGA_GROUPS: { title: string; slugs: string[] }[] = [
+  { title: 'Lifestyle & Stationery', slugs: ['notebooks', 'card-holders', 'id-cards', 'keychains'] },
+  { title: 'Drinkware & Living', slugs: ['water-bottles', 'mugs'] },
+  { title: 'Electronics & Tech', slugs: ['electronics'] },
+  { title: 'Bags & Gifting', slugs: ['bags', 'gift-sets', 'diwali'] },
+];
+
 export function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [megaOpen, setMegaOpen] = useState(false);
   const { totalQuantity, setIsDrawerOpen } = useCart();
   const [products, setProducts] = useState<Product[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +80,20 @@ export function Layout() {
     return categories.length > 0 ? categories : DEFAULT_CATEGORIES;
   }, [products]);
 
+  // Arrange live categories into the mega-menu columns; anything unmatched falls into "More".
+  const megaColumns = useMemo(() => {
+    const assigned = new Set<string>();
+    const columns = MEGA_GROUPS.map((group) => {
+      const items = productCategories.filter((cat) => group.slugs.includes(cat.slug));
+      items.forEach((cat) => assigned.add(cat.slug));
+      return { title: group.title, items };
+    }).filter((col) => col.items.length > 0);
+
+    const leftovers = productCategories.filter((cat) => !assigned.has(cat.slug));
+    if (leftovers.length > 0) columns.push({ title: 'More Categories', items: leftovers });
+    return columns;
+  }, [productCategories]);
+
   return (
     <div className="min-h-screen bg-white text-slate-900 flex flex-col">
       {/* Header (Powerpl-style): announcement + sticky nav */}
@@ -86,17 +108,23 @@ export function Layout() {
           </div>
         </div>
 
-        <nav className="w-full bg-white/95 backdrop-blur-sm border-b border-slate-200">
+        <nav className="relative w-full bg-white/95 backdrop-blur-sm border-b border-slate-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-20">
-              {/* Left: Menu Icon */}
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="flex items-center gap-2 hover:text-slate-600 transition-colors"
+              {/* Left: Menu / Mega-menu trigger */}
+              <div
+                className="relative"
+                onMouseEnter={() => setMegaOpen(true)}
+                onMouseLeave={() => setMegaOpen(false)}
               >
-                <Menu className="w-6 h-6" />
-                <span className="hidden md:inline text-xs uppercase tracking-wider">Menu</span>
-              </button>
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="flex items-center gap-2 hover:text-brand transition-colors"
+                >
+                  <Menu className="w-6 h-6" />
+                  <span className="hidden md:inline text-xs uppercase tracking-wider">Shop</span>
+                </button>
+              </div>
 
               {/* Center: Logo */}
               <div className="absolute left-1/2 transform -translate-x-1/2">
@@ -203,6 +231,54 @@ export function Layout() {
               </div>
             </div>
           )}
+
+          {/* Mega Menu (desktop hover) */}
+          <div
+            className={`hidden md:block absolute left-0 top-full w-full bg-white border-b border-slate-200 shadow-[0_20px_40px_rgb(0,0,0,0.08)] transition-all duration-200 ${
+              megaOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible -translate-y-2 pointer-events-none'
+            }`}
+            onMouseEnter={() => setMegaOpen(true)}
+            onMouseLeave={() => setMegaOpen(false)}
+          >
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
+                {megaColumns.map((col) => (
+                  <div key={col.title}>
+                    <h4 className="text-xs uppercase tracking-widest text-brand mb-4">{col.title}</h4>
+                    <ul className="space-y-2.5">
+                      {col.items.map((cat) => (
+                        <li key={cat.slug}>
+                          <Link
+                            to={`/category/${cat.slug}`}
+                            onClick={() => setMegaOpen(false)}
+                            className="group flex items-baseline justify-between gap-2 text-sm text-slate-700 hover:text-brand transition-colors"
+                          >
+                            <span className="group-hover:translate-x-0.5 transition-transform">{cat.name}</span>
+                            <span className="text-[10px] text-slate-400">{cat.count}</span>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+
+                {/* Featured promo */}
+                <Link
+                  to="/products"
+                  onClick={() => setMegaOpen(false)}
+                  className="hidden lg:flex flex-col justify-between bg-slate-900 text-white p-6 group min-h-[160px]"
+                >
+                  <div>
+                    <div className="text-xs uppercase tracking-widest text-brand mb-2">Bulk Orders</div>
+                    <p className="text-lg leading-snug">Custom branding on every product</p>
+                  </div>
+                  <span className="inline-flex items-center gap-2 text-xs uppercase tracking-widest mt-6 group-hover:gap-3 transition-all">
+                    Explore all <ChevronRight className="w-4 h-4" />
+                  </span>
+                </Link>
+              </div>
+            </div>
+          </div>
         </nav>
       </div>
 
@@ -285,8 +361,33 @@ export function Layout() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-white text-slate-900 border-t border-slate-200 py-16">
+      <footer className="bg-white text-slate-900 border-t border-slate-200 pt-16 pb-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Newsletter band */}
+          <div className="border border-slate-200 bg-slate-50 px-6 md:px-12 py-10 mb-16 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+            <div>
+              <div className="text-xs uppercase tracking-[0.25em] text-brand mb-2">Stay in the loop</div>
+              <h3 className="text-2xl tracking-tight">Get new arrivals & bulk offers first</h3>
+            </div>
+            <form
+              onSubmit={(e) => e.preventDefault()}
+              className="flex w-full max-w-md border border-slate-300 bg-white focus-within:border-brand transition-colors"
+            >
+              <input
+                type="email"
+                required
+                placeholder="your@company.com"
+                className="flex-1 px-4 py-3 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none"
+              />
+              <button
+                type="submit"
+                className="px-6 bg-slate-900 text-white text-xs uppercase tracking-widest hover:bg-brand transition-colors"
+              >
+                Subscribe
+              </button>
+            </form>
+          </div>
+
           <div className="grid md:grid-cols-4 gap-12 mb-16">
             {/* Company Info */}
             <div>
@@ -378,6 +479,39 @@ export function Layout() {
                 <Download className="w-4 h-4" />
                 Catalogue
               </Link>
+            </div>
+          </div>
+
+          {/* Payment + app badges */}
+          <div className="border-t border-slate-200 pt-8 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <span className="text-[10px] uppercase tracking-widest text-slate-400 mr-1">We accept</span>
+              {['VISA', 'MC', 'UPI', 'RuPay', 'AMEX'].map((p) => (
+                <span
+                  key={p}
+                  className="px-2.5 py-1.5 border border-slate-200 text-[10px] uppercase tracking-widest text-slate-600"
+                >
+                  {p}
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-3">
+              {[
+                { top: 'Download on the', bottom: 'App Store' },
+                { top: 'Get it on', bottom: 'Google Play' },
+              ].map((app) => (
+                <a
+                  key={app.bottom}
+                  href="#"
+                  className="flex items-center gap-2 px-4 py-2 border border-slate-300 hover:border-slate-900 transition-colors"
+                >
+                  <Smartphone className="w-5 h-5" />
+                  <span className="leading-tight">
+                    <span className="block text-[8px] uppercase tracking-widest text-slate-400">{app.top}</span>
+                    <span className="block text-xs tracking-wide text-slate-900">{app.bottom}</span>
+                  </span>
+                </a>
+              ))}
             </div>
           </div>
 

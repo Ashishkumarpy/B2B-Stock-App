@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Link, useSearchParams } from 'react-router';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { subscribeToProducts, type Product } from '../../lib/productService';
+import { ProductCard } from '../components/ProductCard';
 
 export default function Products() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -115,35 +116,7 @@ export default function Products() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {inStockProducts.map((product, index) => (
-                <Link key={product.id} to={`/product/${product.id}`}>
-                  <motion.div
-                    className="group cursor-pointer"
-                    initial={{ opacity: 0, y: 20 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.04 }}
-                  >
-                    <div className="aspect-square overflow-hidden bg-slate-50 mb-4 relative border border-slate-200 group-hover:shadow-lg transition-shadow">
-                      <img
-                        src={product.imageUrl || 'https://images.unsplash.com/photo-1561172472-4f2d94f35e87?w=600'}
-                        alt={product.name}
-                        className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-500"
-                      />
-                      {product.stockStatus === 'out_of_stock' && (
-                        <div className="absolute inset-0 bg-slate-900/50 flex items-center justify-center">
-                          <span className="text-xs uppercase tracking-widest text-white">Out of Stock</span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="text-xs uppercase tracking-wider text-slate-500 mb-1">{product.category}</div>
-                    <h3 className="text-sm uppercase tracking-wider mb-2">{product.name}</h3>
-                    <div className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Code: {product.code}</div>
-                    {product.description && (
-                      <p className="text-xs text-slate-600 leading-relaxed mb-3 line-clamp-2">{product.description}</p>
-                    )}
-                    <div className="text-sm tracking-wider">₹{product.price.toLocaleString()}</div>
-                  </motion.div>
-                </Link>
+                <ProductCard key={product.id} product={product} index={index} />
               ))}
             </div>
           )}
