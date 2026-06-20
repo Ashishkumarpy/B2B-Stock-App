@@ -27,6 +27,21 @@ class ServerApiClient {
     this.onUnauthorized,
   });
 
+  /// Lightweight, unauthenticated warm-up request to `/health`. Best-effort:
+  /// never throws. Used to wake a cold-started backend (e.g. Render free tier
+  /// spins down when idle) so the first real data call isn't blocked behind a
+  /// 30-60s spin-up. Fire-and-forget from app startup.
+  Future<void> ping() async {
+    try {
+      await http
+          .get(Uri.parse('$baseUrl/health'))
+          .timeout(const Duration(seconds: 60));
+    } catch (_) {
+      // Warm-up only — the request still reaches Render and triggers the
+      // spin-up even if it times out or fails locally.
+    }
+  }
+
   Map<String, String> get _headers => {
         'Content-Type': 'application/json',
         if (token != null) 'Authorization': 'Bearer $token',

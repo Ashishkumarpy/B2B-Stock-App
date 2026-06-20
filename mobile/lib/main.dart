@@ -10,6 +10,7 @@ import 'core/router/app_router.dart';
 import 'presentation/providers/theme_mode_provider.dart';
 import 'core/logging/app_log.dart';
 import 'core/services/mobile_push_notifications.dart';
+import 'core/services/server_api_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +56,19 @@ void main() async {
     await Hive.openBox(AppConstants.settingsBox);
   } catch (e) {
     AppLog.d('Hive initialization failed: $e');
+  }
+
+  // Warm up the backend as early as possible. The API host (Render free tier)
+  // spins down when idle, so the first request cold-starts for ~30-60s. Firing
+  // a non-blocking ping here wakes it while the user moves through splash/login,
+  // so the first real data load isn't stuck behind the spin-up.
+  try {
+    final box = Hive.box(AppConstants.settingsBox);
+    final baseUrl = box.get('server_base_url',
+        defaultValue: 'https://zentory-api.onrender.com') as String;
+    ServerApiClient(baseUrl: baseUrl).ping(); // fire-and-forget
+  } catch (e) {
+    AppLog.d('Backend warm-up ping failed: $e');
   }
 
   runApp(
