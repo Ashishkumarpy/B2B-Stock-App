@@ -21,11 +21,15 @@ export function verifySessionToken(token) {
 // Permission map baked into the access token. Exported so the refresh endpoint
 // can rebuild a session identically to login.
 export function sessionPermissions(user) {
-  const isAdmin = user.role === 'admin';
-  const isManager = user.role === 'manager';
+  // Normalize so case/whitespace variants in the DB role column don't silently
+  // collapse permission defaults to false.
+  const role = String(user.role || '').trim().toLowerCase();
+  const isAdmin = role === 'admin';
+  const isManager = role === 'manager';
+  const isWorker = role === 'worker';
   return {
     perm_products: user.perm_products ?? isAdmin,
-    perm_inventory: user.perm_inventory ?? (isAdmin || isManager || user.role === 'worker'),
+    perm_inventory: user.perm_inventory ?? (isAdmin || isManager || isWorker),
     perm_orders: user.perm_orders ?? (isAdmin || isManager),
     perm_reports: user.perm_reports ?? (isAdmin || isManager),
     perm_users: user.perm_users ?? (isAdmin || isManager),
@@ -143,7 +147,7 @@ export async function buildSessionForSubject(subjectId) {
     name: worker.name || 'Worker',
     phone: worker.phone || null,
     role,
-    permissions: sessionPermissions({ role, ...worker })
+    permissions: sessionPermissions({ ...worker, role })
   };
 }
 
