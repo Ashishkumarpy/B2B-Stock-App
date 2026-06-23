@@ -63,7 +63,10 @@ app.use((req, res, next) => {
       ua: req.headers['user-agent'],
       user: session
         ? { sub: session.sub, role: session.role, email: session.email }
-        : undefined
+        : undefined,
+      // When auth failed there's no verified session — log the (unverified)
+      // claimed identity so we can see which users are hitting 401s.
+      authFailure: session ? undefined : req.authFailure
     });
   };
 

@@ -158,13 +158,39 @@ export function getTokenFromRequest(req) {
   return cookieToken || null;
 }
 
-export async function authRequired(req, res, next) {
+// Decode a token WITHOUT verifying its signature/expiry. For diagnostics only
+// (e.g. logging which user's stale token is being rejected) — never trusted for
+// authorization.
+function decodeClaimsUnverified(token) {
   try {
-    const token = getTokenFromRequest(req);
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const decoded = jwt.decode(token);
+    if (decoded && typeof decoded === 'object') return decoded;
+  } catch {
+    /* malformed token — nothing to decode */
+  }
+  return null;
+}
+
+export async function authRequired(req, res, next) {
+  const token = getTokenFromRequest(req);
+  if (!token) {
+    req.authFailure = { reason: 'missing_token' };
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
     req.session = verifySessionToken(token);
     return next();
-  } catch {
+  } catch (err) {
+    // Token rejected (expired or bad signature). Surface the claimed identity in
+    // the request log so we can see *who* is hitting 401s, without trusting it.
+    const claimed = decodeClaimsUnverified(token);
+    req.authFailure = {
+      reason: err && err.name === 'TokenExpiredError' ? 'expired' : 'invalid',
+      sub: claimed?.sub,
+      email: claimed?.email || undefined,
+      phone: claimed?.phone || undefined,
+      role: claimed?.role
+    };
     return res.status(401).json({ error: 'Unauthorized' });
   }
 }

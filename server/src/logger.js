@@ -62,13 +62,22 @@ function prettyLine(obj) {
     const ms = typeof obj.ms === 'number' ? `${obj.ms}ms` : undefined;
     const user = obj.user?.role ? `${obj.user.role}${obj.user.email ? `:${obj.user.email}` : ''}` : undefined;
 
+    // On a rejected request, show the (unverified) claimed identity + reason,
+    // e.g. authfail=expired:worker:jain556@gmail.com
+    const af = obj.authFailure;
+    const authFail = af
+      ? [af.reason, af.role, af.email || af.phone || af.sub].filter(Boolean).join(':')
+      : undefined;
+
     const lvl = levelColor(level)(level.toUpperCase().padEnd(5));
     const st = status !== undefined ? statusColor(status)(String(status)) : '';
     const base = `${ts} ${lvl} ${id ? `[${id}]` : ''} ${method} ${path} ${st} ${ms || ''}`.replace(
       /\s+/g,
       ' '
     );
-    const extra = [fmtKeyVal('user', user), fmtKeyVal('ip', obj.ip)].filter(Boolean).join(' ');
+    const extra = [fmtKeyVal('user', user), fmtKeyVal('authfail', authFail), fmtKeyVal('ip', obj.ip)]
+      .filter(Boolean)
+      .join(' ');
     return extra ? `${base} ${extra}` : base;
   }
 
