@@ -5,7 +5,6 @@ import '../../domain/entities/transaction.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
 import '../../core/services/server_api_client.dart';
-import '../../core/utils/connection_messages.dart';
 import 'api_client_provider.dart';
 
 final transactionsProvider =
@@ -17,8 +16,19 @@ final transactionsProvider =
 final productTransactionsProvider =
     FutureProvider.family<List<Transaction>, String>((ref, productId) async {
   final client = ref.watch(apiClientProvider);
-  final json =
-      await client.get('/transactions?product_id=$productId&limit=1000&page=1');
+
+  // Not authenticated / unrenewable session: return an empty history instead of
+  // throwing an "Unauthorized" error onto the product detail screen.
+  if ((client.token ?? '').isEmpty) return const [];
+
+  dynamic json;
+  try {
+    json = await client
+        .get('/transactions?product_id=$productId&limit=1000&page=1');
+  } on ServerApiException catch (e) {
+    if (e.statusCode == 401) return const [];
+    rethrow;
+  }
   final rows = (json is Map ? json['data'] : null) as List? ?? const [];
 
   DateTime parseDate(dynamic value) {
@@ -112,13 +122,18 @@ class TransactionsNotifier
   }
 
   Future<void> _fetchTransactions({bool silent = false}) async {
+    final client = _client;
+
+    // Not authenticated (logged out, or a session that can't be refreshed):
+    // don't hit the server with guaranteed-401 requests and don't surface an
+    // error. Keep whatever cached data we have so the user stays in the app.
+    if (client == null || (client.token ?? '').isEmpty) {
+      if (!state.hasValue) state = const AsyncValue.data([]);
+      return;
+    }
+
     try {
       if (!silent) state = const AsyncValue.loading();
-
-      final client = _client;
-      if (client == null) {
-        throw ServerApiException(connectionWarningMessage, 0);
-      }
 
       final json = await client.get('/transactions?limit=5000&page=1');
       final rows = (json is Map ? json['data'] : null) as List? ?? const [];
@@ -128,6 +143,12 @@ class TransactionsNotifier
           .toList();
       state = AsyncValue.data(transactions);
       _saveToCache(rows);
+    } on ServerApiException catch (e) {
+      AppLog.d('Error fetching transactions: $e');
+      // A 401 (expired/unrenewable session) or connection error (statusCode 0)
+      // should never throw an "Unauthorized" error at the user — keep the
+      // cached/last-known data so they can stay in the app.
+      if (!state.hasValue) state = const AsyncValue.data([]);
     } catch (e, st) {
       AppLog.d('Error fetching transactions: $e');
       // Keep showing cached/last-known data on a background failure.

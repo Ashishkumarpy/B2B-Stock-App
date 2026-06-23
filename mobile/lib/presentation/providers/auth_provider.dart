@@ -253,11 +253,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Called when authentication is unrecoverable (refresh failed). Clears the
-  /// session locally and routes the user back to login.
+  /// Called when a request hit a 401 that couldn't be refreshed. We deliberately
+  /// do NOT clear the session or bounce the user to the login screen here: a
+  /// sudden login wall makes users panic and quit the app instead of signing in.
+  /// Instead we keep the (cached) session so the user stays in the app on
+  /// last-known data. Background pollers stop themselves on a 401, and an
+  /// explicit sign-out (or a later successful refresh) is what ends the session.
   Future<void> handleAuthFailure() async {
-    AppLog.d('Auth failure - clearing session');
-    await _clearSessionLocally();
+    AppLog.d('Auth failure - keeping session so the user stays on cached data');
   }
 
   Future<void> _clearSessionLocally() async {

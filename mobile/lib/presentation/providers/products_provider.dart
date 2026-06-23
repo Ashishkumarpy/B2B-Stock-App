@@ -6,7 +6,6 @@ import '../../domain/entities/product.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/logging/app_log.dart';
 import '../../core/services/server_api_client.dart';
-import '../../core/utils/connection_messages.dart';
 import 'api_client_provider.dart';
 
 final productsProvider =
@@ -29,6 +28,16 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
     // cold-starting) server. Then revalidate in the background.
     final hadCache = _loadFromCache();
     await _fetchProducts(silent: hadCache);
+    _startPolling();
+  }
+
+  /// Starts the 30s background refresh — but only while we actually hold an
+  /// access token. Polling without (or with an unrenewable) token just produces
+  /// a stream of 401s that never recovers, so we skip it until the user is
+  /// authenticated again.
+  void _startPolling() {
+    _refreshTimer?.cancel();
+    if ((_client?.token ?? '').isEmpty) return;
     _refreshTimer = Timer.periodic(
       const Duration(seconds: 30),
       (_) => _fetchProducts(silent: true),
@@ -68,13 +77,19 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
   }
 
   Future<void> _fetchProducts({bool silent = false}) async {
+    final client = _client;
+
+    // Not authenticated (logged out, or a session that can't be refreshed):
+    // don't hammer the server with guaranteed-401 polls and don't surface an
+    // error. Keep whatever cached data we have so the user stays in the app.
+    if (client == null || (client.token ?? '').isEmpty) {
+      _refreshTimer?.cancel();
+      if (!state.hasValue) state = const AsyncValue.data([]);
+      return;
+    }
+
     try {
       if (!silent) state = const AsyncValue.loading();
-
-      final client = _client;
-      if (client == null) {
-        throw ServerApiException(connectionWarningMessage, 0);
-      }
 
       final json = await client.get('/products?limit=1000&page=1');
       final rows = (json is Map ? json['data'] : null) as List? ?? const [];
@@ -84,6 +99,17 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
           .toList();
       state = AsyncValue.data(products);
       _saveToCache(rows);
+    } on ServerApiException catch (e) {
+      AppLog.d('Error fetching products: $e');
+      // A 401 means the access token expired and couldn't be refreshed (e.g. an
+      // old session with no refresh token). Stop the background poll so we don't
+      // spam the server, and stay silent — the user keeps their cached data
+      // instead of being thrown an "Unauthorized" error. A connection error
+      // (statusCode 0) is transient, so we keep cache but let polling retry.
+      if (e.statusCode == 401) {
+        _refreshTimer?.cancel();
+      }
+      if (!state.hasValue) state = const AsyncValue.data([]);
     } catch (e, st) {
       AppLog.d('Error fetching products: $e');
       // Keep showing cached/last-known data on a background failure.
