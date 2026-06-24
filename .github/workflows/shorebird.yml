@@ -73,7 +73,7 @@ jobs:
             echo "ANDROID_KEYSTORE_BASE64 secret is missing — cannot sign release."
             exit 1
           fi
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/release-keystore.jks
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode --ignore-garbage > android/release-keystore.jks
           cat > android/key.properties <<EOF
           storeFile=release-keystore.jks
           storePassword=$ANDROID_KEYSTORE_PASSWORD
