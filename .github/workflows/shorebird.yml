@@ -25,6 +25,12 @@ on:
           - patch
           - release
 
+# The release path creates a GitHub release via the default GITHUB_TOKEN, which
+# needs write access to repo contents (releases/tags). Without this the publish
+# step fails with "403: Resource not accessible by integration".
+permissions:
+  contents: write
+
 jobs:
   shorebird:
     runs-on: ubuntu-latest
