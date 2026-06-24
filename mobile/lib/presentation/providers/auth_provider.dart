@@ -12,6 +12,11 @@ import 'api_client_provider.dart';
 import 'server_base_url_provider.dart';
 import 'server_session_provider.dart';
 
+/// Result of a refresh attempt, used to decide what to do on a 401 the retry
+/// couldn't fix: keep the user on cached data (transient) or send them to login
+/// (dead — the session can never be renewed).
+enum _RefreshOutcome { success, transient, dead }
+
 class AuthState {
   final AppUser? user;
   final bool isLoading;
@@ -50,6 +55,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   /// In-flight refresh, shared so concurrent 401s trigger only one refresh.
   Future<String?>? _refreshInFlight;
+
+  /// Outcome of the most recent refresh attempt. Lets [handleAuthFailure]
+  /// tell a recoverable hiccup (network down / backend cold — keep the user on
+  /// cached data) apart from a dead session (refresh token rejected/missing —
+  /// the user must re-login to get data again).
+  _RefreshOutcome _lastRefreshOutcome = _RefreshOutcome.transient;
 
   AuthNotifier(this._ref) : super(AuthState()) {
     _initPersistence();
@@ -223,18 +234,32 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<String?> _performRefresh() async {
     final session = _ref.read(serverSessionProvider);
     final refreshToken = session?.refreshToken;
-    if (session == null || refreshToken == null || refreshToken.isEmpty) {
+    // The cached access token may be expired, but it's still signed by the
+    // server — sent as `staleToken` so the server can silently recover the
+    // session when the refresh token is gone, sparing the user a re-login.
+    final staleToken = session?.token;
+    final hasRefresh = refreshToken != null && refreshToken.isNotEmpty;
+    final hasStale = staleToken != null && staleToken.isNotEmpty;
+    if (session == null || (!hasRefresh && !hasStale)) {
+      // Nothing to exchange or recover from — session is unrecoverable. Send the
+      // user to login (where re-authenticating gets them data again).
+      _lastRefreshOutcome = _RefreshOutcome.dead;
       return null;
     }
 
     try {
       // Bare client: no auth header and no retry callbacks, to avoid recursion.
       final bare = ServerApiClient(baseUrl: _ref.read(serverBaseUrlProvider));
-      final res =
-          await bare.post('/auth/refresh', {'refreshToken': refreshToken});
+      final res = await bare.post('/auth/refresh', {
+        if (hasRefresh) 'refreshToken': refreshToken,
+        if (hasStale) 'staleToken': staleToken,
+      });
 
       final newToken = res['token']?.toString();
-      if (newToken == null || newToken.isEmpty) return null;
+      if (newToken == null || newToken.isEmpty) {
+        _lastRefreshOutcome = _RefreshOutcome.transient;
+        return null;
+      }
 
       final user = _mapToUser(res['user']);
       final newSession = ServerSession(
@@ -245,9 +270,20 @@ class AuthNotifier extends StateNotifier<AuthState> {
       await _saveSession(newSession);
       _ref.read(serverSessionProvider.notifier).state = newSession;
       state = state.copyWith(user: user);
+      _lastRefreshOutcome = _RefreshOutcome.success;
       AppLog.d('Access token refreshed');
       return newToken;
+    } on ServerApiException catch (e) {
+      // 401/403 => the server rejected the refresh token itself (expired,
+      // revoked, or rotated away). Unrecoverable. Any other status (incl. 0 for
+      // network/connection errors) is transient: keep the user on cached data.
+      _lastRefreshOutcome = (e.statusCode == 401 || e.statusCode == 403)
+          ? _RefreshOutcome.dead
+          : _RefreshOutcome.transient;
+      AppLog.d('Token refresh failed (${e.statusCode}): ${e.message}');
+      return null;
     } catch (e) {
+      _lastRefreshOutcome = _RefreshOutcome.transient;
       AppLog.d('Token refresh failed: $e');
       return null;
     }
@@ -260,6 +296,14 @@ class AuthNotifier extends StateNotifier<AuthState> {
   /// last-known data. Background pollers stop themselves on a 401, and an
   /// explicit sign-out (or a later successful refresh) is what ends the session.
   Future<void> handleAuthFailure() async {
+    if (_lastRefreshOutcome == _RefreshOutcome.dead) {
+      // The session can never be renewed (refresh token rejected or missing).
+      // Staying on cached data would loop on 401s forever, so send the user to
+      // login — re-authenticating is the only way to get data again.
+      AppLog.d('Auth failure - session unrecoverable, routing to login');
+      await _clearSessionLocally();
+      return;
+    }
     AppLog.d('Auth failure - keeping session so the user stays on cached data');
   }
 

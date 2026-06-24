@@ -154,6 +154,49 @@ export async function buildSessionForSubject(subjectId) {
   };
 }
 
+// How long after an access token expires it can still be presented to silently
+// recover a session (when the refresh token is gone). Bounds the window in which
+// a leaked old token could revive a session — disabled users are still locked
+// out because buildSessionForSubject re-checks is_active.
+const STALE_TOKEN_RECOVERY_MS = 60 * 24 * 60 * 60 * 1000;
+
+// Recover a session from an expired-but-validly-signed access token. Used as a
+// fallback in /auth/refresh when the refresh token is missing or rejected, so a
+// user whose refresh token was lost (e.g. rotation interrupted) keeps working
+// instead of being forced back to the login screen. The signature proves the
+// token was legitimately issued by us; the DB lookup re-checks the account.
+export async function recoverSessionFromStaleToken(staleToken) {
+  if (!staleToken) {
+    const e = new Error('stale token required');
+    e.code = 'RECOVERY_INVALID';
+    throw e;
+  }
+  let claims;
+  try {
+    claims = jwt.verify(staleToken, config.jwtSecret, { ignoreExpiration: true });
+  } catch {
+    const e = new Error('stale token signature invalid');
+    e.code = 'RECOVERY_INVALID';
+    throw e;
+  }
+  if (!claims || !claims.sub) {
+    const e = new Error('stale token has no subject');
+    e.code = 'RECOVERY_INVALID';
+    throw e;
+  }
+  // exp is in seconds. Reject tokens that expired too long ago.
+  if (typeof claims.exp === 'number') {
+    const expiredForMs = Date.now() - claims.exp * 1000;
+    if (expiredForMs > STALE_TOKEN_RECOVERY_MS) {
+      const e = new Error('stale token too old to recover');
+      e.code = 'RECOVERY_EXPIRED';
+      throw e;
+    }
+  }
+  // Re-checks is_active and rebuilds permissions from the current DB state.
+  return buildSessionForSubject(claims.sub);
+}
+
 export function getTokenFromRequest(req) {
   const auth = req.headers.authorization;
   if (auth && auth.startsWith('Bearer ')) return auth.slice('Bearer '.length);

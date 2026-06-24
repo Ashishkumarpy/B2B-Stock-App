@@ -5,6 +5,7 @@ import {
   buildSessionForSubject,
   issueRefreshToken,
   loginWithEmailPassword,
+  recoverSessionFromStaleToken,
   requestWorkerOtp,
   revokeRefreshToken,
   rotateRefreshToken,
@@ -251,11 +252,30 @@ authRouter.post('/worker/verify-otp', async (req, res) => {
 // or the refresh cookie (web). Does NOT require a valid access token, by design.
 authRouter.post('/refresh', async (req, res) => {
   const rawToken = (req.body && req.body.refreshToken) || req.cookies?.[REFRESH_COOKIE] || null;
+  // The (possibly expired) access token, used to silently recover the session
+  // when the refresh token is gone, so the user isn't bounced to login.
+  const staleToken = (req.body && req.body.staleToken) || req.cookies?.[config.cookieName] || null;
   try {
-    const { subjectId, refreshToken } = await rotateRefreshToken(rawToken);
-    const session = await buildSessionForSubject(subjectId);
-    const token = signSession(session);
+    let session;
+    let refreshToken;
+    try {
+      const rotated = await rotateRefreshToken(rawToken);
+      session = await buildSessionForSubject(rotated.subjectId);
+      refreshToken = rotated.refreshToken;
+    } catch (refreshErr) {
+      const code = refreshErr && typeof refreshErr === 'object' ? refreshErr.code : undefined;
+      const refreshTokenGone =
+        code === 'REFRESH_REQUIRED' || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED';
+      // Only fall back to stale-token recovery when it's the refresh token that
+      // failed — not for ACCOUNT_DISABLED and other terminal errors.
+      if (!refreshTokenGone) throw refreshErr;
+      session = await recoverSessionFromStaleToken(staleToken);
+      const issued = await issueRefreshToken(session.sub, session.role);
+      refreshToken = issued.refreshToken;
+      log({ level: 'info', msg: 'auth_token_recovered', id: req.id, user: { sub: session.sub, role: session.role } });
+    }
 
+    const token = signSession(session);
     res.cookie(config.cookieName, token, {
       httpOnly: true,
       secure: config.cookieSecure,
@@ -269,13 +289,15 @@ authRouter.post('/refresh', async (req, res) => {
     return res.json({ token, refreshToken, user: session });
   } catch (e) {
     const code = e && typeof e === 'object' ? e.code : undefined;
-    if (code === 'REFRESH_REQUIRED' || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED') {
-      return res.status(401).json({ error: 'Session expired. Please log in again.' });
-    }
     if (code === 'ACCOUNT_DISABLED') {
       return res.status(403).json({ error: 'Account is disabled. Please contact admin.' });
     }
-    if (code === 'SUBJECT_NOT_FOUND') {
+    // Refresh token dead AND stale-token recovery impossible -> truly expired.
+    if (
+      code === 'REFRESH_REQUIRED' || code === 'REFRESH_INVALID' || code === 'REFRESH_EXPIRED' ||
+      code === 'RECOVERY_INVALID' || code === 'RECOVERY_EXPIRED' ||
+      code === 'SUBJECT_NOT_FOUND'
+    ) {
       return res.status(401).json({ error: 'Session expired. Please log in again.' });
     }
     log({ level: 'error', msg: 'auth_refresh_failed', id: req.id, err: String(e) });
