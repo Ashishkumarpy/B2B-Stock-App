@@ -40,6 +40,17 @@ jobs:
       # flutter-action needed — Shorebird pins the engine for release/patch.
       - uses: shorebirdtech/setup-shorebird@v1
 
+      # Gradle pins NDK 30.0.14904198 (required by the transitive `jni` plugin,
+      # see android/app/build.gradle.kts). The runner's SDK doesn't ship it and
+      # AGP can't auto-install it until the SDK licenses are accepted — otherwise
+      # both release and patch builds fail with LicenceNotAcceptedException.
+      # Accept licenses and install the NDK up front.
+      - name: Install Android NDK & accept SDK licenses
+        run: |
+          SDKMANAGER="${ANDROID_SDK_ROOT:-$ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+          "$SDKMANAGER" "ndk;30.0.14904198"
+
       - name: Read app version from pubspec
         id: ver
         working-directory: mobile
