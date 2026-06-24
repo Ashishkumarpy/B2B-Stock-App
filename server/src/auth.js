@@ -4,9 +4,12 @@ import { supabaseAdmin, supabaseAuth } from './supabase.js';
 import crypto from 'crypto';
 import { sendWorkerOtpPush } from './notifications/push_service.js';
 
-// Short-lived access token. Clients transparently rotate it via the refresh
-// token, so a low value here just controls how often that happens.
-const ACCESS_TOKEN_TTL = '1d';
+// Access token lifetime. Clients transparently rotate it via the refresh token,
+// but that refresh needs the network at the right moment — if it fails (e.g. the
+// device is offline across the expiry boundary) a short TTL hard-401s the user.
+// Keep this generous so the refresh token is a safety net, not a daily single
+// point of failure.
+const ACCESS_TOKEN_TTL = '30d';
 // Refresh token lifetime. Rotated (and its lifetime extended) on every use.
 const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
