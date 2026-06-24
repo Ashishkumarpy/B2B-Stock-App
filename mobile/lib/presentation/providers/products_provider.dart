@@ -119,8 +119,19 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
     }
   }
 
-  Product _mapToProduct(Map<String, dynamic> json) {
-    // Mapping from Supabase Snake Case to Dart Camel Case
+  Product _mapToProduct(Map<String, dynamic> json) => productFromRow(json);
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+}
+
+/// Maps a Supabase product row (snake_case) to a [Product]. Top-level so it can
+/// be reused by the aggregated dashboard provider without duplicating logic.
+Product productFromRow(Map<String, dynamic> json) {
+  // Mapping from Supabase Snake Case to Dart Camel Case
     final imagesList = (json['images'] as List?)
             ?.map((i) => ProductImage.fromMap(i as Map<String, dynamic>))
             .toList() ??
@@ -180,7 +191,7 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
       unit: json['unit'],
       colorStocks: colorStocks,
       description: json['description'],
-      stockStatus: _mapStatus(json['stock_status']),
+      stockStatus: stockStatusFromString(json['stock_status']),
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at']).toLocal()
           : null,
@@ -188,22 +199,15 @@ class ProductsNotifier extends StateNotifier<AsyncValue<List<Product>>> {
           ? DateTime.parse(json['created_at']).toLocal()
           : null,
     );
-  }
+}
 
-  StockStatus _mapStatus(String? status) {
-    switch (status) {
-      case 'low_stock':
-        return StockStatus.lowStock;
-      case 'out_of_stock':
-        return StockStatus.outOfStock;
-      default:
-        return StockStatus.inStock;
-    }
-  }
-
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    super.dispose();
+StockStatus stockStatusFromString(String? status) {
+  switch (status) {
+    case 'low_stock':
+      return StockStatus.lowStock;
+    case 'out_of_stock':
+      return StockStatus.outOfStock;
+    default:
+      return StockStatus.inStock;
   }
 }

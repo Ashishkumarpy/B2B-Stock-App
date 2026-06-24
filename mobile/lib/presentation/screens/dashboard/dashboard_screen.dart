@@ -4,14 +4,11 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/services/version_check_service.dart';
-import '../../providers/products_provider.dart';
-import '../../providers/transactions_provider.dart';
-import '../../providers/categories_provider.dart';
+import '../../providers/dashboard_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/skeleton_loading.dart';
 import '../../widgets/stock_chart_widget.dart';
 import '../../providers/settings_provider.dart';
-import '../../providers/warehouse_stock_summary_provider.dart';
 import '../../../domain/entities/app_user.dart';
 import '../../../domain/entities/product.dart';
 import '../../../core/utils/formatters.dart';
@@ -47,10 +44,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final productsAsync = ref.watch(productsProvider);
-    final transactionsAsync = ref.watch(transactionsProvider);
-    final categoriesAsync = ref.watch(categoriesProvider);
-    final warehouseStockSummaryAsync = ref.watch(warehouseStockSummaryProvider);
+    // One aggregated request feeds the whole dashboard; slice it into the
+    // per-section AsyncValues the widgets below already expect.
+    final dashboardAsync = ref.watch(dashboardProvider);
+    final productsAsync = dashboardAsync.whenData((d) => d.products);
+    final transactionsAsync = dashboardAsync.whenData((d) => d.transactions);
+    final warehouseStockSummaryAsync =
+        dashboardAsync.whenData((d) => d.warehouses);
+    final categoriesAsync = dashboardAsync.whenData((d) {
+      final categories = d.products
+          .map((p) => p.category)
+          .where((c) => c.isNotEmpty)
+          .toSet()
+          .toList()
+        ..sort();
+      return categories;
+    });
     final user = ref.watch(authStateProvider).user;
 
     final lowStockCount = productsAsync.maybeWhen(
@@ -66,10 +75,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           // Pull fresh access/permissions too, so admin-side changes (e.g. via
           // Manage Workers) apply without needing to log out and back in.
           await ref.read(authStateProvider.notifier).refreshAccessToken();
-          ref.invalidate(productsProvider);
-          ref.invalidate(transactionsProvider);
-          ref.invalidate(categoriesProvider);
-          ref.invalidate(warehouseStockSummaryProvider);
+          await ref.read(dashboardProvider.notifier).refresh();
         },
         child: CustomScrollView(
           slivers: [
@@ -799,8 +805,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           builder: (context, scrollController) {
             return Consumer(
               builder: (context, ref, _) {
-                final productsAsync = ref.watch(productsProvider);
-                final transactionsAsync = ref.watch(transactionsProvider);
+                final dashboardAsync = ref.watch(dashboardProvider);
+                final productsAsync =
+                    dashboardAsync.whenData((d) => d.products);
+                final transactionsAsync =
+                    dashboardAsync.whenData((d) => d.transactions);
 
                 final lowStockProds = productsAsync.maybeWhen(
                   data: (p) => p

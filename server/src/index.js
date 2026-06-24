@@ -15,6 +15,7 @@ import { workersRouter } from './routes/workers.js';
 import { warehousesRouter } from './routes/warehouses.js';
 import { notificationsRouter } from './routes/notifications.js';
 import { appRouter } from './routes/app.js';
+import { dashboardRouter } from './routes/dashboard.js';
 
 assertConfig();
 
@@ -95,6 +96,7 @@ app.use('/warehouses', warehousesRouter);
 app.use('/uploads', uploadsRouter);
 app.use('/notifications', notificationsRouter);
 app.use('/app', appRouter);
+app.use('/dashboard', dashboardRouter);
 
 app.use((req, res) => {
   return res.status(404).json({ error: 'Not found' });

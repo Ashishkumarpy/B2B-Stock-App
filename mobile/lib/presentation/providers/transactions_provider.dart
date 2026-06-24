@@ -158,25 +158,31 @@ class TransactionsNotifier
     }
   }
 
-  Transaction _mapToTransaction(Map<String, dynamic> json) {
-    return Transaction(
-      id: json['id']?.toString() ?? '',
-      productId: json['product_id']?.toString() ?? '',
-      workerId: json['user_id']?.toString() ?? '',
-      productName: json['product_name'] ?? 'Unknown Product',
-      productCode: json['product_code'] ?? json['code'] ?? '',
-      workerName: json['worker_name'] ?? 'Unknown Worker',
-      cartons: (json['cartons'] as num?)?.toInt(),
-      pcsPerCarton: (json['pcs_per_carton'] as num?)?.toInt(),
-      colorName: json['color_name'],
-      warehouseId: json['warehouse_id']?.toString(),
-      warehouseName: json['warehouse_name'],
-      type: TransactionType.fromString(json['type'] ?? 'OUT'),
-      quantity: json['quantity'] ?? 0,
-      notes: json['notes'],
-      createdAt:
-          DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String())
-              .toLocal(),
-    );
-  }
+  Transaction _mapToTransaction(Map<String, dynamic> json) =>
+      transactionFromRow(json);
+}
+
+/// Maps a Supabase transaction row (snake_case) to a [Transaction]. Top-level so
+/// it can be reused by the aggregated dashboard provider without duplicating
+/// logic.
+Transaction transactionFromRow(Map<String, dynamic> json) {
+  return Transaction(
+    id: json['id']?.toString() ?? '',
+    productId: json['product_id']?.toString() ?? '',
+    workerId: json['user_id']?.toString() ?? '',
+    productName: json['product_name'] ?? 'Unknown Product',
+    productCode: json['product_code'] ?? json['code'] ?? '',
+    workerName: json['worker_name'] ?? 'Unknown Worker',
+    cartons: (json['cartons'] as num?)?.toInt(),
+    pcsPerCarton: (json['pcs_per_carton'] as num?)?.toInt(),
+    colorName: json['color_name'],
+    warehouseId: json['warehouse_id']?.toString(),
+    warehouseName: json['warehouse_name'],
+    type: TransactionType.fromString(json['type'] ?? 'OUT'),
+    quantity: json['quantity'] ?? 0,
+    notes: json['notes'],
+    createdAt:
+        DateTime.parse(json['created_at'] ?? DateTime.now().toIso8601String())
+            .toLocal(),
+  );
 }
