@@ -72,9 +72,13 @@ async function fetchLatestGitHubRelease() {
       "https://github.com/Ashishkumarpy/B2B-Stock-App/releases/latest";
     let assetUrl = null;
     if (data.assets && Array.isArray(data.assets)) {
-      const apkAsset = data.assets.find(
-        (asset) => asset.name && asset.name.endsWith(".apk"),
+      const apks = data.assets.filter(
+        (asset) => asset.name && asset.name.toLowerCase().endsWith(".apk"),
       );
+      // Releases now ship per-ABI splits. arm64-v8a covers virtually all modern
+      // devices, so prefer it; fall back to any .apk (e.g. a universal build).
+      const apkAsset =
+        apks.find((a) => a.name.toLowerCase().includes("arm64")) || apks[0];
       if (apkAsset) {
         // If we have a GitHub token, proxy the download to handle private repos
         if (process.env.GITHUB_TOKEN) {
